@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CONECTA EGRESSO - Governo do Estado do Espírito Santo | SEJUS</title>
+  <meta name="description" content="Plataforma de atendimento remoto, acolhimento psicossocial e reintegração social para egressos do sistema prisional e seus familiares no Estado do Espírito Santo.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-light">
+  <div id="app" class="app-container">
+    
+    <!-- HEADER BAR -->
+    <header class="top-header">
+      <div class="header-left">
+        <button id="sidebarToggleBtn" class="btn-icon" title="Alternar Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        </button>
+        
+        <div class="brand-logo">
+          <div class="es-flag-badge">
+            <span class="stripe-pink"></span>
+            <span class="stripe-white"></span>
+            <span class="stripe-blue"></span>
+          </div>
+          <div class="brand-text">
+            <h1 class="app-title">CONECTA <span class="highlight">EGRESSO</span></h1>
+            <span class="app-subtitle">SEJUS • Governo do Estado do Espírito Santo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <!-- GLOBAL SEARCH -->
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Buscar egressos, atendimentos, vagas ou serviços nos 78 municípios..." id="globalSearchInput">
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- ACCESSIBILITY TOOLBAR -->
+        <div class="accessibility-bar" title="Opções de Acessibilidade">
+          <button id="contrastBtn" class="btn-pill-sm" title="Alto Contraste">
+            <span>👁️ Alto Contraste</span>
+          </button>
+          <button id="fontSizeBtn" class="btn-pill-sm" title="Aumentar Fonte">
+            <span>A+</span>
+          </button>
+          <button id="simplifiedTextBtn" class="btn-pill-sm" title="Linguagem Simplificada">
+            <span>💬 Linguagem Fácil</span>
+          </button>
+        </div>
+
+        <!-- PROFILE SWITCHER SELECTOR -->
+        <div class="profile-switcher">
+          <label for="userRoleSelect" class="sr-only">Perfil de Acesso</label>
+          <div class="role-badge" id="roleBadge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <select id="userRoleSelect">
+              <option value="gestor" selected>Perfil: Gestor SEJUS / Painel Geral</option>
+              <option value="tecnico">Perfil: Técnico Escritório Social</option>
+              <option value="egresso">Perfil: Egresso / Familiar</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- USER GOV.BR AUTH BADGE -->
+        <div class="govbr-user-card">
+          <div class="govbr-badge">gov.br</div>
+          <div class="user-info">
+            <span class="user-name" id="userNameHeader">Carlos Eduardo Silva</span>
+            <span class="user-cpf" id="userCpfHeader">CPF: ***.482.910-**</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN BODY (SIDEBAR + CONTENT) -->
+    <div class="main-layout">
+      
+      <!-- NAVIGATION SIDEBAR -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-user-summary">
+          <div class="user-avatar" id="sidebarAvatar">CS</div>
+          <div class="user-details">
+            <strong id="sidebarRoleTitle">Visão Gestor Estaduais</strong>
+            <small id="sidebarRoleScope">78 Municípios • SEJUS/ES</small>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <div class="nav-section-title">MENU PRINCIPAL</div>
+          
+          <a href="#dashboard" class="nav-item active" data-view="dashboard">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+            <span>Dashboard & KPIs</span>
+            <span class="badge-nav bg-blue">Principal</span>
+          </a>
+
+          <a href="#atendimento" class="nav-item" data-view="atendimento">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <span>Atendimento Remoto & Vídeo</span>
+            <span class="badge-nav bg-green" id="onlineWaitingBadge">3 em espera</span>
+          </a>
+
+          <a href="#oportunidades" class="nav-item" data-view="oportunidades">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            <span>Oportunidades & Trabalho</span>
+            <span class="badge-nav bg-purple">42 Vagas</span>
+          </a>
+
+          <a href="#carteira" class="nav-item" data-view="carteira">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="13" y2="12"/><circle cx="7" cy="16" r="1"/></svg>
+            <span>Carteira Digital & Documentos</span>
+          </a>
+
+          <a href="#geolocalizacao" class="nav-item" data-view="geolocalizacao">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+            <span>Mapeamento dos 78 Municípios</span>
+          </a>
+
+          <a href="#prontuario" class="nav-item" data-view="prontuario">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span>Prontuário & Histórico</span>
+          </a>
+
+          <div class="nav-section-title">GESTÃO & GOVERNANÇA</div>
+
+          <a href="#relatorios" class="nav-item" data-view="relatorios">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Relatórios & Análise SEJUS</span>
+          </a>
+
+          <a href="#lgpd" class="nav-item" data-view="lgpd">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Segurança & Níveis de Acesso</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="es-seal">
+            <span class="seal-icon">🏛️</span>
+            <div>
+              <strong>SEJUS / SEGER</strong>
+              <p>Escritório Social Digital</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CONTENT AREA -->
+      <main class="content-area" id="contentArea">
+
+        <!-- ============================================ -->
+        <!-- VIEW 1: DASHBOARD & KPIS (Seção 3.2 do Edital) -->
+        <!-- ============================================ -->
+        <section id="view-dashboard" class="view-panel active">
+          
+          <!-- BANNER HERO -->
+          <div class="hero-banner">
+            <div class="hero-content">
+              <div class="tag-status">
+                <span class="pulse-dot"></span>
+                <span>Plataforma Oficial SEJUS/ES • Reintegração Social Remota</span>
+              </div>
+              <h2>Painel de Monitoramento & Desempenho</h2>
+              <p>Expansão do atendimento do Escritório Social de <strong>4 para todos os 78 municípios capixabas</strong>. Monitoramento em tempo real de egressos, acolhimento psicossocial, vagas de emprego e metas de redução da reincidência.</p>
+            </div>
+            <div class="hero-actions">
+              <button class="btn-primary" onclick="switchView('atendimento')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                <span>Iniciar Atendimento Remoto</span>
+              </button>
+              <button class="btn-secondary" onclick="switchView('relatorios')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Exportar Relatório Sintético</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI METRIC CARDS -->
+          <div class="kpi-grid">
+            
+            <div class="kpi-card glass-card border-blue">
+              <div class="kpi-header">
+                <span class="kpi-title">Egressos Cadastrados</span>
+                <span class="kpi-icon bg-blue-light">👥</span>
+              </div>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="kpiTotalEgressos">14.850</span>
+                <span class="kpi-trend trend-up">+12.4% este mês</span>
+              </div>
+              <p class="kpi-subtext">Meta de cobertura: 108.000 população-alvo</p>
+              <div class="progress-bar-sm"><div class="progress-fill bg-blue" style="width: 68%;"></div></div>
+            </div>
+
+            <div class="kpi-card glass-card border-green">
+              <div class="kpi-header">
+                <span class="kpi-title">Atendimentos Remotos</span>
+                <span class="kpi-icon bg-green-light">📞</span>
+              </div>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="kpiTotalAtendimentos">32.410</span>
+                <span class="kpi-trend trend-up">98.4% de satisfação</span>
+              </div>
+              <p class="kpi-subtext">Psicossocial, Jurídico e Documental</p>
+              <div class="progress-bar-sm"><div class="progress-fill bg-green" style="width: 85%;"></div></div>
+            </div>
+
+            <div class="kpi-card glass-card border-purple">
+              <div class="kpi-header">
+                <span class="kpi-title">Encaminhamentos p/ Emprego</span>
+                <span class="kpi-icon bg-purple-light">💼</span>
+              </div>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="kpiEncaminhamentos">4.120</span>
+                <span class="kpi-trend trend-up">76% contratados</span>
+              </div>
+              <p class="kpi-subtext">Parcerias ativas com empresas do ES</p>
+              <div class="progress-bar-sm"><div class="progress-fill bg-purple" style="width: 76%;"></div></div>
+            </div>
+
+            <div class="kpi-card glass-card border-amber">
+              <div class="kpi-header">
+                <span class="kpi-title">Redução de Reincidência</span>
+                <span class="kpi-icon bg-amber-light">📉</span>
+              </div>
+              <div class="kpi-value-row">
+                <span class="kpi-number" id="kpiReincidencia">-34.2%</span>
+                <span class="kpi-trend trend-down">Redução significativa</span>
+              </div>
+              <p class="kpi-subtext">Comparado com a média histórica</p>
+              <div class="progress-bar-sm"><div class="progress-fill bg-amber" style="width: 90%;"></div></div>
+            </div>
+
+          </div>
+
+          <!-- CHARTS AND MAP ROW -->
+          <div class="grid-2col">
+            
+            <!-- CHART CARD 1 -->
+            <div class="dashboard-card glass-card">
+              <div class="card-header-flex">
+                <div>
+                  <h3>Atendimentos por Município Capixaba</h3>
+                  <p class="card-sub">Evolução do atendimento remoto nos municípios sem escritório físico</p>
+                </div>
+                <div class="card-actions">
+                  <select class="select-sm" id="chartFilterMunicipios">
+                    <option value="todos">Todos os 78 Municípios</option>
+                    <option value="grande_vitoria">Grande Vitória</option>
+                    <option value="norte">Norte Capixaba</option>
+                    <option value="sul">Sul Capixaba</option>
+                    <option value="serrana">Região Serrana</option>
+                  </select>
+                </div>
+              </div>
+              <div class="chart-container">
+                <canvas id="chartMunicipios" height="230"></canvas>
+              </div>
+            </div>
+
+            <!-- CHART CARD 2 -->
+            <div class="dashboard-card glass-card">
+              <div class="card-header-flex">
+                <div>
+                  <h3>Desempenho da Reintegração Social</h3>
+                  <p class="card-sub">Impacto das ações: trabalho, documentação e apoio psicológico</p>
+                </div>
+                <span class="badge bg-green">Metas CPSI 2026</span>
+              </div>
+              <div class="chart-container">
+                <canvas id="chartReintegracao" height="230"></canvas>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RECENT ACTIVITY AND MAP OVERVIEW -->
+          <div class="grid-2col mt-4">
+            
+            <!-- ES MAP QUICK PREVIEW -->
+            <div class="dashboard-card glass-card">
+              <div class="card-header-flex">
+                <div>
+                  <h3>Mapeamento de Demanda Territorial (ES)</h3>
+                  <p class="card-sub">Concentração de atendimentos nos 78 municípios</p>
+                </div>
+                <button class="btn-text" onclick="switchView('geolocalizacao')">Ver Mapa Completo →</button>
+              </div>
+              
+              <div class="es-map-preview-container">
+                <div class="es-mini-map">
+                  <div class="map-point point-vitoria" title="Vitória: 3.420 atendimentos"><span>Vitória</span></div>
+                  <div class="map-point point-serra" title="Serra: 2.910 atendimentos"><span>Serra</span></div>
+                  <div class="map-point point-vilavelha" title="Vila Velha: 2.450 atendimentos"><span>Vila Velha</span></div>
+                  <div class="map-point point-cariacica" title="Cariacica: 2.100 atendimentos"><span>Cariacica</span></div>
+                  <div class="map-point point-linhares" title="Linhares: 1.150 atendimentos"><span>Linhares</span></div>
+                  <div class="map-point point-cachoeiro" title="Cachoeiro: 980 atendimentos"><span>Cachoeiro</span></div>
+                  <div class="map-point point-colatina" title="Colatina: 740 atendimentos"><span>Colatina</span></div>
+                  <div class="map-point point-saomateus" title="São Mateus: 610 atendimentos"><span>São Mateus</span></div>
+                </div>
+                
+                <div class="map-legend-side">
+                  <h4>Regiões em Destaque</h4>
+                  <ul class="legend-list">
+                    <li><span class="dot bg-blue"></span> Grande Vitória: <strong>10.930 (62%)</strong></li>
+                    <li><span class="dot bg-green"></span> Norte / Noroeste: <strong>2.500 (18%)</strong></li>
+                    <li><span class="dot bg-purple"></span> Sul Capixaba: <strong>1.820 (12%)</strong></li>
+                    <li><span class="dot bg-amber"></span> Serrana: <strong>1.160 (8%)</strong></li>
+                  </ul>
+                  <div class="alert-box-info mt-2">
+                    <small>💡 <strong>Superação da barreira geográfica:</strong> 74 municípios do interior agora possuem acesso remoto direto via smartphone e CRAS parceiros.</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- LIVE ACTIVITY FEED -->
+            <div class="dashboard-card glass-card">
+              <div class="card-header-flex">
+                <div>
+                  <h3>Últimos Registros de Atendimento</h3>
+                  <p class="card-sub">Atualizações em tempo real com registro automático de data e hora</p>
+                </div>
+                <span class="badge bg-blue">Tempo Real</span>
+              </div>
+
+              <div class="activity-feed">
+                <div class="feed-item">
+                  <div class="feed-icon bg-green-light">📹</div>
+                  <div class="feed-details">
+                    <strong>Acolhimento Psicossocial em Vídeo Concluído</strong>
+                    <p>Atendido: Lucas Santos (CPF ***.192.830-**) • Técnico: Dra. Márcia (ES Viana)</p>
+                    <small class="feed-time">Hoje às 10:04 • Linhares/ES</small>
+                  </div>
+                  <span class="status-pill status-success">Concluído</span>
+                </div>
+
+                <div class="feed-item">
+                  <div class="feed-icon bg-purple-light">💼</div>
+                  <div class="feed-details">
+                    <strong>Encaminhamento para Vaga de Emprego</strong>
+                    <p>Vaga: Auxiliar de Logística • Empresa Parceira: Portos do ES</p>
+                    <small class="feed-time">Hoje às 09:48 • Cariacica/ES</small>
+                  </div>
+                  <span class="status-pill status-info">Encaminhado</span>
+                </div>
+
+                <div class="feed-item">
+                  <div class="feed-icon bg-amber-light">📄</div>
+                  <div class="feed-details">
+                    <strong>Emissão de Segunda Via de RG Solicitada</strong>
+                    <p>Encaminhado para a Polícia Científica / Casa do Cidadão</p>
+                    <small class="feed-time">Hoje às 09:15 • Colatina/ES</small>
+                  </div>
+                  <span class="status-pill status-warning">Em Processamento</span>
+                </div>
+
+                <div class="feed-item">
+                  <div class="feed-icon bg-blue-light">🪪</div>
+                  <div class="feed-details">
+                    <strong>Carteira Digital do Egresso Emitida</strong>
+                    <p>Autenticada via Gov.br / Acesso Cidadão • Válida em todo o ES</p>
+                    <small class="feed-time">Ontem às 16:30 • Cachoeiro de Itapemirim/ES</small>
+                  </div>
+                  <span class="status-pill status-success">Emitida</span>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ============================================ -->
+        <!-- VIEW 2: ATENDIMENTO REMOTO & VIDEOCHAMADA (Item 3.1 f) -->
+        <!-- ============================================ -->
+        <section id="view-atendimento" class="view-panel">
+          <div class="section-header-flex">
+            <div>
+              <h2>Atendimento Remoto & Videochamadas Seguras</h2>
+              <p class="section-sub">Canal contínuo e individualizado de acolhimento psicossocial e orientação jurídica (Conformidade com LGPD e Acesso Cidadão)</p>
+            </div>
+            <div class="status-indicator">
+              <span class="pulse-dot green"></span>
+              <span>Servidor de Vídeo SEJUS: <strong>Operacional (Criptografia de Ponta a Ponta)</strong></span>
+            </div>
+          </div>
+
+          <div class="grid-atendimento">
+            
+            <!-- QUEUE & APPOINTMENTS PANEL -->
+            <div class="queue-card glass-card">
+              <h3>Fila de Acolhimento em Espera</h3>
+              <p class="card-sub">Egressos e familiares aguardando atendimento remoto</p>
+              
+              <div class="queue-list mt-3">
+                
+                <div class="queue-item active-call">
+                  <div class="user-avatar bg-blue">RF</div>
+                  <div class="queue-info">
+                    <strong>Roberto Fonseca da Silva</strong>
+                    <small>Município: São Mateus (Sem Escritório Físico)</small>
+                    <span class="tag-sm bg-blue-light">Acolhimento Inicial • Psicossocial</span>
+                  </div>
+                  <button class="btn-sm btn-primary" onclick="openVideoCallModal('Roberto Fonseca da Silva', 'São Mateus')">
+                    🎥 Entrar no Atendimento
+                  </button>
+                </div>
+
+                <div class="queue-item">
+                  <div class="user-avatar bg-green">AM</div>
+                  <div class="queue-info">
+                    <strong>Ana Maria de Jesus (Familiar)</strong>
+                    <small>Município: Alegre (Serrana)</small>
+                    <span class="tag-sm bg-green-light">Orientação Documental</span>
+                  </div>
+                  <button class="btn-sm btn-secondary" onclick="openVideoCallModal('Ana Maria de Jesus', 'Alegre')">
+                    🎥 Iniciar Vídeo
+                  </button>
+                </div>
+
+                <div class="queue-item">
+                  <div class="user-avatar bg-purple">MA</div>
+                  <div class="queue-info">
+                    <strong>Marcos Antonio de Oliveira</strong>
+                    <small>Município: Linhares</small>
+                    <span class="tag-sm bg-purple-light">Encaminhamento p/ Vaga</span>
+                  </div>
+                  <button class="btn-sm btn-secondary" onclick="openVideoCallModal('Marcos Antonio de Oliveira', 'Linhares')">
+                    🎥 Iniciar Vídeo
+                  </button>
+                </div>
+
+              </div>
+
+              <div class="scheduled-section mt-4">
+                <h4>Agendamentos do Dia</h4>
+                <div class="schedule-item">
+                  <span class="time-badge">14:00</span>
+                  <div>
+                    <strong>Juliana Costa (Egresso)</strong>
+                    <small>Atendimento de Acompanhamento Mensal</small>
+                  </div>
+                </div>
+                <div class="schedule-item">
+                  <span class="time-badge">15:30</span>
+                  <div>
+                    <strong>Gabriel Pereira (Egresso)</strong>
+                    <small>Apoio Jurídico e Regularização de Título</small>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- SIMULATED VIDEO CALL ROOM PREVIEW -->
+            <div class="videocall-card glass-card">
+              <div class="video-window">
+                <!-- MAIN VIDEO DISPLAY -->
+                <div class="main-video-feed" id="mainVideoFeed">
+                  <div class="video-overlay-info">
+                    <span class="badge bg-red">🔴 EM ATENDIMENTO REMOTO AO VIVO</span>
+                    <span class="timer-badge">Duração: 08:42</span>
+                  </div>
+
+                  <!-- PLACEHOLDER FOR REMOTELY CONNECTED USER -->
+                  <div class="video-placeholder-user">
+                    <div class="avatar-large">RF</div>
+                    <h3>Roberto Fonseca da Silva</h3>
+                    <p>Conectado via Smartphone • São Mateus/ES (4G Estável)</p>
+                  </div>
+
+                  <!-- PIP MINI VIDEO FOR TECHNICIAN -->
+                  <div class="pip-video-tech">
+                    <div class="pip-avatar">Dra. Márcia</div>
+                    <span>Você (Técnico SEJUS)</span>
+                  </div>
+                </div>
+
+                <!-- VIDEO CONTROLS BAR -->
+                <div class="video-controls-bar">
+                  <button class="btn-video-control" title="Desativar Microfone">🎙️</button>
+                  <button class="btn-video-control" title="Desativar Câmera">📹</button>
+                  <button class="btn-video-control" title="Compartilhar Tela">🖥️</button>
+                  <button class="btn-video-control danger" onclick="endCallMock()" title="Encerrar Chamada">📞 Encerrar</button>
+                </div>
+              </div>
+
+              <!-- REAL-TIME CLINICAL & SOCIAL NOTES -->
+              <div class="call-notes-panel">
+                <h4>Registro Automático do Atendimento (Prontuário Único)</h4>
+                <div class="form-group">
+                  <label>Encaminhamento Selecionado:</label>
+                  <select class="input-select" id="callEncaminhamentoType">
+                    <option>Qualificação Profissional (Curso de Soldador - SENAI)</option>
+                    <option>Encaminhamento para Vaga de Emprego</option>
+                    <option>Apoio Psicossocial e Saúde Mental</option>
+                    <option>Solicitação de Documentação Básica</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Observações do Atendimento Psicossocial:</label>
+                  <textarea class="input-textarea" rows="3" placeholder="Digite as observações e o parecer do atendimento... O sistema registrará automaticamente o carimbo de data, hora e responsável.">Egresso reside em São Mateus, relata interesse em cursos do SENAI e inserção na construção civil. Apresentou documentação completa. Encaminhado para vaga parceira.</textarea>
+                </div>
+                <button class="btn-primary w-full" onclick="saveCallRecord()">
+                  💾 Salvar no Prontuário & Concluir Atendimento
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- ============================================ -->
+        <!-- VIEW 3: OPORTUNIDADES & TRABALHO (Item 3.1 h) -->
+        <!-- ============================================ -->
+        <section id="view-oportunidades" class="view-panel">
+          <div class="section-header-flex">
+            <div>
+              <h2>Painel de Oportunidades & Qualificação Profissional</h2>
+              <p class="section-sub">Vagas de trabalho inclusivas, cursos de capacitação e parcerias com empresas conveniadas do Espírito Santo em tempo real</p>
+            </div>
+            <button class="btn-primary" onclick="showAddOpportunityModal()">
+              ➕ Cadastrar Nova Vaga / Curso
+            </button>
+          </div>
+
+          <!-- FILTERS FOR OPPORTUNITIES -->
+          <div class="filter-bar glass-card mb-4">
+            <div class="filter-group">
+              <label>Tipo:</label>
+              <select class="select-sm" id="filterType">
+                <option value="todos">Todos</option>
+                <option value="emprego">Vagas de Emprego</option>
+                <option value="curso">Cursos de Capacitação</option>
+                <option value="estagio">Menor Aprendiz / Estágio</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Município:</label>
+              <select class="select-sm" id="filterMunicipality">
+                <option value="todos">Todos os 78 Municípios</option>
+                <option value="vitoria">Vitória</option>
+                <option value="serra">Serra</option>
+                <option value="vilavelha">Vila Velha</option>
+                <option value="cariacica">Cariacica</option>
+                <option value="linhares">Linhares</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label>Escolaridade Exigida:</label>
+              <select class="select-sm">
+                <option>Todas</option>
+                <option>Ensino Fundamental</option>
+                <option>Ensino Médio</option>
+                <option>Técnico / Superior</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- OPPORTUNITY CARDS GRID -->
+          <div class="grid-3col" id="opportunitiesGrid">
+            
+            <div class="opportunity-card glass-card">
+              <div class="card-badge bg-green">Vaga de Emprego</div>
+              <h3>Auxiliar de Logística e Carga</h3>
+              <span class="company-name">🏢 Porto de Tubarão / Parceiro SEJUS</span>
+              <ul class="opp-details">
+                <li>📍 <strong>Local:</strong> Vitória / Serra - ES</li>
+                <li>💰 <strong>Remuneração:</strong> R$ 2.100,00 + Benefícios</li>
+                <li>🎓 <strong>Escolaridade:</strong> Ensino Fundamental Incompleto</li>
+                <li>🤝 <strong>Empresa Amiga da Reintegração:</strong> Aceita Egressos</li>
+              </ul>
+              <div class="opp-actions mt-3">
+                <button class="btn-primary w-full" onclick="applyOpportunity('Auxiliar de Logística')">
+                  ✉️ Encaminhar Egresso
+                </button>
+              </div>
+            </div>
+
+            <div class="opportunity-card glass-card">
+              <div class="card-badge bg-purple">Curso Gratuito</div>
+              <h3>Capacitação em Solda Industrial</h3>
+              <span class="company-name">🎓 SENAI / Findes / SEJUS</span>
+              <ul class="opp-details">
+                <li>📍 <strong>Local:</strong> Remoto + Prática em Linhares/ES</li>
+                <li>⏱️ <strong>Duração:</strong> 160 Horas (Certificado Incluso)</li>
+                <li>🎁 <strong>Bolsa Auxílio:</strong> R$ 400,00/mês + Transporte</li>
+                <li>🎯 <strong>Vagas Reservadas:</strong> 30 vagas gratuitas</li>
+              </ul>
+              <div class="opp-actions mt-3">
+                <button class="btn-primary w-full" onclick="applyOpportunity('Capacitação em Solda Industrial')">
+                  📝 Inscrever Egresso
+                </button>
+              </div>
+            </div>
+
+            <div class="opportunity-card glass-card">
+              <div class="card-badge bg-green">Vaga de Emprego</div>
+              <h3>Operador de Máquinas Agrícolas</h3>
+              <span class="company-name">🏢 Cooperativa Agropecuária do ES</span>
+              <ul class="opp-details">
+                <li>📍 <strong>Local:</strong> Colatina / São Mateus - ES</li>
+                <li>💰 <strong>Remuneração:</strong> R$ 2.800,00 + Cesta Básica</li>
+                <li>🎓 <strong>Escolaridade:</strong> Treinamento no local fornecido</li>
+                <li>🌱 <strong>Programa:</strong> Inclusão no Campo SEJUS</li>
+              </ul>
+              <div class="opp-actions mt-3">
+                <button class="btn-primary w-full" onclick="applyOpportunity('Operador de Máquinas Agrícolas')">
+                  ✉️ Encaminhar Egresso
+                </button>
+              </div>
+            </div>
+
+            <div class="opportunity-card glass-card">
+              <div class="card-badge bg-blue">Curso Gratuito</div>
+              <h3>Letramento Digital & Informática Básica</h3>
+              <span class="company-name">💻 Instituto Federal (IFES) • EAD</span>
+              <ul class="opp-details">
+                <li>📍 <strong>Local:</strong> 100% Online (Acesso via Plataforma)</li>
+                <li>⏱️ <strong>Duração:</strong> 60 Horas</li>
+                <li>📱 <strong>Acessibilidade:</strong> Otimizado para celular</li>
+                <li>🎓 <strong>Público:</strong> Egressos e Familiares</li>
+              </ul>
+              <div class="opp-actions mt-3">
+                <button class="btn-primary w-full" onclick="applyOpportunity('Letramento Digital & Informática')">
+                  📝 Inscrever Egresso
+                </button>
+              </div>
+            </div>
+
+            <div class="opportunity-card glass-card">
+              <div class="card-badge bg-green">Vaga de Emprego</div>
+              <h3>Oficial de Construção Civil</h3>
+              <span class="company-name">🏢 Construtora Capixaba S.A.</span>
+              <ul class="opp-details">
+                <li>📍 <strong>Local:</strong> Vila Velha / Cariacica - ES</li>
+                <li>💰 <strong>Remuneração:</strong> R$ 2.450,00 + VT + VR</li>
+                <li>🎓 <strong>Escolaridade:</strong> Sem exigência formal</li>
+                <li>🏗️ <strong>Obras:</strong> Infraestrutura Urbana</li>
+              </ul>
+              <div class="opp-actions mt-3">
+                <button class="btn-primary w-full" onclick="applyOpportunity('Oficial de Construção Civil')">
+                  ✉️ Encaminhar Egresso
+                </button>
+              </div>
+            </div>
+
+            <div class="opportunity-card glass-card">
+              <div class="card-badge bg-purple">Capacitação</div>
+              <h3>Empreendedorismo e Microcrédito NossoCrédito</h3>
+              <span class="company-name">🏦 ADERES / Banestes / SEJUS</span>
+              <ul class="opp-details">
+                <li>📍 <strong>Local:</strong> Atendimento Remoto ES</li>
+                <li>💡 <strong>Foco:</strong> Criação de Pequenos Negócios</li>
+                <li>💵 <strong>Microcrédito:</strong> Até R$ 20.000 com juros reduzidos</li>
+                <li>📈 <strong>Mentoria:</strong> Acompanhamento por 6 meses</li>
+              </ul>
+              <div class="opp-actions mt-3">
+                <button class="btn-primary w-full" onclick="applyOpportunity('Empreendedorismo NossoCrédito')">
+                  📝 Agendar Orientação
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- ============================================ -->
+        <!-- VIEW 4: CARTEIRA DIGITAL & DOCUMENTOS (Item 3.1 e, i) -->
+        <!-- ============================================ -->
+        <section id="view-carteira" class="view-panel">
+          <div class="section-header-flex">
+            <div>
+              <h2>Carteira Digital do Egresso & Emissão de Documentos</h2>
+              <p class="section-sub">Documentação unificada com validação oficial do Governo do Estado do Espírito Santo e integração Acesso Cidadão / Gov.br</p>
+            </div>
+            <span class="badge bg-green">Autenticação Gov.br Válida</span>
+          </div>
+
+          <div class="grid-2col">
+            
+            <!-- EGRESSO DIGITAL ID CARD DISPLAY -->
+            <div class="dashboard-card glass-card">
+              <h3>Carteira Digital do Egresso (Visualização Oficial)</h3>
+              <p class="card-sub">Documento digital de identificação para acesso a serviços sociais e oportunidades no ES</p>
+
+              <div class="id-card-widget mt-3">
+                <div class="id-card-header">
+                  <div class="es-coat">🏛️ ESTADO DO ESPÍRITO SANTO</div>
+                  <span class="sejus-title">SEJUS • ESCRITÓRIO SOCIAL</span>
+                </div>
+                
+                <div class="id-card-body">
+                  <div class="photo-box">
+                    <div class="user-photo">CS</div>
+                    <span class="photo-verified">✓ Verificado</span>
+                  </div>
+
+                  <div class="id-details">
+                    <div class="detail-row">
+                      <label>NOME COMPLETO:</label>
+                      <strong>CARLOS EDUARDO SILVA</strong>
+                    </div>
+                    <div class="detail-row">
+                      <label>CPF:</label>
+                      <span>***.482.910-**</span>
+                    </div>
+                    <div class="detail-row">
+                      <label>NÚMERO DE REGISTRO SEJUS:</label>
+                      <span>ES-2026-948102</span>
+                    </div>
+                    <div class="detail-row">
+                      <label>MUNICÍPIO DE RESIDÊNCIA:</label>
+                      <span>São Mateus / ES</span>
+                    </div>
+                    <div class="detail-row">
+                      <label>DATA DE EMISSÃO:</label>
+                      <span>15/01/2026</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="id-card-footer">
+                  <div class="qr-code-box">
+                    <div class="qr-placeholder">
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="9" y="9" width="6" height="6"/></svg>
+                    </div>
+                    <small>Validação QR Code SEJUS</small>
+                  </div>
+                  <div class="security-seal">
+                    <span>Documento Oficial Digital</span>
+                    <small>Validez em todo o Território Capixaba (Lei 182/2021)</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-actions mt-3 flex-gap">
+                <button class="btn-primary" onclick="alert('Carteira Digital baixada em PDF assinado digitalmente.')">
+                  ⬇️ Baixar Carteira em PDF
+                </button>
+                <button class="btn-secondary" onclick="alert('Link de verificação copiado para a área de transferência.')">
+                  🔗 Compartilhar Validação
+                </button>
+              </div>
+
+            </div>
+
+            <!-- DOCUMENT REQUEST SERVICES -->
+            <div class="dashboard-card glass-card">
+              <h3>Solicitação de 2ª Via e Documentos Básicos</h3>
+              <p class="card-sub">Encaminhamento direto para cartórios e emissão de documentos sem custo</p>
+
+              <div class="services-list mt-3">
+                
+                <div class="service-item">
+                  <div class="service-icon bg-blue-light">💳</div>
+                  <div class="service-details">
+                    <strong>2ª Via de RG (Carteira de Identidade Nacional)</strong>
+                    <p>Encaminhamento gratuito para Polícia Científica / Faça Fácil</p>
+                  </div>
+                  <button class="btn-sm btn-primary" onclick="requestDoc('RG')">Solicitar</button>
+                </div>
+
+                <div class="service-item">
+                  <div class="service-icon bg-green-light">📄</div>
+                  <div class="service-details">
+                    <strong>Certidão de Nascimento / Casamento</strong>
+                    <p>Isenção de taxa cartorária via Defensoria Pública</p>
+                  </div>
+                  <button class="btn-sm btn-primary" onclick="requestDoc('Certidão')">Solicitar</button>
+                </div>
+
+                <div class="service-item">
+                  <div class="service-icon bg-purple-light">🗳️</div>
+                  <div class="service-details">
+                    <strong>Regularização Eleitoral (Título de Eleitor)</strong>
+                    <p>Orientação e quitação de obrigações eleitorais pós-pena</p>
+                  </div>
+                  <button class="btn-sm btn-primary" onclick="requestDoc('Título')">Solicitar</button>
+                </div>
+
+                <div class="service-item">
+                  <div class="service-icon bg-amber-light">📝</div>
+                  <div class="service-details">
+                    <strong>Certidão de Execução Penal / Nada Consta</strong>
+                    <p>Emissão direta para fins de comprovação de cumprimento</p>
+                  </div>
+                  <button class="btn-sm btn-primary" onclick="requestDoc('Nada Consta')">Solicitar</button>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- ============================================ -->
+        <!-- VIEW 5: MAPEAMENTO TERRITORIAL (Item 3.1 n) -->
+        <!-- ============================================ -->
+        <section id="view-geolocalizacao" class="view-panel">
+          <div class="section-header-flex">
+            <div>
+              <h2>Mapeamento Territorial dos 78 Municípios do ES</h2>
+              <p class="section-sub">Gestão da expansão do atendimento remoto para os 74 municípios sem Escritório Social físico (Rede Socioassistencial & CRAS/CREAS)</p>
+            </div>
+            <span class="badge bg-purple">Cobertura 100% Estadual</span>
+          </div>
+
+          <div class="grid-2col">
+            
+            <!-- ES MAP FULL INTERACTIVE PANEL -->
+            <div class="dashboard-card glass-card">
+              <h3>Distribuição Geográfica de Demandas</h3>
+              <p class="card-sub">Clique em um município no painel para ver a rede de apoio disponível</p>
+
+              <div class="es-full-map-box">
+                <div class="map-grid-interactive">
+                  <button class="map-muni-btn active" onclick="selectMunicipality('Vitória', 3420, 'Escritório Social Físico')">Vitória (Sede)</button>
+                  <button class="map-muni-btn" onclick="selectMunicipality('Vila Velha', 2450, 'Escritório Social Físico')">Vila Velha</button>
+                  <button class="map-muni-btn" onclick="selectMunicipality('Serra', 2910, 'Escritório Social Físico')">Serra</button>
+                  <button class="map-muni-btn" onclick="selectMunicipality('Cariacica', 2100, 'Escritório Social Físico')">Cariacica</button>
+                  <button class="map-muni-btn remote" onclick="selectMunicipality('Linhares', 1150, 'Atendimento Remoto Conecta Egresso')">Linhares (Remoto)</button>
+                  <button class="map-muni-btn remote" onclick="selectMunicipality('Cachoeiro de Itapemirim', 980, 'Atendimento Remoto Conecta Egresso')">Cachoeiro (Remoto)</button>
+                  <button class="map-muni-btn remote" onclick="selectMunicipality('Colatina', 740, 'Atendimento Remoto Conecta Egresso')">Colatina (Remoto)</button>
+                  <button class="map-muni-btn remote" onclick="selectMunicipality('São Mateus', 610, 'Atendimento Remoto Conecta Egresso')">São Mateus (Remoto)</button>
+                  <button class="map-muni-btn remote" onclick="selectMunicipality('Aracruz', 450, 'Atendimento Remoto Conecta Egresso')">Aracruz (Remoto)</button>
+                  <button class="map-muni-btn remote" onclick="selectMunicipality('Guarapari', 520, 'Atendimento Remoto Conecta Egresso')">Guarapari (Remoto)</button>
+                  <button class="map-muni-btn remote" onclick="selectMunicipality('Viana', 680, 'Atendimento Remoto Conecta Egresso')">Viana (Remoto)</button>
+                  <button class="map-muni-btn remote" onclick="selectMunicipality('Outros 67 Municípios', 1740, 'Atendimento Remoto Conecta Egresso')">+67 Municípios do Interior</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- MUNICIPALITY DETAILED PANEL -->
+            <div class="dashboard-card glass-card" id="muniDetailsPanel">
+              <div class="card-header-flex">
+                <div>
+                  <h3 id="selectedMuniName">Vitória (Sede Principal)</h3>
+                  <span class="badge bg-blue" id="selectedMuniType">Escritório Social Físico</span>
+                </div>
+              </div>
+
+              <div class="muni-stats-grid mt-3">
+                <div class="mini-stat-card">
+                  <span class="stat-num" id="selectedMuniDemand">3.420</span>
+                  <small>Egressos Atendidos</small>
+                </div>
+                <div class="mini-stat-card">
+                  <span class="stat-num">94%</span>
+                  <small>Atendimento Remoto Ativo</small>
+                </div>
+              </div>
+
+              <h4 class="mt-4">Rede Socioassistencial Parceira no Município</h4>
+              <ul class="partner-list">
+                <li>🏢 <strong>CRAS Central de Vitória:</strong> Encaminhamento para Bolsa Capixaba e Cesta Alimento.</li>
+                <li>🎓 <strong>Casa do Cidadão:</strong> Emissão presencial de documentos.</li>
+                <li>🏥 <strong>CAPS / Unidade de Saúde:</strong> Suporte em saúde mental e dependência química.</li>
+                <li>💼 <strong>SINE Vitória:</strong> Vagas prioritárias de emprego cadastrais.</li>
+              </ul>
+
+              <div class="alert-box-info mt-3">
+                <p>📍 <strong>Encaminhamento Inteligente:</strong> Ao solicitar atendimento remoto, a plataforma detecta automaticamente a geolocalização do egresso (com consentimento) e agenda a unidade ou CRAS parceiro mais próximo de sua residência.</p>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        <!-- ============================================ -->
+        <!-- VIEW 6: PRONTUÁRIO & HISTÓRICO (Item 3.1 d, j) -->
+        <!-- ============================================ -->
+        <section id="view-prontuario" class="view-panel">
+          <div class="section-header-flex">
+            <div>
+              <h2>Prontuário Único do Egresso & Registros Automáticos</h2>
+              <p class="section-sub">Histórico unificado de atendimentos com rastreabilidade, identificação do responsável e marcação de data/hora</p>
+            </div>
+            <span class="badge bg-blue">Conformidade LGPD Art. 6º</span>
+          </div>
+
+          <div class="dashboard-card glass-card mb-4">
+            <div class="search-egresso-bar">
+              <input type="text" class="input-text" placeholder="Digite o Nome, CPF ou Registro SEJUS do Egresso..." value="Lucas Santos (CPF ***.192.830-**)">
+              <button class="btn-primary">🔍 Localizar Prontuário</button>
+            </div>
+          </div>
+
+          <div class="grid-2col">
+            <!-- EGRESSO PROFILE CARD -->
+            <div class="dashboard-card glass-card">
+              <h3>Ficha do Atendido</h3>
+              
+              <div class="profile-header-box">
+                <div class="user-avatar-lg bg-green">LS</div>
+                <div>
+                  <h3>Lucas Santos</h3>
+                  <p>CPF: ***.192.830-** • Reg SEJUS: ES-2025-4491</p>
+                  <span class="status-pill status-success">Situação: Em Acompanhamento Remoto</span>
+                </div>
+              </div>
+
+              <table class="table-info mt-3">
+                <tr><td><strong>Município:</strong></td><td>Linhares / ES (Atendimento Remoto)</td></tr>
+                <tr><td><strong>Escolaridade:</strong></td><td>Ensino Médio Concluído (CEJA Prisional)</td></tr>
+                <tr><td><strong>Área de Interesse:</strong></td><td>Logística, Operação de Máquinas, Solda</td></tr>
+                <tr><td><strong>Telefone / WhatsApp:</strong></td><td>(27) 99821-**** (Verificado via Gov.br)</td></tr>
+                <tr><td><strong>Técnico Responsável:</strong></td><td>Dra. Márcia Oliveira (Assistente Social - SEJUS)</td></tr>
+              </table>
+            </div>
+
+            <!-- TIMELINE OF AUTOMATED RECORDS -->
+            <div class="dashboard-card glass-card">
+              <h3>Linha do Tempo de Evolução Social</h3>
+              <p class="card-sub">Registros imutáveis com carimbo de data, hora e responsável</p>
+
+              <div class="timeline mt-3">
+                
+                <div class="timeline-item">
+                  <div class="timeline-dot bg-green"></div>
+                  <div class="timeline-content">
+                    <span class="timeline-date">11/08/2026 às 10:04 • Dra. Márcia (SEJUS)</span>
+                    <h4>Acolhimento Psicossocial em Vídeo</h4>
+                    <p>Atendimento remoto realizado com sucesso via plataforma Conecta Egresso. Demonstrado bom engajamento. Encaminhado para o curso de Solda do SENAI.</p>
+                  </div>
+                </div>
+
+                <div class="timeline-item">
+                  <div class="timeline-dot bg-purple"></div>
+                  <div class="timeline-content">
+                    <span class="timeline-date">02/08/2026 às 14:20 • Sistema Automático SEJUS</span>
+                    <h4>Validação de Carteira Digital do Egresso</h4>
+                    <p>Documentação emitida via integração Gov.br. QR Code ativado com validade estadual.</p>
+                  </div>
+                </div>
+
+                <div class="timeline-item">
+                  <div class="timeline-dot bg-blue"></div>
+                  <div class="timeline-content">
+                    <span class="timeline-date">25/07/2026 às 09:15 • Dr. Carlos (Psicólogo)</span>
+                    <h4>Primeiro Acolhimento pós-Livramento</h4>
+                    <p>Mapeamento de necessidades: moradia regularizada, necessidade de segunda via de documento e apoio na busca por colocação profissional.</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ============================================ -->
+        <!-- VIEW 7: RELATÓRIOS & ANÁLISE SEJUS (Item 3.1 k) -->
+        <!-- ============================================ -->
+        <section id="view-relatorios" class="view-panel">
+          <div class="section-header-flex">
+            <div>
+              <h2>Relatórios Sintéticos & Detalhados SEJUS</h2>
+              <p class="section-sub">Emissão de dados consolidados para gestão de políticas públicas de reintegração social e auditoria do edital CPSI</p>
+            </div>
+            <button class="btn-primary" onclick="alert('Relatório gerencial consolidado exportado em PDF com assinatura digital!')">
+              📄 Baixar Relatório Consolidado (PDF)
+            </button>
+          </div>
+
+          <div class="dashboard-card glass-card mb-4">
+            <h3>Filtros de Relatório Gerencial</h3>
+            <div class="filter-bar border-none p-0">
+              <div class="filter-group">
+                <label>Período:</label>
+                <select class="select-sm">
+                  <option>Ano Atual (2026)</option>
+                  <option>Últimos 6 Meses</option>
+                  <option>Ano 2025</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Região SEJUS:</label>
+                <select class="select-sm">
+                  <option>Todas as Regiões</option>
+                  <option>Metropolitana</option>
+                  <option>Norte</option>
+                  <option>Sul</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Tipo de Atendimento:</label>
+                <select class="select-sm">
+                  <option>Todos os Atendimentos</option>
+                  <option>Psicossocial</option>
+                  <option>Emprego / Trabalho</option>
+                  <option>Documentação</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-card glass-card">
+            <h3>Tabela Sintética por Município Capixaba</h3>
+            <div class="table-responsive mt-3">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Município</th>
+                    <th>Tipo de Atendimento</th>
+                    <th>Egressos Atendidos</th>
+                    <th>Encaminhamentos Emprego</th>
+                    <th>Redução Reincidência</th>
+                    <th>Status Cobertura</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Vitória</strong></td>
+                    <td>Físico + Remoto</td>
+                    <td>3.420</td>
+                    <td>1.120</td>
+                    <td><span class="badge bg-green">-38.5%</span></td>
+                    <td><span class="status-pill status-success">Escritório Físico Sede</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Vila Velha</strong></td>
+                    <td>Físico + Remoto</td>
+                    <td>2.450</td>
+                    <td>780</td>
+                    <td><span class="badge bg-green">-35.0%</span></td>
+                    <td><span class="status-pill status-success">Escritório Físico</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Serra</strong></td>
+                    <td>Físico + Remoto</td>
+                    <td>2.910</td>
+                    <td>940</td>
+                    <td><span class="badge bg-green">-36.2%</span></td>
+                    <td><span class="status-pill status-success">Escritório Físico</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Cariacica</strong></td>
+                    <td>Físico + Remoto</td>
+                    <td>2.100</td>
+                    <td>610</td>
+                    <td><span class="badge bg-green">-32.1%</span></td>
+                    <td><span class="status-pill status-success">Escritório Físico</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Linhares</strong></td>
+                    <td>100% Remoto (Plataforma)</td>
+                    <td>1.150</td>
+                    <td>340</td>
+                    <td><span class="badge bg-purple">-30.5%</span></td>
+                    <td><span class="status-pill status-info">Plataforma Digital</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Cachoeiro de Itapemirim</strong></td>
+                    <td>100% Remoto (Plataforma)</td>
+                    <td>980</td>
+                    <td>290</td>
+                    <td><span class="badge bg-purple">-29.8%</span></td>
+                    <td><span class="status-pill status-info">Plataforma Digital</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Colatina</strong></td>
+                    <td>100% Remoto (Plataforma)</td>
+                    <td>740</td>
+                    <td>210</td>
+                    <td><span class="badge bg-purple">-31.0%</span></td>
+                    <td><span class="status-pill status-info">Plataforma Digital</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>São Mateus</strong></td>
+                    <td>100% Remoto (Plataforma)</td>
+                    <td>610</td>
+                    <td>180</td>
+                    <td><span class="badge bg-purple">-28.4%</span></td>
+                    <td><span class="status-pill status-info">Plataforma Digital</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- ============================================ -->
+        <!-- VIEW 8: SEGURANÇA & LGPD (Item 3.1 c, l) -->
+        <!-- ============================================ -->
+        <section id="view-lgpd" class="view-panel">
+          <div class="section-header-flex">
+            <div>
+              <h2>Segurança da Informação, LGPD & Níveis de Acesso</h2>
+              <p class="section-sub">Conformidade com a Lei Geral de Proteção de Dados (LGPD) e diretrizes do Termo de Referência SEJUS</p>
+            </div>
+            <span class="badge bg-green">Criptografia AES-256</span>
+          </div>
+
+          <div class="grid-2col">
+            <div class="dashboard-card glass-card">
+              <h3>Matriz de Permissões por Perfil de Acesso</h3>
+              <ul class="permissions-list mt-3">
+                <li class="perm-item">
+                  <div class="perm-header">
+                    <strong>👤 Perfil Egresso / Familiar</strong>
+                    <span class="tag-sm bg-blue-light">Acesso Restrito ao Próprio Perfil</span>
+                  </div>
+                  <p>Pode visualizar apenas os seus próprios dados, agendar videochamadas, solicitar documentos e se candidatar a vagas de emprego. Autenticação obrigatória via Gov.br / Acesso Cidadão.</p>
+                </li>
+
+                <li class="perm-item">
+                  <div class="perm-header">
+                    <strong>🩺 Perfil Técnico / Atendente (Escritório Social)</strong>
+                    <span class="tag-sm bg-green-light">Operacional & Clínico</span>
+                  </div>
+                  <p>Realiza atendimentos em vídeo, insere notas no prontuário único do egresso, encaminha para vagas de trabalho e registra requisições documentais.</p>
+                </li>
+
+                <li class="perm-item">
+                  <div class="perm-header">
+                    <strong>📊 Perfil Gestor (SEJUS / SEGER)</strong>
+                    <span class="tag-sm bg-purple-light">Estratégico & Auditoria</span>
+                  </div>
+                  <p>Acesso completo aos dashboards estatísticos, mapas de geolocalização dos 78 municípios, métricas de redução de reincidência e relatórios sem expor dados pessoais sensíveis.</p>
+                </li>
+              </ul>
+            </div>
+
+            <div class="dashboard-card glass-card">
+              <h3>Garantias de Privacidade e Sigilo</h3>
+              <div class="security-box mt-3">
+                <div class="sec-item">
+                  <span class="sec-icon">🔒</span>
+                  <div>
+                    <strong>Criptografia de Ponta a Ponta</strong>
+                    <p>Chamadas de vídeo e troca de mensagens protegidas em trânsito e em repouso.</p>
+                  </div>
+                </div>
+
+                <div class="sec-item">
+                  <span class="sec-icon">🛡️</span>
+                  <div>
+                    <strong>Consentimento Livre e Esclarecido</strong>
+                    <p>O serviço de geolocalização e uso de dados para trabalho exige autorização expressa do egresso.</p>
+                  </div>
+                </div>
+
+                <div class="sec-item">
+                  <span class="sec-icon">📋</span>
+                  <div>
+                    <strong>Trilha de Auditoria Automática</strong>
+                    <p>Todos os acessos a dados sensíveis são registrados com carimbo de data, hora e CPF do operador.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- MODAL FOR VIDEO CALL SIMULATION -->
+    <div class="modal-overlay" id="videoModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modalCallTitle">Atendimento Remoto ao Vivo</h3>
+          <button class="btn-icon" onclick="closeVideoCallModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="simulated-call-box">
+            <div class="sim-user-avatar" id="simAvatar">RF</div>
+            <h4 id="simUserName">Roberto Fonseca da Silva</h4>
+            <p id="simMuni">Conectado de São Mateus/ES • Sinal Excelente</p>
+            <div class="call-wave-animation">
+              <span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="modal-actions mt-4">
+            <button class="btn-primary w-full" onclick="alert('Chamada de vídeo simulada com sucesso!'); closeVideoCallModal();">
+              📹 Abrir Painel de Atendimento Psicossocial
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
