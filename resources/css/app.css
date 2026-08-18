@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   CONECTA EGRESSO - DESIGN TOKENS & ACCESSIBILITY SYSTEM
+   SEJUS / GOVERNO DO ESTADO DO ESPÍRITO SANTO
+   ========================================================================== */
+
+:root {
+  --bg-main: #f4f7fb;
+  --bg-card: #ffffff;
+  --bg-sidebar: #0f172a;
+  --bg-header: #ffffff;
+  --primary: #0284c7;
+  --primary-hover: #0369a1;
+  --primary-light: #e0f2fe;
+  --primary-dark: #075985;
+  --es-blue: #003366;
+  --es-pink: #e63946;
+  --es-light-blue: #38bdf8;
+  --sejus-green: #00875A;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --font-scale: 1;
+}
+
+/* Base dynamic typography scaling */
+html {
+  font-size: calc(16px * var(--font-scale, 1));
+}
+
+body {
+  font-size: calc(15px * var(--font-scale, 1));
+  min-height: 100vh;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   ACCESSIBILITY: WCAG 2.1 AAA HIGH CONTRAST MODE
+   ========================================================================== */
+html.high-contrast,
+body.high-contrast {
+  --bg-main: #000000 !important;
+  --bg-card: #121212 !important;
+  --bg-sidebar: #000000 !important;
+  --bg-header: #121212 !important;
+  --text-main: #ffffff !important;
+  --text-muted: #e2e8f0 !important;
+  --border-color: #444444 !important;
+  --primary: #00ffff !important;
+  --primary-hover: #00cccc !important;
+  --primary-light: #003333 !important;
+  --sejus-green: #00ff88 !important;
+  --es-blue: #00ffff !important;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+body.high-contrast * {
+  border-color: #444444 !important;
+}
+
+body.high-contrast .bg-white,
+body.high-contrast .bg-slate-50,
+body.high-contrast .bg-slate-100,
+body.high-contrast .bg-slate-200,
+body.high-contrast .bg-slate-800,
+body.high-contrast .bg-slate-900,
+body.high-contrast .bg-sky-50,
+body.high-contrast .bg-emerald-50,
+body.high-contrast .bg-purple-50,
+body.high-contrast .bg-amber-50,
+body.high-contrast .bg-red-50 {
+  background-color: #121212 !important;
+  color: #ffffff !important;
+}
+
+body.high-contrast .text-slate-500,
+body.high-contrast .text-slate-600,
+body.high-contrast .text-slate-700,
+body.high-contrast .text-slate-800,
+body.high-contrast .text-slate-900,
+body.high-contrast .text-gray-500,
+body.high-contrast .text-gray-600,
+body.high-contrast .text-gray-700,
+body.high-contrast .text-gray-800 {
+  color: #ffffff !important;
+}
+
+body.high-contrast .text-sky-600,
+body.high-contrast .text-sky-700,
+body.high-contrast .text-sky-800,
+body.high-contrast .text-blue-600,
+body.high-contrast .text-blue-700,
+body.high-contrast .text-emerald-600,
+body.high-contrast .text-emerald-700,
+body.high-contrast .text-emerald-800,
+body.high-contrast .text-purple-600,
+body.high-contrast .text-amber-600,
+body.high-contrast .text-amber-800,
+body.high-contrast .text-red-600,
+body.high-contrast .text-red-700,
+body.high-contrast .text-red-800 {
+  color: #ffff00 !important;
+}
+
+body.high-contrast button,
+body.high-contrast a,
+body.high-contrast input,
+body.high-contrast select,
+body.high-contrast textarea {
+  border-color: #ffff00 !important;
+}
+
+body.high-contrast button:focus,
+body.high-contrast a:focus,
+body.high-contrast input:focus,
+body.high-contrast select:focus {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 2px !important;
+}
+
+/* ==========================================================================
+   ACCESSIBILITY: SIMPLIFIED LANGUAGE (LINGUAGEM FÁCIL)
+   ========================================================================== */
+html.simplified-lang,
+body.simplified-lang {
+  letter-spacing: 0.025em;
+  line-height: 1.7;
+}
+
+body.simplified-lang p,
+body.simplified-lang span,
+body.simplified-lang button,
+body.simplified-lang label {
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   MINIMUM TOUCH TARGETS (WCAG 2.5.5 >= 44x44px for Mobile)
+   ========================================================================== */
+@media (max-width: 1024px) {
+  button,
+  a.nav-item,
+  input[type="button"],
+  input[type="submit"],
+  .a11y-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Guilloche Pattern Background for Carteira */
+.guilloche-pattern {
+  background-image: radial-gradient(#003366 0.75px, transparent 0.75px), radial-gradient(#0052cc 0.75px, #ffffff 0.75px);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+}

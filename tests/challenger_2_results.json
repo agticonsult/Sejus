@@ -1,0 +1,303 @@
+{
+    "passed": 48,
+    "failed": 0,
+    "warnings": 1,
+    "tests": [
+        {
+            "category": "Seeder",
+            "test": "MunicipioEsSeeder file exists",
+            "status": "PASS",
+            "details": "D:\\Agile\\projeto dia 18\\tests/../database/seeders/MunicipioEsSeeder.php"
+        },
+        {
+            "category": "Seeder",
+            "test": "Array parse success",
+            "status": "PASS",
+            "details": "Count: 78"
+        },
+        {
+            "category": "Seeder",
+            "test": "Exact municipality count is 78",
+            "status": "PASS",
+            "details": "Observed count: 78"
+        },
+        {
+            "category": "Seeder",
+            "test": "78 distinct municipality names",
+            "status": "PASS",
+            "details": "Unique names count: 78"
+        },
+        {
+            "category": "Seeder",
+            "test": "78 unique IBGE codes",
+            "status": "PASS",
+            "details": "Unique IBGE count: 78"
+        },
+        {
+            "category": "Seeder",
+            "test": "All IBGE codes have exactly 7 digits",
+            "status": "PASS",
+            "details": "All 7 digits"
+        },
+        {
+            "category": "Seeder",
+            "test": "All IBGE codes start with prefix 32 (Esp\u00edrito Santo)",
+            "status": "PASS",
+            "details": "Prefix 32 verified on all 78 entries"
+        },
+        {
+            "category": "Seeder",
+            "test": "All 78 IBGE codes satisfy the official IBGE Modulo 10 verification digit algorithm",
+            "status": "PASS",
+            "details": "78/78 IBGE check digits verified mathematically"
+        },
+        {
+            "category": "Seeder",
+            "test": "All coordinates within ES geographic bounds (-21.5 to -17.5 lat, -42.0 to -39.5 long)",
+            "status": "PASS",
+            "details": "Lat Range: [-21.1542, -18.0286], Long Range: [-41.8447, -39.7322]"
+        },
+        {
+            "category": "Seeder",
+            "test": "Exactly 4 physical offices (Vit\u00f3ria, Vila Velha, Serra, Cariacica)",
+            "status": "PASS",
+            "details": "Found 4 physical offices: Cariacica, Serra, Vila Velha, Vit\u00f3ria"
+        },
+        {
+            "category": "Seeder",
+            "test": "Exactly 74 remote assistance municipalities",
+            "status": "PASS",
+            "details": "Found 74 remote municipalities"
+        },
+        {
+            "category": "Seeder",
+            "test": "All 78 municipalities have microrregiao, macrorregiao, and valid populacao_estimada",
+            "status": "PASS",
+            "details": "All regional and demographic fields populated"
+        },
+        {
+            "category": "Dompdf",
+            "test": "renderHtml returns non-empty string",
+            "status": "PASS",
+            "details": "HTML Length: 4255"
+        },
+        {
+            "category": "Dompdf",
+            "test": "Presence of SEJUS Header (Gov ES, SEJUS, Escrit\u00f3rio Social)",
+            "status": "PASS",
+            "details": "Header contains Gov ES, SEJUS, Escrit\u00f3rio Social"
+        },
+        {
+            "category": "Dompdf",
+            "test": "Presence of Security Seal / Badge",
+            "status": "PASS",
+            "details": "Contains credential verification seal"
+        },
+        {
+            "category": "Dompdf",
+            "test": "Presence of QR code Data-URI",
+            "status": "PASS",
+            "details": "Embedded SVG Data-URI present"
+        },
+        {
+            "category": "Dompdf",
+            "test": "QR Code Data-URI contains valid decoded SVG markup",
+            "status": "PASS",
+            "details": "SVG Tag validated"
+        },
+        {
+            "category": "Dompdf",
+            "test": "PII protection: CPF is masked and plaintext CPF is never rendered",
+            "status": "PASS",
+            "details": "Masked CPF: ***.123.789-**, Plaintext absent"
+        },
+        {
+            "category": "Dompdf",
+            "test": "Legal basis (LC 182/2021) and formatted Auth Code (16 hex chars grouped in 4) present",
+            "status": "PASS",
+            "details": "LC 182/2021 and XXXX-XXXX-XXXX-XXXX Auth Code matched"
+        },
+        {
+            "category": "Dompdf",
+            "test": "generatePdf returns valid PDF stream or formatted output",
+            "status": "PASS",
+            "details": "PDF Stream signature confirmed (starts with %PDF-)"
+        },
+        {
+            "category": "Dompdf",
+            "test": "Blade template file resources/views/pdf/carteira_digital.blade.php exists",
+            "status": "PASS",
+            "details": "D:\\Agile\\projeto dia 18\\tests/../resources/views/pdf/carteira_digital.blade.php"
+        },
+        {
+            "category": "Dompdf",
+            "test": "Blade template contains SEJUS header, badge, QR code variable, and legal stamp",
+            "status": "PASS",
+            "details": "Blade template variables and structure verified"
+        },
+        {
+            "category": "Migrations",
+            "test": "All 12 migration files exist and have zero PHP syntax errors (lint pass)",
+            "status": "PASS",
+            "details": "12/12 files linted cleanly"
+        },
+        {
+            "category": "Models",
+            "test": "All 12 Eloquent model files exist and have zero PHP syntax errors (lint pass)",
+            "status": "PASS",
+            "details": "12/12 files linted cleanly"
+        },
+        {
+            "category": "Models",
+            "test": "All 12 Models explicitly define correct protected $table matching migrations",
+            "status": "PASS",
+            "details": "12/12 tables match"
+        },
+        {
+            "category": "Relationships",
+            "test": "Perfil::users (hasMany) <-> User::perfil (belongsTo) [FK: perfil_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "User::egresso (hasOne) <-> Egresso::user (belongsTo) [FK: user_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "User::prontuariosComoTecnico (hasMany) <-> Prontuario::tecnicoResponsavel (belongsTo) [FK: tecnico_responsavel_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "User::timelineEventos (hasMany) <-> ProntuarioTimeline::responsavel (belongsTo) [FK: responsavel_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "User::auditLogs (hasMany) <-> ProntuarioAuditLog::user (belongsTo) [FK: user_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "User::videoRoomsComoTecnico (hasMany) <-> VideoRoom::tecnico (belongsTo) [FK: tecnico_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "User::participacoesVideo (hasMany) <-> VideoAttendee::user (belongsTo) [FK: user_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "MunicipioEs::egressos (hasMany) <-> Egresso::municipio (belongsTo) [FK: municipio_residencia_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "MunicipioEs::vagas (hasMany) <-> VagaEmprego::municipio (belongsTo) [FK: municipio_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "MunicipioEs::cursos (hasMany) <-> CursoCapacitacao::municipio (belongsTo) [FK: municipio_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "MunicipioEs::redeApoio (hasMany) <-> RedeApoio::municipio (belongsTo) [FK: municipio_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "MunicipioEs::videoRooms (hasMany) <-> VideoRoom::municipio (belongsTo) [FK: municipio_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "Egresso::prontuario (hasOne) <-> Prontuario::egresso (belongsTo) [FK: egresso_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "Egresso::videoRooms (hasMany) <-> VideoRoom::egresso (belongsTo) [FK: egresso_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "Prontuario::timeline (hasMany) <-> ProntuarioTimeline::prontuario (belongsTo) [FK: prontuario_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "Prontuario::auditLogs (hasMany) <-> ProntuarioAuditLog::prontuario (belongsTo) [FK: prontuario_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "Prontuario::videoRooms (hasMany) <-> VideoRoom::prontuario (belongsTo) [FK: prontuario_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Relationships",
+            "test": "VideoRoom::attendees (hasMany) <-> VideoAttendee::room (belongsTo) [FK: video_room_id]",
+            "status": "PASS",
+            "details": "Bidirectional pair verified"
+        },
+        {
+            "category": "Security",
+            "test": "LGPD Service rejects all known invalid CPF checksums and repeated sequences",
+            "status": "PASS",
+            "details": "6/6 invalid CPFs rejected"
+        },
+        {
+            "category": "Security",
+            "test": "Blind index is strictly deterministic for same input",
+            "status": "PASS",
+            "details": "Hash: e3ea859569689059c9d0e93de1ae49bbd2f3dd11d5828543354a91116d912c3a"
+        },
+        {
+            "category": "Security",
+            "test": "Blind index with different pepper produces distinct hash",
+            "status": "PASS",
+            "details": "Pepper segregation confirmed"
+        },
+        {
+            "category": "Security",
+            "test": "Valid QR Token passes verification",
+            "status": "PASS",
+            "details": "DOCUMENTO OFICIAL AUTENTICO E HOMOLOGADO PELA SEJUS/ES."
+        },
+        {
+            "category": "Security",
+            "test": "Tampered QR Token is strictly rejected with TAMPERED_DOCUMENT or MALFORMED_TOKEN",
+            "status": "PASS",
+            "details": "Status: INVALID_STRUCTURE | Message: Estrutura documental invalida."
+        }
+    ],
+    "findings": [
+        {
+            "category": "Dompdf",
+            "title": "Photo/Avatar placeholder is not explicitly marked in HTML/Blade template",
+            "type": "WARNING",
+            "details": "The template relies on typographic credentials with QR validation instead of a designated 3x4 photo frame. Consider adding a styled 3x4 photo/avatar placeholder box for visual parity with physical identity cards."
+        }
+    ]
+}

@@ -1,0 +1,56 @@
+{
+    "name": "sejus-es/conecta-egresso",
+    "type": "project",
+    "description": "Plataforma CONECTA EGRESSO - Secretaria de Estado da Justica do Espirito Santo (SEJUS/ES)",
+    "keywords": ["laravel", "sejus", "espirito-santo", "conecta-egresso", "webrtc", "lgpd"],
+    "license": "proprietary",
+    "require": {
+        "php": "^8.2|^8.3|^8.4",
+        "bacon/bacon-qr-code": "^2.0|^3.0",
+        "dompdf/dompdf": "^2.0|^3.0",
+        "inertiajs/inertia-laravel": "^1.0|^2.0",
+        "laravel/framework": "^11.0",
+        "laravel/tinker": "^2.9",
+        "predis/predis": "^2.2"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.23",
+        "laravel/pint": "^1.13",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.0",
+        "phpunit/phpunit": "^10.5|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

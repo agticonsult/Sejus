@@ -1,0 +1,184 @@
+version: '3.8'
+
+networks:
+  conecta_net:
+    driver: bridge
+    name: conecta_net
+
+volumes:
+  postgres_data:
+    driver: local
+    name: conecta_postgres_data
+  redis_data:
+    driver: local
+    name: conecta_redis_data
+
+services:
+  # -------------------------------------------------------------
+  # 1. PostgreSQL 16 com PostGIS 3.4 e pgcrypto
+  # -------------------------------------------------------------
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: conecta_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-conecta_egresso}
+      POSTGRES_USER: ${DB_USERNAME:-conecta_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-conecta_secret_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - conecta_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-conecta_user} -d ${DB_DATABASE:-conecta_egresso}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # -------------------------------------------------------------
+  # 2. Redis 7.2 (Cache, Sessões, Filas e Pub/Sub WebRTC)
+  # -------------------------------------------------------------
+  redis:
+    image: redis:7.2-alpine
+    container_name: conecta_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - conecta_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # -------------------------------------------------------------
+  # 3. PHP 8.3 FPM (Laravel 11 Core + Inertia.js + Dompdf)
+  # -------------------------------------------------------------
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: conecta_php
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    environment:
+      APP_NAME: "${APP_NAME:-CONECTA EGRESSO (SEJUS/ES)}"
+      APP_ENV: "${APP_ENV:-local}"
+      APP_KEY: "${APP_KEY:-base64:CONECTAEGRESSOPLATFORMSEJUSES2026KEY=}"
+      APP_DEBUG: "${APP_DEBUG:-true}"
+      APP_URL: "${APP_URL:-http://localhost}"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-conecta_egresso}
+      DB_USERNAME: ${DB_USERNAME:-conecta_user}
+      DB_PASSWORD: ${DB_PASSWORD:-conecta_secret_password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      WEBRTC_SERVICE_URL: "http://python:8001"
+      WEBRTC_WEBHOOK_SECRET: "${WEBRTC_WEBHOOK_SECRET:-sejus_webrtc_webhook_secret_2026}"
+      WEBRTC_JWT_SECRET: "${WEBRTC_JWT_SECRET:-sejus_jwt_shared_secret_2026}"
+      COTURN_HOST: "${COTURN_HOST:-coturn}"
+      COTURN_PORT: "${COTURN_PORT:-3478}"
+      COTURN_SECRET: "${COTURN_SECRET:-sejus_turn_secret_key_2026}"
+      COTURN_REALM: "${COTURN_REALM:-sejus.es.gov.br}"
+      LGPD_PEPPER_KEY: "${LGPD_PEPPER_KEY:-conecta_egresso_lgpd_pepper_2026_sejus_es}"
+      CARTEIRA_SIGNING_KEY: "${CARTEIRA_SIGNING_KEY:-sejus_carteira_digital_master_key_2026}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - conecta_net
+
+  # -------------------------------------------------------------
+  # 4. Python 3.12 FastAPI (Microsserviço de Sinalização WebRTC)
+  # -------------------------------------------------------------
+  python:
+    build:
+      context: .
+      dockerfile: docker/python/Dockerfile
+    container_name: conecta_python
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./webrtc_service:/app
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      LARAVEL_WEBHOOK_URL: "http://nginx/api/webhooks/webrtc"
+      WEBHOOK_SECRET: "${WEBRTC_WEBHOOK_SECRET:-sejus_webrtc_webhook_secret_2026}"
+      JWT_SECRET: "${WEBRTC_JWT_SECRET:-sejus_jwt_shared_secret_2026}"
+      COTURN_HOST: "${COTURN_HOST:-coturn}"
+      COTURN_PORT: "${COTURN_PORT:-3478}"
+      COTURN_SECRET: "${COTURN_SECRET:-sejus_turn_secret_key_2026}"
+      COTURN_REALM: "${COTURN_REALM:-sejus.es.gov.br}"
+      ENVIRONMENT: "${APP_ENV:-local}"
+    ports:
+      - "8001:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - conecta_net
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # -------------------------------------------------------------
+  # 5. Nginx Reverse Proxy (Frontend, Backend & WebSockets)
+  # -------------------------------------------------------------
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: conecta_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+      - python
+    networks:
+      - conecta_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost/health || wget --spider -q http://localhost/ || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # -------------------------------------------------------------
+  # 6. Coturn STUN/TURN Server (Mobile NAT Traversal 3G/4G/5G)
+  # -------------------------------------------------------------
+  coturn:
+    image: coturn/coturn:4.6-alpine
+    container_name: conecta_coturn
+    restart: unless-stopped
+    volumes:
+      - ./docker/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "5349:5349/udp"
+      - "5349:5349/tcp"
+      - "49152-49200:49152-49200/udp"
+    networks:
+      - conecta_net
+    command: ["-c", "/etc/coturn/turnserver.conf"]
