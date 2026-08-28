@@ -64,6 +64,7 @@ class GovBrAuthService
         // Find or initialize user
         $user = User::where('govbr_id', (string) $sub)
             ->orWhere('hash_cpf', $hashCpf)
+            ->orWhere('email', $email)
             ->first();
 
         if (!$user) {
@@ -71,6 +72,8 @@ class GovBrAuthService
             $user->govbr_id = (string) $sub;
             $user->email = $email;
             $user->password = Hash::make(Str::random(32));
+        } else {
+            $user->govbr_id = (string) $sub;
         }
 
         $user->name = $name;

@@ -325,19 +325,19 @@ const demoAccounts = {
     login: 'gestor@sejus.es.gov.br',
     password: 'secret123',
     roleName: 'Gestor Estadual SEJUS',
-    cpf: '529.982.247-25',
+    cpf: '111.222.333-44',
   },
   tecnico: {
     login: 'marcia.oliveira@sejus.es.gov.br',
     password: 'secret123',
     roleName: 'Assistente Social Escritório Social',
-    cpf: '703.123.847-98',
+    cpf: '555.666.777-88',
   },
   egresso: {
     login: 'lucas.santos@cidadao.es.gov.br',
     password: 'secret123',
     roleName: 'Lucas Santos (Egresso Cidadão)',
-    cpf: '841.235.698-04',
+    cpf: '192.830.456-78',
   },
 };
 
@@ -400,9 +400,9 @@ const handleGovBrLogin = () => {
 
   // Simulate Gov.br OIDC Callback with Gestor/Citizen claims
   const simulatedClaims = {
-    sub: 'govbr_' + Math.floor(100000000 + Math.random() * 900000000),
-    cpf: '529.982.247-25',
-    name: 'Carlos Eduardo Silva (Gestor SEJUS)',
+    sub: 'govbr-gestor-001',
+    cpf: '111.222.333-44',
+    name: 'Carlos Eduardo Silva',
     email: 'gestor@sejus.es.gov.br',
     nivel_confianca: 'Ouro',
     orgao: 'SEJUS',
