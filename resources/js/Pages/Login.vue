@@ -270,6 +270,106 @@
       </div>
     </main>
 
+    <!-- Gov.br / Acesso Cidadão SSO Modal Dialog -->
+    <div
+      v-if="showGovBrModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="govBrModalTitle"
+    >
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden text-slate-800 animate-in fade-in zoom-in duration-200">
+        <!-- Gov.br Modal Header -->
+        <div class="bg-[#1351b4] text-white p-5 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-xs">
+              <span class="text-[#1351b4] font-black text-sm">gov</span>
+            </div>
+            <div>
+              <h2 id="govBrModalTitle" class="text-base font-extrabold leading-tight">Identificação gov.br</h2>
+              <span class="text-[11px] text-blue-200 block">Acesso Cidadão • Governo do Espírito Santo</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="text-white/80 hover:text-white text-xl font-bold p-1 cursor-pointer"
+            @click="showGovBrModal = false"
+            aria-label="Fechar janela"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Gov.br Modal Body -->
+        <div class="p-6 space-y-4">
+          <p class="text-xs text-slate-600 font-medium">
+            Selecione a identidade digital verificada para autorizar o acesso à plataforma <strong>CONECTA EGRESSO (SEJUS/ES)</strong>:
+          </p>
+
+          <div class="space-y-2.5">
+            <label
+              v-for="persona in govBrPersonas"
+              :key="persona.id"
+              class="flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition"
+              :class="selectedPersona.id === persona.id ? 'border-[#1351b4] bg-blue-50/70 ring-2 ring-blue-500/20' : 'border-slate-200 hover:bg-slate-50'"
+            >
+              <input
+                type="radio"
+                name="govBrPersona"
+                :value="persona"
+                v-model="selectedPersona"
+                class="text-[#1351b4] focus:ring-[#1351b4]"
+              />
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <strong class="text-xs font-bold text-slate-800">{{ persona.name }}</strong>
+                  <span
+                    class="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+                    :class="persona.badgeClass"
+                  >
+                    {{ persona.badge }}
+                  </span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+                  <span>CPF: {{ persona.cpf }}</span>
+                  <span>•</span>
+                  <span>{{ persona.roleDesc }}</span>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-start gap-2">
+            <span class="text-sm">🛡️</span>
+            <span>
+              Ao autorizar, você concede acesso às suas credenciais públicas e dados funcionais conforme a <strong>LGPD (Lei 13.709/2018)</strong>.
+            </span>
+          </div>
+
+          <!-- Buttons -->
+          <div class="pt-2 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              class="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              @click="showGovBrModal = false"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="px-6 py-2.5 text-xs font-extrabold bg-[#1351b4] hover:bg-[#0c326f] text-white rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-60"
+              :disabled="isLoadingGovBr"
+              @click="executeGovBrLogin"
+            >
+              <span v-if="isLoadingGovBr">Autorizando Sessão...</span>
+              <span v-else>Autorizar e Entrar</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="w-full px-4 sm:px-8 py-3 text-center text-slate-400 text-xs z-10 border-t border-white/10 bg-slate-900/50 backdrop-blur-md">
       <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -313,6 +413,7 @@ const errors = reactive({
 const showPassword = ref(false);
 const isLoadingCredentials = ref(false);
 const isLoadingGovBr = ref(false);
+const showGovBrModal = ref(false);
 
 const demoAccounts = {
   suporte: {
@@ -340,6 +441,63 @@ const demoAccounts = {
     cpf: '192.830.456-78',
   },
 };
+
+const govBrPersonas = [
+  {
+    id: 'gestor',
+    name: 'Carlos Eduardo Silva',
+    cpf: '111.222.333-44',
+    email: 'gestor@sejus.es.gov.br',
+    sub: 'govbr-gestor-001',
+    badge: 'Nível Ouro 🥇',
+    badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300',
+    roleDesc: 'Gestor Estadual SEJUS (Secretaria de Estado da Justiça)',
+    orgao: 'SEJUS',
+    cargo: 'Gestor de Políticas Penais',
+    confianca: 'Ouro',
+  },
+  {
+    id: 'tecnico',
+    name: 'Dra. Márcia Oliveira',
+    cpf: '555.666.777-88',
+    email: 'marcia.oliveira@sejus.es.gov.br',
+    sub: 'govbr-tecnico-002',
+    badge: 'Nível Prata 🥈',
+    badgeClass: 'bg-slate-100 text-slate-800 border border-slate-300',
+    roleDesc: 'Técnico Especialista • Escritório Social',
+    orgao: 'SEJUS',
+    cargo: 'Assistente Social',
+    confianca: 'Prata',
+  },
+  {
+    id: 'egresso',
+    name: 'Lucas Santos',
+    cpf: '192.830.456-78',
+    email: 'lucas.santos@cidadao.es.gov.br',
+    sub: 'govbr-egresso-003',
+    badge: 'Nível Bronze 🥉',
+    badgeClass: 'bg-orange-100 text-orange-900 border border-orange-300',
+    roleDesc: 'Cidadão Egresso • Acesso a Vagas e Carteira Digital',
+    orgao: 'Cidadão',
+    cargo: 'Egresso',
+    confianca: 'Bronze',
+  },
+  {
+    id: 'suporte',
+    name: 'Suporte Agile SEJUS',
+    cpf: '999.888.777-00',
+    email: 'suporte.agile@sejus.es.gov.br',
+    sub: 'govbr-suporte-005',
+    badge: 'Administrador 🛡️',
+    badgeClass: 'bg-indigo-100 text-indigo-900 border border-indigo-300',
+    roleDesc: 'Empresa Desenvolvedora / Suporte Técnico',
+    orgao: 'Agile Tecnologia',
+    cargo: 'Suporte Técnico',
+    confianca: 'Ouro',
+  },
+];
+
+const selectedPersona = ref(govBrPersonas[0]);
 
 const quickFill = (roleKey) => {
   const account = demoAccounts[roleKey];
@@ -395,25 +553,29 @@ const handleCredentialsLogin = () => {
 };
 
 const handleGovBrLogin = () => {
-  isLoadingGovBr.value = true;
-  toast.info('Gov.br / Acesso Cidadão', 'Iniciando autenticação unificada do Governo Federal / Estadual...');
+  showGovBrModal.value = true;
+};
 
-  // Simulate Gov.br OIDC Callback with Gestor/Citizen claims
-  const simulatedClaims = {
-    sub: 'govbr-gestor-001',
-    cpf: '111.222.333-44',
-    name: 'Carlos Eduardo Silva',
-    email: 'gestor@sejus.es.gov.br',
-    nivel_confianca: 'Ouro',
-    orgao: 'SEJUS',
-    cargo: 'Gestor de Políticas Penais e Reintegração',
-    scope: 'openid email profile govbr_servidor',
+const executeGovBrLogin = () => {
+  isLoadingGovBr.value = true;
+  toast.info('Gov.br / Acesso Cidadão', `Autenticando como ${selectedPersona.value.name}...`);
+
+  const claims = {
+    sub: selectedPersona.value.sub,
+    cpf: selectedPersona.value.cpf,
+    name: selectedPersona.value.name,
+    email: selectedPersona.value.email,
+    nivel_confianca: selectedPersona.value.confianca,
+    orgao: selectedPersona.value.orgao,
+    cargo: selectedPersona.value.cargo,
+    scope: 'openid email profile govbr_cidadao',
   };
 
-  router.post('/auth/govbr/login', simulatedClaims, {
+  router.post('/auth/govbr/login', claims, {
     preserveScroll: true,
     onSuccess: () => {
-      toast.success('Autenticado via Gov.br', 'Sessão OIDC validada com Nível Ouro.');
+      showGovBrModal.value = false;
+      toast.success('Autenticado via Gov.br', `Sessão OIDC validada com ${selectedPersona.value.badge}.`);
     },
     onError: (errs) => {
       isLoadingGovBr.value = false;
