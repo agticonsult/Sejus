@@ -53,8 +53,8 @@
         </div>
       </div>
 
-      <!-- Right: Accessibility Toolbar, Role Switcher, and Gov.br Auth Badge -->
-      <div class="header-right flex items-center gap-2 md:gap-4">
+      <!-- Right: Accessibility Toolbar, Role Switcher, Gov.br Auth Badge & Logout -->
+      <div class="header-right flex items-center gap-2 md:gap-3">
         <!-- Accessibility Toolbar Component -->
         <AccessibilityToolbar :show-labels="false" />
 
@@ -73,6 +73,7 @@
               <option value="gestor">Perfil: Gestor SEJUS</option>
               <option value="tecnico">Perfil: Técnico Escritório Social</option>
               <option value="egresso">Perfil: Egresso / Familiar</option>
+              <option value="suporte">Perfil: Suporte Agile</option>
             </select>
           </div>
         </div>
@@ -89,6 +90,19 @@
             </span>
           </div>
         </div>
+
+        <!-- Header Logout / Sair Button -->
+        <button
+          id="headerLogoutBtn"
+          type="button"
+          class="logout-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 focus:ring-2 focus:ring-rose-400 transition cursor-pointer min-h-[36px]"
+          aria-label="Encerrar Sessão / Logout"
+          title="Encerrar Sessão com Segurança"
+          @click="handleLogout"
+        >
+          <span aria-hidden="true" class="text-sm">🚪</span>
+          <span class="hidden sm:inline">Sair</span>
+        </button>
       </div>
     </header>
 
@@ -150,14 +164,30 @@
           </template>
         </nav>
 
-        <!-- Sidebar Footer Seal -->
-        <div v-if="!isSidebarCollapsed" class="sidebar-footer p-3 border-t border-slate-800/90">
-          <div class="es-seal flex items-center gap-2.5 bg-white/5 p-2.5 rounded-lg border border-white/5">
+        <!-- Sidebar Footer Seal & Logout -->
+        <div class="sidebar-footer p-3 border-t border-slate-800/90 flex flex-col gap-2">
+          <div v-if="!isSidebarCollapsed" class="es-seal flex items-center gap-2.5 bg-white/5 p-2.5 rounded-lg border border-white/5">
             <span class="seal-icon text-lg" aria-hidden="true">🏛️</span>
             <div class="overflow-hidden">
               <strong class="text-white text-[11px] block font-bold">SEJUS / SEGER</strong>
               <p class="text-[10px] text-slate-400 truncate">Escritório Social Digital</p>
             </div>
+          </div>
+
+          <!-- Sidebar Logout Button -->
+          <div class="sidebar-logout">
+            <button
+              id="sidebarLogoutBtn"
+              type="button"
+              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-bold text-rose-400 hover:text-white hover:bg-rose-600/20 transition cursor-pointer"
+              :class="isSidebarCollapsed ? 'justify-center' : ''"
+              aria-label="Sair / Logout do Sistema"
+              title="Encerrar sessão com segurança"
+              @click="handleLogout"
+            >
+              <span class="text-base flex-shrink-0" aria-hidden="true">🚪</span>
+              <span v-if="!isSidebarCollapsed" class="truncate">Sair / Logout</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -184,15 +214,21 @@
         <slot />
       </main>
     </div>
+
+    <!-- Global Reactive Toast Container -->
+    <ToastContainer />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { usePage, Link } from '@inertiajs/vue3';
+import { ref, computed, onMounted, watch } from 'vue';
+import { usePage, Link, router } from '@inertiajs/vue3';
 import AccessibilityToolbar from '../Components/AccessibilityToolbar.vue';
+import ToastContainer from '../Components/ToastContainer.vue';
+import { useToast } from '../Composables/useToast';
 
 const page = usePage();
+const toast = useToast();
 
 const props = defineProps({
   breadcrumbs: {
@@ -208,7 +244,7 @@ const flashMessage = ref('');
 onMounted(() => {
   // Sync initial role with page props or fallback
   const roleProp = page.props.auth?.role || page.props.auth?.user?.role || page.props.auth?.user?.perfil;
-  if (roleProp && ['gestor', 'tecnico', 'egresso'].includes(roleProp.toLowerCase())) {
+  if (roleProp && ['gestor', 'tecnico', 'egresso', 'suporte'].includes(roleProp.toLowerCase())) {
     currentRole.value = roleProp.toLowerCase();
   }
 });
@@ -216,28 +252,51 @@ onMounted(() => {
 // Defensive user profile handling
 const userProfile = computed(() => {
   const user = page.props.auth?.user || {};
-  const rawRole = currentRole.value;
+  const authRole = page.props.auth?.role || user.role || user.perfil;
+  const rawRole = authRole || currentRole.value;
 
-  if (rawRole === 'gestor') {
+  const userName = user.name || user.nome;
+  const userEmail = user.email;
+
+  const getInitials = (name) => {
+    if (!name) return 'CE';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  if (rawRole === 'suporte') {
     return {
-      displayName: user.name || user.nome || 'Carlos Eduardo Silva (Gestor)',
-      initials: 'CS',
+      displayName: userName || 'Suporte Agile SEJUS',
+      email: userEmail || 'suporte.agile@sejus.es.gov.br',
+      initials: getInitials(userName || 'Suporte Agile'),
+      roleTitle: 'Suporte Técnico Agile',
+      roleScope: 'Acesso Irrestrito • SEJUS/ES',
+      roleSubtitle: 'Administrador do Sistema',
+    };
+  } else if (rawRole === 'gestor') {
+    return {
+      displayName: userName || 'Carlos Eduardo Silva (Gestor)',
+      email: userEmail || 'gestor@sejus.es.gov.br',
+      initials: getInitials(userName || 'Carlos Silva'),
       roleTitle: 'Visão Gestor Estadual',
       roleScope: '78 Municípios • SEJUS/ES',
       roleSubtitle: 'SEJUS / Subsecretaria de Reintegração',
     };
   } else if (rawRole === 'tecnico') {
     return {
-      displayName: user.name || user.nome || 'Dra. Márcia Oliveira (Técnica)',
-      initials: 'MO',
+      displayName: userName || 'Dra. Márcia Oliveira (Técnica)',
+      email: userEmail || 'marcia.oliveira@sejus.es.gov.br',
+      initials: getInitials(userName || 'Márcia Oliveira'),
       roleTitle: 'Técnico Escritório Social',
       roleScope: 'Atendimento Remoto / Presencial',
       roleSubtitle: 'Assistente Social • CRESS 4891/ES',
     };
   } else {
     return {
-      displayName: user.name || user.nome || 'Lucas Santos (Egresso)',
-      initials: 'LS',
+      displayName: userName || 'Lucas Santos (Egresso)',
+      email: userEmail || 'lucas.santos@cidadao.es.gov.br',
+      initials: getInitials(userName || 'Lucas Santos'),
       roleTitle: 'Visão Egresso / Familiar',
       roleScope: 'São Mateus / ES (Acesso Remoto)',
       roleSubtitle: user.cpf_masked || 'CPF: ***.192.830-** • Gov.br',
@@ -251,7 +310,7 @@ const navigationItems = [
     route: 'dashboard',
     href: '/dashboard',
     iconEmoji: '📊',
-    roles: ['gestor', 'tecnico', 'egresso'],
+    roles: ['gestor', 'tecnico', 'egresso', 'suporte'],
     badge: '78 Cidades',
     badgeClass: 'bg-sky-600',
     dataView: 'dashboard',
@@ -261,7 +320,7 @@ const navigationItems = [
     route: 'atendimento',
     href: '/atendimento',
     iconEmoji: '📹',
-    roles: ['gestor', 'tecnico', 'egresso'],
+    roles: ['gestor', 'tecnico', 'egresso', 'suporte'],
     badge: '3 em espera',
     badgeClass: 'bg-emerald-600',
     dataView: 'atendimento',
@@ -271,7 +330,7 @@ const navigationItems = [
     route: 'oportunidades',
     href: '/oportunidades',
     iconEmoji: '💼',
-    roles: ['gestor', 'tecnico', 'egresso'],
+    roles: ['gestor', 'tecnico', 'egresso', 'suporte'],
     badge: '42 Vagas',
     badgeClass: 'bg-purple-600',
     dataView: 'oportunidades',
@@ -281,7 +340,7 @@ const navigationItems = [
     route: 'carteira',
     href: '/carteira',
     iconEmoji: '💳',
-    roles: ['gestor', 'tecnico', 'egresso'],
+    roles: ['gestor', 'tecnico', 'egresso', 'suporte'],
     badge: 'QR Code OK',
     badgeClass: 'bg-blue-700',
     dataView: 'carteira',
@@ -291,7 +350,7 @@ const navigationItems = [
     route: 'geolocalizacao',
     href: '/geolocalizacao',
     iconEmoji: '📍',
-    roles: ['gestor', 'tecnico', 'egresso'],
+    roles: ['gestor', 'tecnico', 'egresso', 'suporte'],
     dataView: 'geolocalizacao',
   },
   {
@@ -299,7 +358,7 @@ const navigationItems = [
     route: 'prontuario',
     href: '/prontuario',
     iconEmoji: '📁',
-    roles: ['gestor', 'tecnico', 'egresso'],
+    roles: ['gestor', 'tecnico', 'egresso', 'suporte'],
     dataView: 'prontuario',
   },
   // GESTÃO & GOVERNANÇA
@@ -308,16 +367,24 @@ const navigationItems = [
     route: 'relatorios',
     href: '/relatorios',
     iconEmoji: '📈',
-    roles: ['gestor', 'tecnico'],
+    roles: ['gestor', 'tecnico', 'suporte'],
     sectionHeader: 'GESTÃO & GOVERNANÇA',
     dataView: 'relatorios',
+  },
+  {
+    name: 'Gerenciamento de Usuários',
+    route: 'usuarios',
+    href: '/usuarios',
+    iconEmoji: '👥',
+    roles: ['gestor', 'suporte'],
+    dataView: 'usuarios',
   },
   {
     name: 'Segurança & LGPD',
     route: 'seguranca-lgpd',
     href: '/seguranca-lgpd',
     iconEmoji: '🛡️',
-    roles: ['gestor', 'tecnico', 'egresso'],
+    roles: ['gestor', 'tecnico', 'egresso', 'suporte'],
     dataView: 'lgpd',
   },
 ];
@@ -334,6 +401,46 @@ const isRouteActive = (routeKey) => {
 };
 
 const handleRoleChange = () => {
-  flashMessage.value = `Perfil alterado para: ${userProfile.value.roleTitle}. Interface atualizada com permissões estritas.`;
+  const msg = `Perfil alterado para: ${userProfile.value.roleTitle}. Interface atualizada com permissões estritas.`;
+  flashMessage.value = msg;
+  toast.info('Perfil de Acesso Atualizado', msg);
+  router.post('/auth/switch-role', { role: currentRole.value }, {
+    preserveScroll: true,
+    preserveState: true,
+    onError: () => {}
+  });
 };
+
+const handleLogout = () => {
+  toast.info('Encerrando Sessão', 'Desconectando do Conecta Egresso com segurança...');
+  router.post('/logout', {}, {
+    onSuccess: () => {
+      toast.success('Sessão Encerrada', 'Você saiu com segurança.');
+    },
+    onError: () => {
+      toast.error('Erro ao Sair', 'Não foi possível desconectar do sistema.');
+    },
+  });
+};
+
+// Automatic listener for Inertia session flash messages
+watch(
+  () => page.props.flash,
+  (flash) => {
+    if (!flash) return;
+    if (flash.success) {
+      toast.success('Sucesso', flash.success);
+    }
+    if (flash.error) {
+      toast.error('Atenção', flash.error);
+    }
+    if (flash.warning) {
+      toast.warning('Aviso', flash.warning);
+    }
+    if (flash.info || flash.message) {
+      toast.info('Informação', flash.info || flash.message);
+    }
+  },
+  { deep: true, immediate: true }
+);
 </script>

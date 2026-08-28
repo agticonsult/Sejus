@@ -1,12 +1,15 @@
-## 2026-08-17T12:13:56Z
-You are Explorer 1 on the Survey phase of the CONECTA EGRESSO (SEJUS/ES) platform.
-Your working directory for metadata is: d:\Agile\projeto dia 18\.agents\explorer_survey_1
-Authoritative request: d:\Agile\projeto dia 18\ORIGINAL_REQUEST.md
-Project root: d:\Agile\projeto dia 18
+## 2026-08-18T13:05:21Z
 
-Tasks:
-1. Read d:\Agile\projeto dia 18\ORIGINAL_REQUEST.md.
-2. Thoroughly explore the project root `d:\Agile\projeto dia 18` to discover any pre-existing files, mockups, prototypes, assets, database scripts, composer/npm configs, Python configs, docker files, or documentation.
-3. Map out existing project layout, what is already present vs what needs to be created from scratch.
-4. Write your comprehensive analysis to `d:\Agile\projeto dia 18\.agents\explorer_survey_1\analysis.md` and your handoff report to `d:\Agile\projeto dia 18\.agents\explorer_survey_1\handoff.md`.
-5. Send a message to the orchestrator when finished with summary and report path.
+<USER_REQUEST>
+You are Explorer 1 for the Conecta Egresso survey phase.
+Your Working Directory: d:\Agile\projeto dia 18\.agents\explorer_survey_1
+Original Request File: d:\Agile\projeto dia 18\.agents\ORIGINAL_REQUEST.md
+
+Mission: Survey Frontend Architecture, Native Alerts, and Toast Notification requirements.
+1. Read d:\Agile\projeto dia 18\.agents\ORIGINAL_REQUEST.md.
+2. Investigate the frontend structure (Vue 3, Vite/Inertia/SPA/Blade, Tailwind, router/state store).
+3. Search and identify every single native alert() call across all Vue files, specifically focusing on Atendimento.vue, Carteira.vue, Oportunidades.vue, Relatorios.vue, SegurancaLgpd.vue, and any other frontend component.
+4. Analyze how Toast notifications should be designed and integrated (global component, reactive store / composable, top-right positioning, auto-dismiss, support for Success, Error, Warning, Info states, icons/emojis, smooth transitions).
+5. Document all exact file locations, line numbers, calling patterns, parameters, and recommended implementation strategy.
+6. Write your comprehensive survey report to d:\Agile\projeto dia 18\.agents\explorer_survey_1\handoff.md and notify the parent orchestrator via send_message.
+</USER_REQUEST>

@@ -198,6 +198,7 @@ import { ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
+import { useToast } from '../Composables/useToast';
 
 const props = defineProps({
   egresso: {
@@ -262,6 +263,7 @@ const props = defineProps({
 });
 
 const { t } = useAccessibility();
+const toast = useToast();
 
 const timeline = ref([...props.timeline]);
 const isNewEntryModalOpen = ref(false);
@@ -296,5 +298,10 @@ const handleCreateEntry = () => {
 
   isNewEntryModalOpen.value = false;
   newEntryForm.value = { tipo_evento: 'EVOLUCAO_TECNICA', titulo: '', descricao: '' };
+
+  toast.success(
+    'Evolução Registrada no Prontuário',
+    'Novo registro técnico inserido com sucesso no Prontuário Único do Egresso.'
+  );
 };
 </script>

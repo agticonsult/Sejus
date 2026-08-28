@@ -69,6 +69,23 @@ class PerfilSeeder extends Seeder
                 ],
                 'ativo' => true,
             ],
+            [
+                'id' => 5,
+                'nome' => 'Suporte Técnico Agile',
+                'slug' => 'suporte',
+                'descricao' => 'Administrador do sistema e suporte técnico com acesso irrestrito a todas as funcionalidades, gerenciamento de usuários e infraestrutura.',
+                'permissoes' => [
+                    'prontuario' => ['read', 'write', 'delete', 'export', 'audit'],
+                    'relatorios' => ['read', 'export'],
+                    'vagas' => ['read', 'write', 'delete'],
+                    'cursos' => ['read', 'write', 'delete'],
+                    'webrtc' => ['manage', 'observe', 'host'],
+                    'carteira' => ['view', 'emit', 'download'],
+                    'usuarios' => ['read', 'create', 'edit', 'delete', 'manage'],
+                    'sistema' => ['manage', 'logs', 'settings'],
+                ],
+                'ativo' => true,
+            ],
         ];
 
         foreach ($perfis as $p) {

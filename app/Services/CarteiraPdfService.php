@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Egresso;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
 use Throwable;
 
@@ -56,7 +58,8 @@ class CarteiraPdfService
     }
 
     /**
-     * Compile document into binary PDF stream using Dompdf.
+     * Compile document into binary PDF stream using Document Generator API,
+     * with graceful fallback to Dompdf and pure text stream.
      *
      * @param object $egresso
      */
@@ -64,6 +67,50 @@ class CarteiraPdfService
     {
         $html = $this->renderHtml($egresso);
 
+        // Tier 1: Document Generator API Microservice
+        if (class_exists(Http::class)) {
+            try {
+                $baseUrl = function_exists('config')
+                    ? config('services.document_generator.url', 'http://localhost:8080')
+                    : 'http://localhost:8080';
+                $apiKey = function_exists('config')
+                    ? config('services.document_generator.key', 'token-secreto-dev')
+                    : 'token-secreto-dev';
+                $timeout = function_exists('config')
+                    ? (int) config('services.document_generator.timeout', 5)
+                    : 5;
+
+                $endpoint = rtrim($baseUrl ?: 'http://localhost:8080', '/') . '/generate';
+
+                $response = Http::timeout($timeout)
+                    ->withHeaders([
+                        'X-API-Key' => $apiKey,
+                        'Accept' => 'application/pdf',
+                    ])
+                    ->post($endpoint, [
+                        'html' => $html,
+                        'format' => 'A4',
+                        'orientation' => 'portrait',
+                    ]);
+
+                if ($response->successful()) {
+                    $body = $response->body();
+                    if (str_starts_with($body, '%PDF') || str_contains($body, '%PDF-')) {
+                        return $body;
+                    }
+                } else {
+                    if (class_exists(Log::class)) {
+                        Log::warning('Document Generator API returned HTTP ' . $response->status() . ', falling back to Dompdf.');
+                    }
+                }
+            } catch (Throwable $e) {
+                if (class_exists(Log::class)) {
+                    Log::warning('Document Generator API call failed, falling back to Dompdf: ' . $e->getMessage());
+                }
+            }
+        }
+
+        // Tier 2: Local Dompdf Fallback
         try {
             if (class_exists(Dompdf::class)) {
                 $options = new Options();
@@ -77,12 +124,18 @@ class CarteiraPdfService
                 $dompdf->setPaper('A4', 'portrait');
                 $dompdf->render();
 
-                return $dompdf->output();
+                $output = $dompdf->output();
+                if (!empty($output)) {
+                    return $output;
+                }
             }
         } catch (Throwable $e) {
-            // Fallback
+            if (class_exists(Log::class)) {
+                Log::warning('Dompdf generation failed, falling back to text PDF stream: ' . $e->getMessage());
+            }
         }
 
+        // Tier 3: Standard text PDF stream fallback
         return "%PDF-1.4\n%Fallback PDF\n" . $html;
     }
 

@@ -43,6 +43,11 @@ class CheckRole
 
         $userRole = $user->perfil?->slug;
 
+        // Grant the 'suporte' role unrestricted bypass across all role permission checks
+        if ($userRole === 'suporte' || $user->isSuporte()) {
+            return $next($request);
+        }
+
         // Parse comma-separated roles in single arguments (e.g. role:gestor,tecnico)
         $allowedRoles = [];
         foreach ($roles as $r) {

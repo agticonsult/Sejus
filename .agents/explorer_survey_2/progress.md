@@ -1,19 +1,14 @@
-# Progress — Explorer 2 (Survey Phase)
+# Progress Log — Explorer Survey 2
 
-**Last visited**: 2026-08-17T12:16:10Z
-**Status**: Completed technical survey, detailed architecture analysis, and handoff report.
+Last visited: 2026-08-18T13:08:15Z
 
-## Progress Steps
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Read and analyze ORIGINAL_REQUEST.md in full
-- [x] Inspect existing project directory structure and files
-- [x] Deep-dive into technical architecture & tech stack integration (Laravel 11 + Inertia.js + Vue 3 + Tailwind CSS, FastAPI + aiortc, WebSockets)
-- [x] Analyze Database Schema design (PostgreSQL 16 + PostGIS + pgcrypto, spatial indexing, partitioned audit logs, encryption)
-- [x] Analyze WebRTC signaling protocol & Coturn STUN/TURN integration
-- [x] Analyze Docker multi-service architecture (Nginx reverse proxy, PHP-FPM 8.3, FastAPI Python 3.12, PostgreSQL 16, Redis 7, Coturn TURN)
-- [x] Design API contracts between Laravel backend and FastAPI microservice (Biometrics/WebRTC)
-- [x] Formulate comprehensive Testing Strategy & Testing Harness (PHPUnit/Pest, Pytest, Playwright E2E)
-- [x] Construct dependency matrix and modular boundaries
-- [x] Synthesize findings into `analysis.md`
-- [x] Write 5-component `handoff.md` report
-- [x] Send completion message to parent orchestrator
+## Completed Tasks
+- [x] Read and analyzed `ORIGINAL_REQUEST.md` (Requirement R2: PDF generation via Document Generator API + graceful fallback).
+- [x] Examined `app/Services/CarteiraPdfService.php` (renderHtml, generatePdf, and renderFallbackTemplate).
+- [x] Examined Blade template `resources/views/pdf/carteira_digital.blade.php`.
+- [x] Examined routes in `routes/web.php` and `routes/api.php` and identified missing `/carteira/pdf` route.
+- [x] Examined frontend binding in `resources/js/Pages/Carteira.vue` (pdfDownloadUrl).
+- [x] Examined models (`Egresso.php`, `User.php`, `Perfil.php`) and security services (`QrCodeSecurityService.php`, `LgpdSecurityService.php`).
+- [x] Documented microservice integration specs (endpoint `http://localhost:8080`, API key `token-secreto-dev`, timeout, payload format, and fallback cascade).
+- [x] Produced architectural survey in `analysis.md`.
+- [x] Generated full 5-component handoff report in `handoff.md`.

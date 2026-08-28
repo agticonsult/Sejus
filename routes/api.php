@@ -14,6 +14,7 @@ use App\Http\Controllers\RedeApoioController;
 use App\Http\Controllers\KpiDashboardController;
 use App\Http\Controllers\WebRtcTokenController;
 use App\Http\Controllers\WebRtcWebhookController;
+use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,6 +77,10 @@ Route::middleware(['web'])->group(function () {
     Route::get('territorios/{codigo_ibge_or_id}', [TerritorioController::class, 'show'])->name('api.territorios.show');
     Route::get('municipios', [TerritorioController::class, 'index'])->name('api.municipios.index');
     Route::apiResource('rede-apoio', RedeApoioController::class);
+
+    // User Management API Resource
+    Route::apiResource('users', UserController::class);
+    Route::apiResource('usuarios', UserController::class);
 
     // Management KPIs & Analytics
     Route::prefix('kpis')->group(function () {

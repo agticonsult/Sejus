@@ -12,6 +12,13 @@ class ProntuarioAuditLogImmutabilityTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        ProntuarioAuditLog::query()->delete();
+    }
+
     public function test_audit_service_creates_unbroken_cryptographic_chain(): void
     {
         $auditService = new AuditService();

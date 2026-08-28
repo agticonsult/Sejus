@@ -210,8 +210,10 @@ import { ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
+import { useToast } from '../Composables/useToast';
 
 const { t } = useAccessibility();
+const toast = useToast();
 
 const filterPeriod = ref('ano_2026');
 const filterRegion = ref('todas');
@@ -243,6 +245,9 @@ const getAuditBadgeClass = (acao) => {
 };
 
 const exportData = (format) => {
-  alert(`📊 Relatório consolidado exportado com sucesso no formato .${format.toUpperCase()}! O download foi iniciado.`);
+  toast.success(
+    'Relatório Exportado com Sucesso',
+    `Relatório consolidado exportado com sucesso no formato .${format.toUpperCase()}! O download foi iniciado.`
+  );
 };
 </script>

@@ -1,65 +1,63 @@
-# BRIEFING — 2026-08-17T17:33:15Z
+# BRIEFING — 2026-08-18T10:27:00Z
 
 ## Mission
-Implement Milestone M3: Backend Business APIs, RBAC & Webhooks for the Sejus Digital platform.
+Implement Milestone 3 - Complete Authentication (Login/Logout, Gov.br UI, Session, Protected Routes).
 
 ## 🔒 My Identity
-- Archetype: worker
+- Archetype: Implementer / QA / Specialist
 - Roles: implementer, qa, specialist
 - Working directory: d:\Agile\projeto dia 18\.agents\worker_m3
-- Original parent: 65a9f355-b691-443a-be54-a37f9036c65a
-- Milestone: M3 (Backend Business APIs, RBAC & Webhooks)
+- Original parent: d1fff5db-63e7-45f8-859e-5033cc3b20ad
+- Milestone: Milestone 3 - Complete Authentication
 
 ## 🔒 Key Constraints
-- Genuine implementation only, no hardcoded cheating, real database state and real business logic.
-- Follow Laravel 11 / PHP 8.2+ best practices.
-- LGPD compliance: blind-index CPF searching, full AuditService::log on reads/writes.
-- Strict RBAC: gestor, tecnico, egresso, familiar.
-- 100% test pass rate across verification scripts and automated tests.
+- Genuine implementation with no cheats/hardcoded test mock shortcuts.
+- Visual Identity: Gov.br official blue (`#1351b4`), Governo ES colors (`#003366`, `#e63946`), SEJUS institutional badge.
+- Dual Authentication (Gov.br / Acesso Cidadão SSO button + standard email/CPF credentials).
+- Demo quick fill bar.
+- Flash messages & Auth state shared via HandleInertiaRequests middleware.
+- Logout flow in AppLayout and AuthController.
 
 ## Current Parent
-- Conversation ID: 65a9f355-b691-443a-be54-a37f9036c65a
-- Updated: 2026-08-17T17:33:15Z
+- Conversation ID: d1fff5db-63e7-45f8-859e-5033cc3b20ad
+- Updated: 2026-08-18T10:27:00Z
 
 ## Task Summary
-- **What to build**: Full M3 backend suite:
-  1. `GovBrAuthService.php` & `AuthController.php` (OIDC claim mapping, Bronze/Silver/Gold trust levels, Sanctum/session auth, fail-secure fallback to egresso).
-  2. Middleware & Policies: `CheckRole.php`, `AuditAccessLog.php`, aliases in `bootstrap/app.php`, `ProntuarioPolicy.php`, `CarteiraPolicy.php`, `VagaEmpregoPolicy.php`, `VideoRoomPolicy.php`.
-  3. `ProntuarioController.php` & `ProntuarioTimelineController.php` (CRUD, sequential ID `PRT-2026-XXXXXX`, blind-index CPF search, 64KB boundary, empty description check, XSS escaping, author ID binding, automatic chained audit logging).
-  4. `VagaEmpregoController.php`, `CursoCapacitacaoController.php`, `CandidaturaController.php` (78 municipalities filter, affirmative action, salary min clamped >= 0, accent-insensitive search, automatic timeline event on application/enrollment).
-  5. `TerritorioController.php` & `RedeApoioController.php` (78 ES municipalities, IBGE prefix 32 validation, WGS84 bounding box, regional summary, dynamic GPS fallback to municipality centroid).
-  6. `KpiDashboardController.php` (executive dashboard stats, regional breakdown across 4 macro-regions, time-series trends, WebRTC telemetry MOS distribution).
-  7. `WebRtcJwtService.php`, `WebRtcTokenController.php`, `WebRtcWebhookController.php` (RFC 7519 HS256 JWT generator/validator, STUN/TURN ICE config, HMAC-SHA256 signature verification, automatic `acolhimento_video` timeline insertion on call end with MOS score, immutable audit logging).
-  8. Route registrations in `routes/api.php` and `routes/web.php`.
-  9. Automated unit and feature test suites and standalone verification runner `tests/run_m3_verification.php`.
-- **Success criteria**: All M3 endpoints operational, authenticated/authorized, verified with PHP verification runner and tests passing 100%.
-- **Interface contracts**: `PROJECT.md`, `.agents/sub_orch_m3_backend/SCOPE.md`.
-- **Code layout**: Standard Laravel 11 (`app/Http/Controllers/`, `app/Services/`, `app/Http/Middleware/`, `app/Policies/`, `routes/api.php`, `routes/web.php`).
-
-## Key Decisions Made
-- Built fail-secure OIDC claim mapping defaulting unknown claims to `egresso` with self-only permissions.
-- Enforced cryptographic HMAC-SHA256 signature verification for all WebRTC webhooks from Python FastAPI microservice.
-- Integrated automated `ProntuarioTimeline` insertion on video call completion, job application, and course enrollment.
-- Implemented dynamic centroid GPS fallback for support facilities lacking explicit coordinates.
-- Bound timeline event authors strictly to authenticated user ID to prevent forged technician identities.
-
-## Artifact Index
-- `.agents/worker_m3/DISPATCH.md` — Assignment & scope
-- `.agents/worker_m3/BRIEFING.md` — Agent working memory
-- `.agents/worker_m3/progress.md` — Liveness and step tracker
-- `.agents/worker_m3/changes.md` — Detailed list of code modifications
-- `.agents/worker_m3/handoff.md` — Handoff report with 5-component structure
+- **What to build**: `resources/js/Pages/Login.vue`, `app/Http/Controllers/AuthController.php` updates, `app/Http/Middleware/HandleInertiaRequests.php`, `bootstrap/app.php` middleware registration, `resources/js/Layouts/AppLayout.vue` logout & user info integration, `routes/web.php` route registration.
+- **Success criteria**: Frontend builds cleanly (`npm run build`), backend handles login/logout/govbr session lifecycle, all auth tests pass.
+- **Interface contracts**: `d:\Agile\projeto dia 18\PROJECT.md`
+- **Code layout**: `PROJECT.md`
 
 ## Change Tracker
-- **Files modified**: `app/Models/User.php`, `bootstrap/app.php`, `routes/api.php`, `routes/web.php`
-- **Files created**: `app/Services/GovBrAuthService.php`, `app/Services/WebRtcJwtService.php`, `app/Http/Middleware/CheckRole.php`, `app/Http/Middleware/AuditAccessLog.php`, `app/Policies/ProntuarioPolicy.php`, `app/Policies/CarteiraPolicy.php`, `app/Policies/VagaEmpregoPolicy.php`, `app/Policies/VideoRoomPolicy.php`, `app/Http/Controllers/AuthController.php`, `app/Http/Controllers/ProntuarioController.php`, `app/Http/Controllers/ProntuarioTimelineController.php`, `app/Http/Controllers/VagaEmpregoController.php`, `app/Http/Controllers/CursoCapacitacaoController.php`, `app/Http/Controllers/CandidaturaController.php`, `app/Http/Controllers/TerritorioController.php`, `app/Http/Controllers/RedeApoioController.php`, `app/Http/Controllers/KpiDashboardController.php`, `app/Http/Controllers/WebRtcTokenController.php`, `app/Http/Controllers/WebRtcWebhookController.php`, `tests/Unit/WebRtcJwtServiceTest.php`, `tests/Feature/AuthControllerTest.php`, `tests/Feature/RbacMiddlewareTest.php`, `tests/Feature/ProntuarioApiTest.php`, `tests/Feature/VagasCursosApiTest.php`, `tests/Feature/TerritorioRedeApoioApiTest.php`, `tests/Feature/KpiAnalyticsApiTest.php`, `tests/Feature/WebRtcWebhookControllerTest.php`, `tests/run_m3_verification.php`
-- **Build status**: PASS (100% on M1/M2 verification, M3 verification, and Python E2E multi-tier runner)
+- **Files modified**:
+  - `resources/js/Pages/Login.vue` (created Gov.br & ES styled Login page with dual auth and quick fill)
+  - `app/Http/Middleware/HandleInertiaRequests.php` (created Inertia shared props middleware)
+  - `bootstrap/app.php` (registered HandleInertiaRequests)
+  - `routes/web.php` (registered GET /login route)
+  - `app/Http/Controllers/AuthController.php` (added showLogin, enhanced login, govbrLogin, logout, switchRole)
+  - `resources/js/Layouts/AppLayout.vue` (added header & sidebar Logout buttons, dynamic user binding)
+  - `app/Models/User.php` (added cpf, telefone to fillable)
+  - `app/Models/Egresso.php` (added cpf, rg, filiacao_mae, endereco, telefone to fillable)
+  - `app/Services/GovBrAuthService.php` (robust fallback handling)
+- **Build status**: PASS (`npm run build` completed in 2.26s, zero errors)
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: 100% PASS (65/65 M1&M2 tests, 49/49 M3 tests, 175/175 Python E2E tests)
+- **Build/test result**: PASS (All 34 auth tests in Python E2E suite pass; AuthControllerTest 6/6 pass; RouteAudit404Test 2/2 pass; run_m3_verification.php 49/49 pass)
 - **Lint status**: Clean
-- **Tests added/modified**: 8 test files + standalone verification runner `tests/run_m3_verification.php`
+- **Tests added/modified**: Verified all Tier 1-5 auth test suites
 
 ## Loaded Skills
-- None required.
+- None
+
+## Key Decisions Made
+- Handled both Inertia visits (redirecting with session flash) and API JSON requests seamlessly in `AuthController`.
+- Added dynamic user avatar initials generator and profile display in `AppLayout.vue`.
+- Added pre-fill buttons for Suporte Agile, Gestor, Técnico, and Egresso in `Login.vue`.
+
+## Artifact Index
+- `.agents/worker_m3/DISPATCH.md` — Assignment
+- `.agents/worker_m3/BRIEFING.md` — Working memory
+- `.agents/worker_m3/progress.md` — Progress tracker
+- `.agents/worker_m3/changes.md` — Detailed change summary
+- `.agents/worker_m3/handoff.md` — Final handoff report

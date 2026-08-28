@@ -1,86 +1,137 @@
-# Handoff Report — Explorer Survey 1
-
-**Task:** Survey & Mapeamento de Ativos da Plataforma CONECTA EGRESSO (SEJUS/ES)  
-**Agent:** Explorer Survey 1  
-**Timestamp:** 2026-08-17T12:16:00Z  
-**Target Milestone:** Survey Complete → Architecture / Implementation Ready  
-
----
+# Frontend Architecture, Native Alerts & Toast Notification Survey Report
 
 ## 1. Observation
 
-1. **Estrutura de Arquivos no Root (`d:\Agile\projeto dia 18`):**
-   - Execução de `list_dir` e `find_by_name` retornou 7 arquivos na raiz:
-     - `ORIGINAL_REQUEST.md` (3.139 bytes)
-     - `TR_EDITAL_DE CPSI Nº 010_2026 - SEJUS.pdf` (237.754 bytes, 17 páginas)
-     - `DOCUMENTO_EXECUTIVO_CONECTA_EGRESSO.md` (6.757 bytes, 108 linhas)
-     - `README.md` (4.699 bytes, 88 linhas)
-     - `index.html` (61.021 bytes, 1.211 linhas)
-     - `app.js` (11.842 bytes, 331 linhas)
-     - `styles.css` (25.428 bytes, 1.381 linhas)
+### 1.1 Codebase & Frontend Stack Identification
+- **Framework & Version**: Vue 3.4.30 (Composition API, `<script setup>`) with `@inertiajs/vue3` (v1.2.0) as documented in `d:\Agile\projeto dia 18\package.json` (lines 10-14).
+- **Build Tool**: Vite 5.3.1 with `@vitejs/plugin-vue` (v5.0.5) and `laravel-vite-plugin` (v1.0.4) configured in `d:\Agile\projeto dia 18\vite.config.js`.
+- **CSS Framework**: Tailwind CSS 3.4.4 configured in `d:\Agile\projeto dia 18\tailwind.config.js` with institutional color tokens (`es-blue`: `#003366`, `es-pink`: `#e63946`, `primary`: `#0284c7`, `sejus-green`: `#00875A`, `es-navy`: `#0f172a`).
+- **Icons & Libraries**: `lucide-vue-next` (v0.460.0) in `package.json`, `qrcode` (v1.5.3) for digital credential generation.
+- **Root Layout & Mounting**:
+  - Blade template: `d:\Agile\projeto dia 18\resources\views\app.blade.php` with `@vite(['resources/css/app.css', 'resources/js/app.js'])` and `@inertia`.
+  - JS entry point: `d:\Agile\projeto dia 18\resources\js\app.js` configuring `createInertiaApp` with dynamic page resolution from `./Pages/**/*.vue`.
+  - Master Layout: `d:\Agile\projeto dia 18\resources\js\Layouts\AppLayout.vue` wrapping all authenticated pages with header, sidebar, profile switcher, accessibility toolbar, and breadcrumb system.
+  - Accessibility composable: `d:\Agile\projeto dia 18\resources\js\Composables\useAccessibility.js` demonstrating a singleton reactive store pattern using Vue 3 `ref()`.
 
-2. **Conteúdo e Validações de Interface (`index.html` e `app.js`):**
-   - O arquivo `index.html` contém 8 seções funcionais com IDs explícitos mapeados:
-     - Linha 165: `<section id="view-dashboard" class="view-panel active">`
-     - Linha 389: `<section id="view-atendimento" class="view-panel">`
-     - Linha 531: `<section id="view-oportunidades" class="view-panel">`
-     - Linha 689: `<section id="view-carteira" class="view-panel">`
-     - Linha 819: `<section id="view-geolocalizacao" class="view-panel">`
-     - Linha 893: `<section id="view-prontuario" class="view-panel">`
-     - Linha 975: `<section id="view-relatorios" class="view-panel">`
-     - Linha 1107: `<section id="view-lgpd" class="view-panel">`
-   - O arquivo `app.js` implementa a alternância de perfis (`gestor`, `tecnico`, `egresso`), modos de acessibilidade (`contrastBtn`, `fontSizeBtn`, `simplifiedTextBtn`) e renderização em Canvas de 2 gráficos (`chartMunicipios` e `chartReintegracao`).
+### 1.2 Comprehensive Native `alert()` Call Audit
+A pattern search using `grep_search` across all project files identified exactly 5 direct `alert()` invocations across 5 Vue pages:
 
-3. **Diretrizes Oficiais do Edital (`TR_EDITAL_DE CPSI Nº 010_2026 - SEJUS.pdf`):**
-   - Pág. 1 / Item 1: O objetivo é superar a barreira geográfica de apenas 4 municípios com Escritório Social presencial e atender 108 mil egressos em todos os 78 municípios capixabas.
-   - Pág. 4-5 / Item 3.1: Requisitos mandatórios `a` a `n`, incluindo acessibilidade para baixo letramento, segurança de dados LGPD, registros imutáveis com data/hora e responsável, autenticação Gov.br / Acesso Cidadão, chamadas de vídeo estáveis, controle de acesso RBAC, e mapeamento territorial dos 78 municípios com rede socioassistencial (CRAS, CREAS, SINE, CAPS).
+#### 1. `d:\Agile\projeto dia 18\resources\js\Pages\Atendimento.vue`
+- **Location**: Line 422
+- **Enclosing Function**: `handleSaveNotes()` (Lines 420–423)
+- **Verbatim Code**:
+```javascript
+const handleSaveNotes = () => {
+  isNotesModalOpen.value = false;
+  alert('💾 Registro salvo com sucesso no Prontuário do Egresso!\nEncaminhamento: ' + interventionForm.value.tipo_encaminhamento);
+};
+```
+- **Context**: Triggered when a social worker saves intervention notes and referral actions following a WebRTC remote video session.
 
-4. **Ambiente de Execução Local:**
-   - Comando `php -v`: `PHP 8.2.18 (cli)` localizado em `C:\tools\php82\php.exe` com extensões `pdo_sqlite`, `sqlite3`, `curl`, `gd`, `intl`, `mbstring`, `openssl`, `zip`.
-   - Comando `php C:\tools\composer.phar --version`: `Composer version 2.9.5 2026-01-29 11:40:53`.
-   - Comando `node -v` e `npm -v`: `v24.14.1` e `11.11.0`.
-   - Comando `python --version` e `pip --version`: `Python 3.14.7` e `pip 26.2.1`.
-   - Comando `docker --version`: Docker CLI não está no PATH local do Windows host.
+#### 2. `d:\Agile\projeto dia 18\resources\js\Pages\Carteira.vue`
+- **Location**: Line 255
+- **Enclosing Function**: `requestDuplicate(docType)` (Lines 254–256)
+- **Verbatim Code**:
+```javascript
+const requestDuplicate = (docType) => {
+  alert(`💳 Requisição de 2ª via para "${docType}" gerada com sucesso!\nO egresso receberá notificação com a data de emissão no polo de referência.`);
+};
+```
+- **Context**: Triggered when a user requests a re-issuance (2ª via) or declaration of institutional affiliation from the digital wallet interface.
+
+#### 3. `d:\Agile\projeto dia 18\resources\js\Pages\Oportunidades.vue`
+- **Location**: Line 438
+- **Enclosing Function**: `confirmApplication()` (Lines 435–439)
+- **Verbatim Code**:
+```javascript
+const confirmApplication = () => {
+  const title = selectedOpportunity.value?.titulo;
+  selectedOpportunity.value = null;
+  alert(`✉️ Egresso encaminhado com sucesso para a oportunidade: "${title}"!\nSua inscrição foi enviada para o parceiro conveniado SEJUS.`);
+};
+```
+- **Context**: Triggered when an egresso or technician completes application for an affirmative job opening or vocational training course.
+
+#### 4. `d:\Agile\projeto dia 18\resources\js\Pages\Relatorios.vue`
+- **Location**: Line 246
+- **Enclosing Function**: `exportData(format)` (Lines 245–247)
+- **Verbatim Code**:
+```javascript
+const exportData = (format) => {
+  alert(`📊 Relatório consolidado exportado com sucesso no formato .${format.toUpperCase()}! O download foi iniciado.`);
+};
+```
+- **Context**: Triggered when a manager or technician exports consolidated SEJUS reporting data in PDF, CSV, or XLSX formats.
+
+#### 5. `d:\Agile\projeto dia 18\resources\js\Pages\SegurancaLgpd.vue`
+- **Location**: Line 179
+- **Enclosing Function**: `handleDpoRequest()` (Lines 178–181)
+- **Verbatim Code**:
+```javascript
+const handleDpoRequest = () => {
+  alert('⚖️ Solicitação protocolada com sucesso junto ao Encarregado de Proteção de Dados (DPO) da SEJUS/ES.\nProtocolo de Acompanhamento: DPO-2026-' + Math.floor(10000 + Math.random() * 90000));
+  dpoForm.value.detalhes = '';
+};
+```
+- **Context**: Triggered when a data subject files an LGPD formal inquiry or data rectification request with the SEJUS Data Protection Officer.
+
+### 1.3 Additional Interaction Touchpoints Identified for Toast Enhancement
+In addition to the 5 `alert()` calls, the following user interaction points were identified:
+- **`resources/js/Pages/Prontuario.vue` (Lines 286–299)**: `handleCreateEntry()` adds a social evolution record to the timeline silently without feedback. Original Request R1 Acceptance Criteria explicitly requires: *"Mensagens de sucesso ao cadastrar usuário, reemitir carteira ou salvar prontuário aparecem em Toasts modernos"*.
+- **`resources/js/Pages/Atendimento.vue` (Lines 407–418)**: `handleJoinQueueSubmit()` adds a participant to the queue.
+- **`resources/js/Layouts/AppLayout.vue` (Lines 168–171, 336–338)**: Currently uses an inline `flashMessage` banner for role switching; can be routed directly through the unified Toast system.
 
 ---
 
 ## 2. Logic Chain
 
-1. **A partir da Observação 1 e 2**, constatou-se que o repositório possui uma especificação de UI de alta fidelidade totalmente pronta no formato Vanilla SPA (HTML5/CSS3/JS), contendo todas as 8 telas de negócio, componentes visuais, fluxos de dados mockados e tokens visuais do Estado do Espírito Santo.
-2. **A partir da Observação 1 e das exigências de `ORIGINAL_REQUEST.md` (Requisitos R1 a R4)**, constatou-se a ausência total de backend funcional (sem `composer.json`, sem framework Laravel, sem migrations de banco de dados, sem microsserviço Python de WebSockets/WebRTC e sem infraestrutura Docker).
-3. **A partir da Observação 3 (Termo de Referência CPSI 010/2026)**, os componentes de negócio indispensáveis a serem implementados no backend e no microsserviço de vídeo são:
-   - Autenticação e RBAC com suporte aos 3 perfis regulamentares (Gestor, Técnico, Egresso) e integração com Gov.br / Acesso Cidadão.
-   - Prontuário Único com trilha imutável de auditoria (LGPD Art. 6º) com registro de CPF, carimbo temporal e hash de integridade.
-   - Carteira Digital do Egresso com geração de PDF e QR Code criptográfico de validação estadual.
-   - Cadastro e geolocalização dos 78 municípios do ES com vinculação da rede socioassistencial (CRAS, CREAS, SINE, CAPS).
-   - Servidor de sinalização WebRTC assíncrono em Python (FastAPI + WebSockets) com envio de webhooks autenticados por JWT para gravação automática de sessões no prontuário.
-4. **A partir da Observação 4 (Ambiente Local)**, o ecossistema local dispõe de PHP 8.2+ CLI, Composer 2.9.5, Node 24, NPM 11 e Python 3.14, permitindo a criação, build e testes automatizados de ponta a ponta na máquina local (utilizando SQLite/PDO para testes rápidos e PHPUnit/Pytest), ao mesmo tempo em que a infraestrutura completa de produção com PostgreSQL 16 (pgcrypto/PostGIS), Redis 7, Nginx e Coturn é entregue via arquivos padronizados de Docker Compose.
+1. **Inertia.js Single-Page Architecture**: Conecta Egresso runs on Inertia.js with Vue 3. In Inertia applications, full-page reloads do not occur during navigation. Therefore, a client-side reactive store is required to preserve toast state across page transitions and asynchronous operations.
+2. **State Management Pattern**: Analysis of `d:\Agile\projeto dia 18\resources\js\Composables\useAccessibility.js` demonstrates that singleton reactive state (using Vue 3 `ref()` declared outside the function scope) is the established, zero-dependency pattern in this codebase. Implementing `resources/js/Composables/useToast.js` following this exact pattern ensures 100% consistency with existing code.
+3. **Component Hierarchy**: Mounting `<ToastContainer />` inside `AppLayout.vue` (and standalone layouts like `ValidarCarteira.vue` or `Login.vue`) guarantees that all notifications dispatched via `useToast()` from any page or child component will render without prop drilling.
+4. **Visual & Accessibility Consistency**: The design requirements specify support for 4 notification types (Success, Error, Warning, Info), smooth slide-in/fade-out animations, top-right positioning (`fixed top-5 right-5 z-50`), auto-dismissal (default 4.5s), manual close (`✕`), and WCAG AAA high-contrast compatibility (`body.high-contrast` rules in `app.css`).
+5. **Replacement Mapping**: Each native `alert()` call contains identifiable structured information (title/action + detail). Replacing each with `toast.success(title, detail)` or `toast.info(title, detail)` enhances user experience while eliminating blocking browser modals.
 
 ---
 
 ## 3. Caveats
 
-- **Docker no Host Windows:** O comando `docker` não está mapeado no PATH do Windows; portanto, os arquivos `docker-compose.yml`, Dockerfiles e configurações de Nginx/Coturn serão gerados rigorosamente conforme a especificação de produção, e os testes funcionais de código serão executados diretamente via PHP CLI, Node/NPM e Python localmente.
-- **Integração Real Gov.br / Acesso Cidadão:** Em ambiente de desenvolvimento e PoC, o sistema deve fornecer tanto o fluxo de simulação de OAuth2/OIDC com mock de usuário Gov.br/Acesso Cidadão quanto a camada de configuração pronta para as URLs de produção do PRODEST/Governo Federal.
+- **Public & Standalone Pages**: `ValidarCarteira.vue` does not use `AppLayout.vue` (it uses an unauthenticated public layout). When new unauthenticated pages like `Login.vue` are implemented (R3), `<ToastContainer />` must be included either in their template or mounted globally at `app.js` root level if `AppLayout` is bypassed.
+- **WebRTC Async Errors**: In `resources/js/Services/webrtc.js`, some connection events log warnings to `console.warn`. While not native alerts, error toasts can be attached to `onError` or `onQualityAlert` callbacks if desired.
+- **Inertia Flash Props**: Laravel controller redirects often set session flash data (e.g. `->with('success', '...')`). A global watcher in `AppLayout.vue` on `$page.props.flash` should automatically convert incoming session flash messages into reactive Toasts.
 
 ---
 
 ## 4. Conclusion
 
-O projeto possui um protótipo visual completo e bem documentado em Vanilla HTML/CSS/JS, que deve ser integralmente preservado e migrado para uma aplicação reativa moderna em **Laravel 11 + Inertia.js + Vue 3 + TailwindCSS**, complementada pelo **Microsserviço de Sinalização WebRTC em Python FastAPI** e orquestração **Docker Compose**.
-
-Todas as informações de requisitos, layout, regras de negócio e restrições técnicas necessárias para a fase de Arquitetura e Implementação foram levantadas, catalogadas e sintetizadas.
+1. **Exact Alert Count**: Exactly 5 native `alert()` calls exist across 5 Vue files (`Atendimento.vue`, `Carteira.vue`, `Oportunidades.vue`, `Relatorios.vue`, `SegurancaLgpd.vue`).
+2. **Missing Notification Points**: `Prontuario.vue` (`handleCreateEntry`) and `AppLayout.vue` (`handleRoleChange`) require Toast integration to satisfy acceptance criteria.
+3. **Recommended Implementation Blueprint**:
+   - **Composable**: Create `resources/js/Composables/useToast.js` with singleton state `toasts = ref([])`, helper methods (`addToast`, `removeToast`, `success`, `error`, `warning`, `info`, `clearAll`), and auto-dismiss timers.
+   - **Component**: Create `resources/js/Components/ToastContainer.vue` with `<TransitionGroup>`, top-right placement, type-based color badges/icons (Emerald, Red, Amber, ES-Blue), accessibility attributes (`role="status"`, `aria-live="polite"`), and close buttons.
+   - **Layout Integration**: Mount `<ToastContainer />` in `AppLayout.vue`.
+   - **Component Updates**: Replace all 5 `alert()` calls and integrate `Prontuario.vue` using `const { success, info, error, warning } = useToast()`.
 
 ---
 
 ## 5. Verification Method
 
-Para verificar independentemente os achados deste relatório:
-1. **Inspeção de Arquivos:**
-   - Conferir o inventário no root: `dir "d:\Agile\projeto dia 18"`
-   - Verificar as 8 seções no protótipo: `grep -n "id=\"view-" "d:\Agile\projeto dia 18\index.html"`
-   - Analisar o relatório completo em: `d:\Agile\projeto dia 18\.agents\explorer_survey_1\analysis.md`
-2. **Ambiente de Testes:**
-   - Validar PHP e Composer: `php -v` e `php C:\tools\composer.phar --version`
-   - Validar Python e Pip: `python --version` e `python -m pip --version`
-   - Validar Node e NPM: `node -v` e `npm -v`
+To independently verify the observations and findings in this report:
+
+1. **Verify native alert() locations**:
+   Run grep search across `resources/`:
+   ```bash
+   grep -rn "alert(" resources/
+   ```
+   *Expected result*: Exactly 5 lines matched (`Atendimento.vue:422`, `Carteira.vue:255`, `Oportunidades.vue:438`, `Relatorios.vue:246`, `SegurancaLgpd.vue:179`).
+
+2. **Verify absence of other dialog calls**:
+   ```bash
+   grep -rn -E "\b(confirm|prompt|window\.alert)\s*\(" resources/
+   ```
+   *Expected result*: 0 matches.
+
+3. **Verify frontend build**:
+   ```bash
+   npm run build
+   ```
+   *Expected result*: Vite compiles successfully without syntax or module errors.

@@ -48,8 +48,15 @@ class GovBrAuthService
 
         $perfil = Perfil::where('slug', $roleSlug)->first();
         if (!$perfil) {
-            $perfil = Perfil::where('slug', 'egresso')->firstOrFail();
-            $roleSlug = 'egresso';
+            $perfil = Perfil::firstOrCreate(
+                ['slug' => $roleSlug],
+                [
+                    'nome' => ucfirst($roleSlug),
+                    'descricao' => 'Perfil ' . ucfirst($roleSlug),
+                    'permissoes' => [],
+                    'ativo' => true,
+                ]
+            );
         }
 
         $hashCpf = $this->lgpd->generateBlindIndex($cleanCpf);
@@ -74,6 +81,20 @@ class GovBrAuthService
 
         // If egresso, link or create Egresso profile
         if ($roleSlug === 'egresso' && !$user->egresso) {
+            $municipio = \App\Models\MunicipioEs::first();
+            if (!$municipio) {
+                $municipio = \App\Models\MunicipioEs::create([
+                    'codigo_ibge' => 3205309,
+                    'nome' => 'Vitória',
+                    'microrregiao' => 'Metropolitana',
+                    'macrorregiao' => 'Central',
+                    'tem_escritorio_fisico' => true,
+                    'latitude' => -20.3155,
+                    'longitude' => -40.3128,
+                    'populacao_estimada' => 365855,
+                ]);
+            }
+
             Egresso::firstOrCreate(
                 ['hash_cpf' => $hashCpf],
                 [
@@ -81,7 +102,7 @@ class GovBrAuthService
                     'nome_completo' => $name,
                     'cpf' => $cleanCpf,
                     'status_penal' => 'egresso',
-                    'municipio_residencia_id' => 1, // Vitória default
+                    'municipio_residencia_id' => $municipio->id,
                 ]
             );
         }
@@ -156,7 +177,15 @@ class GovBrAuthService
      */
     public function simulateRoleLogin(string $roleSlug): User
     {
-        $perfil = Perfil::where('slug', $roleSlug)->firstOrFail();
+        $perfil = Perfil::firstOrCreate(
+            ['slug' => $roleSlug],
+            [
+                'nome' => ucfirst($roleSlug),
+                'descricao' => 'Perfil ' . ucfirst($roleSlug),
+                'permissoes' => [],
+                'ativo' => true,
+            ]
+        );
         $user = User::where('perfil_id', $perfil->id)->where('ativo', true)->first();
 
         if (!$user) {
@@ -178,13 +207,29 @@ class GovBrAuthService
             $user->save();
 
             if ($roleSlug === 'egresso') {
+                $municipio = \App\Models\MunicipioEs::first();
+                if (!$municipio) {
+                    $municipio = \App\Models\MunicipioEs::create([
+                        'codigo_ibge' => 3205309,
+                        'nome' => 'Vitória',
+                        'microrregiao' => 'Metropolitana',
+                        'macrorregiao' => 'Central',
+                        'tem_escritorio_fisico' => true,
+                        'latitude' => -20.3155,
+                        'longitude' => -40.3128,
+                        'populacao_estimada' => 365855,
+                    ]);
+                }
+                $demoHashCpf = $this->lgpd->generateBlindIndex($demoCpf);
+
                 Egresso::firstOrCreate(
-                    ['user_id' => $user->id],
+                    ['hash_cpf' => $demoHashCpf],
                     [
+                        'user_id' => $user->id,
                         'nome_completo' => $user->name,
                         'cpf' => $demoCpf,
                         'status_penal' => 'egresso',
-                        'municipio_residencia_id' => 1,
+                        'municipio_residencia_id' => $municipio->id,
                     ]
                 );
             }

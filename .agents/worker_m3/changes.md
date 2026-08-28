@@ -1,100 +1,43 @@
-# Changes Implemented for Milestone M3: Backend Business APIs, RBAC & Webhooks
+# Changes Log — Milestone 3: Complete Authentication
 
-**Worker**: worker_m3  
-**Date**: 2026-08-17  
-**Milestone**: M3 (Backend Business APIs, RBAC & Webhooks)
+## Summary of Changes
 
----
+### 1. `resources/js/Pages/Login.vue` (New Component)
+- Implemented full Gov.br and Governo do Estado do Espírito Santo (SEJUS/ES) visual identity.
+- Primary Gov.br / Acesso Cidadão SSO one-click simulation button calling `POST /auth/govbr/login`.
+- Standard credentials authentication form supporting Email or CPF + Password, password visibility toggle, and "Lembrar-me" checkbox, calling `POST /login`.
+- Quick-fill demo credentials bar with instant prefill buttons for:
+  - **Suporte Agile** (`suporte.agile@sejus.es.gov.br`)
+  - **Gestor Estadual** (`gestor@sejus.es.gov.br`)
+  - **Técnico Social** (`marcia.oliveira@sejus.es.gov.br`)
+  - **Egresso Cidadão** (`lucas.santos@cidadao.es.gov.br`)
+- Integrated `useToast` composable for reactive feedback (success, error, info notifications).
+- Embedded `AccessibilityToolbar` with high-contrast mode and font zoom support.
+- Institutional security banner highlighting AES-256 field encryption and LGPD Blind Index protection.
 
-## 1. Authentication & RBAC Services & Controllers
-- **`app/Services/GovBrAuthService.php`**:
-  - Implemented simulated OpenID Connect / Gov.br / Acesso Cidadão claim mapping with trust level verification (Bronze, Prata, Ouro).
-  - Configured fail-secure fallback to `egresso` role for unrecognized organizations/roles.
-  - Linked automatic creation/reconciliation of `Egresso` profiles with blind index hashing.
-  - Added `simulateRoleLogin()` for rapid demonstrative role switching and testing.
-  - Recorded immutable login audit logs via `AuditService::log()`.
-- **`app/Http/Controllers/AuthController.php`**:
-  - `POST /api/auth/login`: Email/CPF + password authentication with blind-index CPF lookup and inactive account suspension.
-  - `POST /api/auth/govbr/login`: Gov.br / Acesso Cidadão OIDC login handler.
-  - `POST /api/auth/switch-role`: Demonstrative role switching (`gestor`, `tecnico`, `egresso`, `familiar`).
-  - `GET /api/auth/me`: Authenticated user profile with masked CPF/telefone and linked egresso data.
-  - `POST /api/auth/logout`: Session termination and audit logging.
+### 2. `app/Http/Middleware/HandleInertiaRequests.php` (New Middleware)
+- Created Inertia middleware extending `Inertia\Middleware`.
+- Shared `auth.user`, `auth.role`, `auth.permissions` and `flash` messages (`success`, `error`, `warning`, `info`, `message`) globally into `$page.props`.
 
-## 2. Middleware & Policies
-- **`app/Http/Middleware/CheckRole.php`**:
-  - Validates authentication and active user status (returns 401 for unauthenticated, 403 for inactive/deactivated).
-  - Enforces role-based access control with support for comma-separated permitted roles (e.g. `role:gestor,tecnico`).
-- **`app/Http/Middleware/AuditAccessLog.php`**:
-  - Intercepts requests on sensitive endpoints, sanitizes payloads, extracts route/prontuario identifiers, and records immutable chained audit entries via `AuditService::log()`.
-- **`bootstrap/app.php`**:
-  - Registered middleware aliases: `'role'`, `'rbac'`, `'audit'`, `'audit.log'`.
-- **`app/Policies/ProntuarioPolicy.php`**:
-  - Granular permissions for Gestor (full governance read/write/delete/audit), Técnico (clinical read/write and evoluções), and Egresso (restricted self-read without confidential technical notes).
-- **`app/Policies/CarteiraPolicy.php`**:
-  - Permissions for viewing, downloading signed PDF, and reissuing digital credentials.
-- **`app/Policies/VagaEmpregoPolicy.php` & `app/Policies/VideoRoomPolicy.php`**:
-  - Job vacancy CRUD policies and video attendance room access authorization.
+### 3. `bootstrap/app.php` (Updated Configuration)
+- Registered `\App\Http\Middleware\HandleInertiaRequests::class` in the web middleware pipeline (`append`).
 
-## 3. Prontuário Único & Timeline APIs
-- **`app/Http/Controllers/ProntuarioController.php`**:
-  - `index`: Clamped pagination (1..100), filters by status, technician, municipality, and blind-index search by CPF/name/prontuário number. Automatic audit log on listing.
-  - `store`: Creates new record with sequential ID format `PRT-2026-XXXXXX` and `AuditService::log(..., 'CREATE')`.
-  - `show`: Details with eager loading of egresso, municipality, responsible technician, timeline, and video rooms. Enforces self-only view for egresso.
-  - `update`: Updates diagnosis, individual plan goals, and status with 64KB bound.
-  - `destroy`: Archives prontuário (Gestor only) with audit log.
-- **`app/Http/Controllers/ProntuarioTimelineController.php`**:
-  - `index`: Chronological list of interventions.
-  - `store` & `storeEvolucao`: Strict boundary checks:
-    - 403 Forbidden for Egresso.
-    - 404 for non-existent prontuário.
-    - 422 for empty/whitespace-only description.
-    - 413 for payload > 64KB (65,536 bytes).
-    - Taxonomy validation for 11 permitted event types.
-    - Author ID binding to authenticated user.
-    - XSS entity escaping (`htmlspecialchars`).
-    - Automatic `AuditService::log()` chained entry.
+### 4. `routes/web.php` (Updated Web Routes)
+- Registered `Route::get('/login', [AuthController::class, 'showLogin'])->name('login');`.
 
-## 4. Vagas de Emprego, Cursos de Capacitação & Candidaturas
-- **`app/Http/Controllers/VagaEmpregoController.php`**:
-  - Filtering by 78 ES municipalities, affirmative action (`afirmativa_egresso`), category, and minimum salary clamped >= 0.
-  - Accent-insensitive search on title/company/description.
-  - `candidatar`: Validates spot availability, locates atendido's Prontuário, automatically inserts `encaminhamento_vaga` timeline event, and records audit log.
-- **`app/Http/Controllers/CursoCapacitacaoController.php`**:
-  - Filtering by modality (`presencial`, `ead`, `hibrido`), municipality, financial aid allowance (`com_bolsa`), and EAD availability.
-  - `inscrever`: Enrolls egresso, locates Prontuário, automatically records `inscricao_curso` timeline event, and logs audit trail.
-- **`app/Http/Controllers/CandidaturaController.php`**:
-  - Aggregates and tracks job candidacies and course enrollments across the platform.
+### 5. `app/Http/Controllers/AuthController.php` (Updated Controller)
+- Added `showLogin(Request $request)` to render the Inertia `Login` page or redirect to `/dashboard` if already authenticated.
+- Enhanced `login(Request $request)` to support both Email and CPF blind index lookup, password validation with `Hash::check()`, user activation check, session regeneration (`$request->session()->regenerate()`), and audit logging (`AUTH_LOGIN`).
+- Enhanced `govbrLogin(Request $request)` to resolve user claims via `GovBrAuthService`, authenticate session, regenerate session, and log audit (`AUTH_GOVBR_LOGIN`).
+- Enhanced `logout(Request $request)` to log audit (`AUTH_LOGOUT`), call `Auth::logout()`, invalidate session (`$request->session()->invalidate()`), regenerate CSRF token, and redirect to `login` or return JSON.
 
-## 5. Territorial Mapping & Rede de Apoio
-- **`app/Http/Controllers/TerritorioController.php`**:
-  - Lists all 78 ES municipalities with aggregated stats (open jobs, active support units).
-  - Validates 7-digit IBGE codes starting with `32` (rejects non-ES codes with HTTP 422).
-  - Identifies 4 physical Social Offices (Vitória, Vila Velha, Serra, Cariacica) and 74 remote teleassistance municipalities.
-  - `regioes`: Summary breakdown across 4 macro-regions (Metropolitana, Norte, Sul, Central) and 10 micro-regions.
-- **`app/Http/Controllers/RedeApoioController.php`**:
-  - Lists CRAS, CREAS, SINE, CAPS, Defensoria, Casa do Cidadão, and Escritórios Sociais.
-  - Implemented dynamic GPS fallback policy: if unit coordinates are null, falls back to host municipality centroid GPS (`origem_coordenada: "municipality_centroid_fallback"`).
+### 6. `resources/js/Layouts/AppLayout.vue` (Updated Main Layout)
+- Added visible **Sair / Logout** action buttons in both the header user section and sidebar footer.
+- Wired Logout action to `router.post('/logout')` with Toast feedback.
+- Dynamically bound user profile name, initials, and email from `$page.props.auth.user`.
+- Added support for `suporte` role in profile view and navigation items.
 
-## 6. Management KPIs & Analytics
-- **`app/Http/Controllers/KpiDashboardController.php`**:
-  - `dashboard`: Executive metrics including `meta_populacional_egressos_es: 108000`, total attendances, remote assistance rate (60.0%), employment rate (60.6%), non-recidivism benchmark (82.5%), active jobs/courses, and mean WebRTC MOS score.
-  - `regional`: Attendance distribution across 4 macro-regions and top municipalities.
-  - `timeline`: 12-month historical time series for attendances, job referrals, and course enrollments.
-  - `telemetria`: WebRTC audio/video telemetry metrics (MOS score distribution across Excelente, Bom, Regular, Ruim, average duration, packet loss, RTT latency).
-
-## 7. WebRTC Room Token Generation & Webhook Ingestion
-- **`app/Services/WebRtcJwtService.php`**:
-  - RFC 7519 compliant HS256 JWT encoder, decoder, and validator.
-  - Verification of signature with timing-attack resistant `hash_equals()`, token expiration (`exp`), and not-before (`nbf`).
-  - Coturn STUN/TURN ICE server array generation and WebSocket signaling URL generation.
-- **`app/Http/Controllers/WebRtcTokenController.php`**:
-  - `POST /api/webrtc/token`: Generates signed room token and ICE configuration after verifying room status and participant authorization.
-- **`app/Http/Controllers/WebRtcWebhookController.php`**:
-  - `POST /api/webhooks/webrtc`: HMAC-SHA256 signature verification (`X-Signature: sha256=...`).
-  - Ingests `session.started`, `session.ended`, `recording.ready`, `session.quality_alert`.
-  - On `session.ended`, updates `VideoRoom` status to `encerrada`, persists `VideoAttendee` telemetry metrics (MOS score, packet loss, jitter, RTT), resolves atendido's `Prontuario`, automatically appends an `acolhimento_video` timeline event with attendance duration and MOS quality score, and writes a cryptographic chained audit record via `AuditService::log()`.
-
-## 8. Routing & Test Suites
-- **`routes/api.php` & `routes/web.php`**: Full route registration for all M3 public and authenticated endpoints.
-- **`tests/run_m3_verification.php`**: Standalone PHP verification runner with 49 assertions covering all M3 features (100% pass rate).
-- **`tests/Unit/` & `tests/Feature/`**: Unit and Feature test suites for WebRTC JWT, Auth, RBAC, Prontuário, Vagas, Território, KPIs, and Webhooks.
+### 7. Models and Helper Fixes
+- Added `cpf`, `telefone` to `$fillable` in `app/Models/User.php`.
+- Added `cpf`, `rg`, `filiacao_mae`, `endereco`, `telefone` to `$fillable` in `app/Models/Egresso.php`.
+- Improved resilience of `GovBrAuthService.php` when creating fallbacks in unseeded testing environments.

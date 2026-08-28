@@ -91,3 +91,51 @@ Integrity mode: development
 ### Orquestração Docker
 - [ ] Execução unificada de todos os serviços através de `docker compose up -d`.
 </USER_REQUEST>
+
+## 2026-08-18T12:56:31Z
+
+<USER_REQUEST>
+Plataforma Web completa para o sistema CONECTA EGRESSO (SEJUS/ES), integrando backend robusto em Laravel 11 (PHP 8.3/8.4) com Inertia.js + Vue 3 e TailwindCSS, microsserviço de WebRTC/Sinalização em Python (FastAPI/aiortc/WebSockets), banco de dados PostgreSQL 16 com criptografia LGPD, Redis e orquestração Docker Compose.
+
+Refatoração das notificações de alerta e implementação da rota de download da Carteira Digital em PDF no Conecta Egresso (SEJUS/ES) rodando localmente.
+
+Working directory: d:\Agile\projeto dia 18
+Integrity mode: development
+
+## Requirements
+
+### R1. Sistema de Notificações (Toasts)
+- Substituir todas as chamadas nativas de `alert()` nos arquivos Vue (`Atendimento.vue`, `Carteira.vue`, `Oportunidades.vue`, `Relatorios.vue`, `SegurancaLgpd.vue`) por um componente elegante de Toasts posicionado no canto superior direito.
+- Suportar estados de Sucesso, Erro, Alerta e Informação com cores adequadas, ícones/emojis e transições de entrada/saída suaves.
+
+### R2. Rota de Download e Geração de PDF da Carteira Digital
+- Registrar a rota GET `/carteira/pdf` em `routes/web.php` e acoplar ao serviço `CarteiraPdfService` existente para compilar e descarregar o PDF correto da carteira com o QR Code.
+- Caso o usuário não esteja logado no localhost, buscar o primeiro egresso cadastrado no banco como fallback para evitar que a página trave e permitir testes imediatos.
+
+### R3. Autenticação Completa (Login & Logout na UI)
+- Criar a página de login reativa (`Login.vue` ou semelhante) com a identidade do **Gov.br / Acesso Cidadão** e do Governo do Estado do Espírito Santo.
+- Proteger rotas internas para exigir autenticação (com bypass ou login automático se necessário em desenvolvimento local, mas funcional com credenciais).
+- Adicionar botão de **Sair/Logout** no menu/cabeçalho da aplicação que realiza o encerramento seguro da sessão.
+
+### R4. Usuário de Suporte (Agile) & Gerenciamento de Usuários
+- Adicionar o perfil de `suporte` (com permissões administrativas completas) e cadastrar o usuário inicial `suporte.agile@sejus.es.gov.br` (senha: `secret123`) via seeder.
+- Implementar uma tela de **Gerenciamento de Usuários** (acessível por administradores e suporte) que permita cadastrar, listar e editar perfis de usuários (Gestor, Técnico, Egresso, Familiar) com campos de Nome, Email, Senha, CPF e Município.
+
+### R5. Auditoria de Links no Localhost
+- Revisar todos os links no frontend e rotas web no Laravel para garantir 100% de funcionamento sem erros 404.
+
+## Acceptance Criteria
+
+### Autenticação & Gerenciamento
+- [ ] O usuário consegue fazer login e logout na interface reativa.
+- [ ] O usuário `suporte.agile@sejus.es.gov.br` consegue acessar o menu de gerenciamento e cadastrar novos usuários.
+- [ ] Perfis de usuários salvos no banco são associados corretamente aos papéis de segurança do Laravel.
+
+### Toasts & Notificações
+- [ ] Todas as chamadas de `alert()` foram eliminadas do código Vue.
+- [ ] Mensagens de sucesso ao cadastrar usuário, reemitir carteira ou salvar prontuário aparecem em Toasts modernos no canto superior direito.
+
+### Carteira Digital em PDF
+- [ ] A rota `/carteira/pdf` retorna um stream de PDF válido no navegador com cabeçalhos apropriados.
+</USER_REQUEST>
+

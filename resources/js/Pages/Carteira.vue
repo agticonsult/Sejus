@@ -216,6 +216,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import QrCodeDisplay from '../Components/QrCodeDisplay.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
+import { useToast } from '../Composables/useToast';
 
 const props = defineProps({
   egresso: {
@@ -241,6 +242,7 @@ const props = defineProps({
 });
 
 const { t } = useAccessibility();
+const toast = useToast();
 
 const egressoData = ref({ ...props.egresso });
 const carteiraToken = ref(props.token);
@@ -252,6 +254,9 @@ const handlePrint = () => {
 };
 
 const requestDuplicate = (docType) => {
-  alert(`💳 Requisição de 2ª via para "${docType}" gerada com sucesso!\nO egresso receberá notificação com a data de emissão no polo de referência.`);
+  toast.success(
+    '2ª Via Solicitada com Sucesso',
+    `Requisição de 2ª via para "${docType}" gerada com sucesso!\nO egresso receberá notificação com a data de emissão no polo de referência.`
+  );
 };
 </script>

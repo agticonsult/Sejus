@@ -38,6 +38,9 @@ if (!function_exists('config')) {
             'app.name' => 'CONECTA EGRESSO (SEJUS/ES)',
             'services.lgpd.pepper' => 'conecta_egresso_lgpd_pepper_2026_sejus_es',
             'services.carteira.signing_key' => 'sejus_carteira_digital_master_key_2026',
+            'services.document_generator.url' => 'http://localhost:8080',
+            'services.document_generator.key' => 'token-secreto-dev',
+            'services.document_generator.timeout' => 5,
         ];
         return $configs[$key] ?? $default;
     }
@@ -235,6 +238,30 @@ assertTest("PDF HTML contains Egresso Name", str_contains($html, 'LUCAS SANTOS')
 assertTest("PDF HTML contains Masked CPF", str_contains($html, '***.830.456-**'));
 assertTest("PDF HTML contains Embedded QR Code Data-URI", str_contains($html, 'data:image/svg+xml;base64,'));
 assertTest("PDF HTML contains Legal Basis Stamp (Lei 182/2021)", str_contains($html, '182/2021'));
+
+// 4.2 PDF Binary Stream Generation & Fallback
+$pdfBinary = $pdfService->generatePdf($mockEgresso);
+assertTest("generatePdf produces non-empty output", !empty($pdfBinary));
+assertTest("generatePdf output starts with %PDF- header", str_starts_with($pdfBinary, '%PDF-'));
+
+// 4.3 CarteiraPdfController & Route Verification
+$controllerFile = dirname(__DIR__) . '/app/Http/Controllers/CarteiraPdfController.php';
+assertTest("CarteiraPdfController.php exists", file_exists($controllerFile));
+$controllerContent = file_get_contents($controllerFile);
+assertTest("CarteiraPdfController defines download method", str_contains($controllerContent, 'function download('));
+assertTest("CarteiraPdfController sets application/pdf Content-Type", str_contains($controllerContent, "'Content-Type' => 'application/pdf'"));
+assertTest("CarteiraPdfController sets carteira-digital-sejus.pdf filename", str_contains($controllerContent, 'carteira-digital-sejus.pdf'));
+
+$webRoutesFile = dirname(__DIR__) . '/routes/web.php';
+$webRoutesContent = file_get_contents($webRoutesFile);
+assertTest("routes/web.php registers /carteira/pdf route", str_contains($webRoutesContent, "'/carteira/pdf'"));
+assertTest("routes/web.php binds /carteira/pdf to CarteiraPdfController", str_contains($webRoutesContent, 'CarteiraPdfController::class'));
+
+$servicesConfigFile = dirname(__DIR__) . '/config/services.php';
+$servicesConfigContent = file_get_contents($servicesConfigFile);
+assertTest("config/services.php configures document_generator", str_contains($servicesConfigContent, "'document_generator'"));
+assertTest("config/services.php sets DOCUMENT_GENERATOR_URL", str_contains($servicesConfigContent, 'DOCUMENT_GENERATOR_URL'));
+assertTest("config/services.php sets DOCUMENT_GENERATOR_KEY", str_contains($servicesConfigContent, 'DOCUMENT_GENERATOR_KEY'));
 
 echo "\n";
 

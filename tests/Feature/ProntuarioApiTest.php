@@ -10,6 +10,11 @@ use App\Models\ProntuarioTimeline;
 
 class ProntuarioApiTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+    }
     public function test_prontuario_list_clamping_and_search(): void
     {
         $this->postJson('/api/auth/switch-role', ['role' => 'tecnico']);

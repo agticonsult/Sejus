@@ -30,6 +30,12 @@ return [
         'signing_key' => env('CARTEIRA_SIGNING_KEY', 'sejus_carteira_digital_master_key_2026'),
     ],
 
+    'document_generator' => [
+        'url' => env('DOCUMENT_GENERATOR_URL', 'http://localhost:8080'),
+        'key' => env('DOCUMENT_GENERATOR_KEY', 'token-secreto-dev'),
+        'timeout' => (int) env('DOCUMENT_GENERATOR_TIMEOUT', 5),
+    ],
+
     'webrtc' => [
         'service_url' => env('WEBRTC_SERVICE_URL', 'http://python:8001'),
         'webhook_secret' => env('WEBRTC_WEBHOOK_SECRET', 'sejus_webrtc_webhook_secret_2026'),

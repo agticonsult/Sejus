@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->foreignId('perfil_id')->constrained('perfis')->onDelete('restrict');
+            $table->foreignId('municipio_id')->nullable()->constrained('municipios_es')->nullOnDelete();
             $table->string('name', 150);
             $table->string('email', 191)->unique()->index();
             $table->string('password', 255)->nullable();

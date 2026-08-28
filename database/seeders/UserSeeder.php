@@ -19,6 +19,7 @@ class UserSeeder extends Seeder
         $gestorPerfil = Perfil::where('slug', 'gestor')->first();
         $tecnicoPerfil = Perfil::where('slug', 'tecnico')->first();
         $egressoPerfil = Perfil::where('slug', 'egresso')->first();
+        $suportePerfil = Perfil::where('slug', 'suporte')->first();
 
         $users = [
             [
@@ -67,6 +68,18 @@ class UserSeeder extends Seeder
                 'cpf' => '48291037492',
                 'telefone' => '(27) 99666-5566',
                 'foto_url' => 'https://ui-avatars.com/api/?name=Roberto+Fonseca&background=475569&color=fff',
+                'ativo' => true,
+            ],
+            [
+                'id' => 5,
+                'perfil_id' => $suportePerfil ? $suportePerfil->id : 5,
+                'name' => 'Suporte Agile SEJUS',
+                'email' => 'suporte.agile@sejus.es.gov.br',
+                'password' => Hash::make('secret123'),
+                'govbr_id' => 'govbr-suporte-005',
+                'cpf' => '99988877700',
+                'telefone' => '(27) 3636-5700',
+                'foto_url' => 'https://ui-avatars.com/api/?name=Suporte+Agile&background=4f46e5&color=fff',
                 'ativo' => true,
             ],
         ];

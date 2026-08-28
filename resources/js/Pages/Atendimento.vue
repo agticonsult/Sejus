@@ -265,6 +265,7 @@ import AppLayout from '../Layouts/AppLayout.vue';
 import VideoModal from '../Components/VideoModal.vue';
 import { WebRTCClient } from '../Services/webrtc';
 import { useAccessibility } from '../Composables/useAccessibility';
+import { useToast } from '../Composables/useToast';
 
 const props = defineProps({
   initialQueue: {
@@ -278,6 +279,7 @@ const props = defineProps({
 });
 
 const { t } = useAccessibility();
+const toast = useToast();
 
 const queueList = ref([...props.initialQueue]);
 const isVideoModalOpen = ref(false);
@@ -419,7 +421,10 @@ const handleJoinQueueSubmit = () => {
 
 const handleSaveNotes = () => {
   isNotesModalOpen.value = false;
-  alert('💾 Registro salvo com sucesso no Prontuário do Egresso!\nEncaminhamento: ' + interventionForm.value.tipo_encaminhamento);
+  toast.success(
+    'Registro Salvo no Prontuário',
+    'Registro salvo com sucesso no Prontuário do Egresso!\nEncaminhamento: ' + interventionForm.value.tipo_encaminhamento
+  );
 };
 
 onBeforeUnmount(() => {

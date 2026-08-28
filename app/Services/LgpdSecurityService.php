@@ -159,4 +159,24 @@ class LgpdSecurityService
 
         return $first . ' ' . implode(' ', $middle) . ' ' . $last;
     }
+
+    /**
+     * Formats Telefone with standard LGPD mask: (27) 9****-5700
+     */
+    public function maskTelefone(?string $telefone): string
+    {
+        if (empty($telefone)) {
+            return '(**) *****-****';
+        }
+
+        $clean = preg_replace('/\D/', '', $telefone);
+        if (strlen($clean) === 11) {
+            return sprintf('(%s) %s****-%s', substr($clean, 0, 2), substr($clean, 2, 1), substr($clean, 7, 4));
+        } elseif (strlen($clean) === 10) {
+            return sprintf('(%s) ****-%s', substr($clean, 0, 2), substr($clean, 6, 4));
+        }
+
+        return '(27) *****-****';
+    }
 }
+

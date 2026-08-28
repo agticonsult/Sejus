@@ -29,11 +29,12 @@ class DatabaseMigrationsAndSeedersTest extends TestCase
         $this->assertEquals(4, MunicipioEs::where('tem_escritorio_fisico', true)->count());
         $this->assertEquals(74, MunicipioEs::where('tem_escritorio_fisico', false)->count());
 
-        // 3. Verify Profiles
-        $this->assertEquals(4, Perfil::count());
+        // 3. Verify Profiles (Gestor, Tecnico, Egresso, Familiar, Suporte)
+        $this->assertEquals(5, Perfil::count());
         $this->assertNotNull(Perfil::where('slug', 'gestor')->first());
         $this->assertNotNull(Perfil::where('slug', 'tecnico')->first());
         $this->assertNotNull(Perfil::where('slug', 'egresso')->first());
+        $this->assertNotNull(Perfil::where('slug', 'suporte')->first());
 
         // 4. Verify Demo Users
         $this->assertGreaterThanOrEqual(4, User::count());

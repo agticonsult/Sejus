@@ -157,8 +157,10 @@ import { ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
+import { useToast } from '../Composables/useToast';
 
 const { t } = useAccessibility();
+const toast = useToast();
 
 const rbacRules = [
   { modulo: 'Dashboard Executivo e Estatísticas', gestor: true, tecnico: 'operacional', egresso: 'proprio' },
@@ -176,7 +178,11 @@ const dpoForm = ref({
 });
 
 const handleDpoRequest = () => {
-  alert('⚖️ Solicitação protocolada com sucesso junto ao Encarregado de Proteção de Dados (DPO) da SEJUS/ES.\nProtocolo de Acompanhamento: DPO-2026-' + Math.floor(10000 + Math.random() * 90000));
+  const protocol = 'DPO-2026-' + Math.floor(10000 + Math.random() * 90000);
+  toast.success(
+    'Solicitação DPO Protocolada com Sucesso',
+    `Solicitação protocolada com sucesso junto ao Encarregado de Proteção de Dados (DPO) da SEJUS/ES.\nProtocolo de Acompanhamento: ${protocol}`
+  );
   dpoForm.value.detalhes = '';
 };
 </script>

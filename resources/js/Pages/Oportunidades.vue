@@ -274,8 +274,10 @@ import { ref, computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
+import { useToast } from '../Composables/useToast';
 
 const { t } = useAccessibility();
+const toast = useToast();
 
 const activeTab = ref('todos');
 const selectedOpportunity = ref(null);
@@ -435,6 +437,9 @@ const openCourseModal = (curso) => {
 const confirmApplication = () => {
   const title = selectedOpportunity.value?.titulo;
   selectedOpportunity.value = null;
-  alert(`✉️ Egresso encaminhado com sucesso para a oportunidade: "${title}"!\nSua inscrição foi enviada para o parceiro conveniado SEJUS.`);
+  toast.success(
+    'Encaminhamento Realizado com Sucesso',
+    `Egresso encaminhado com sucesso para a oportunidade: "${title}"!\nSua inscrição foi enviada para o parceiro conveniado SEJUS.`
+  );
 };
 </script>

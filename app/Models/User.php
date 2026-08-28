@@ -18,12 +18,15 @@ class User extends Authenticatable
 
     protected $fillable = [
         'perfil_id',
+        'municipio_id',
         'name',
         'email',
         'password',
         'govbr_id',
+        'cpf',
         'cpf_encrypted',
         'hash_cpf',
+        'telefone',
         'telefone_encrypted',
         'foto_url',
         'ativo',
@@ -48,6 +51,14 @@ class User extends Authenticatable
     public function perfil(): BelongsTo
     {
         return $this->belongsTo(Perfil::class, 'perfil_id');
+    }
+
+    /**
+     * Associated Municipality (for regional technicians/managers).
+     */
+    public function municipio(): BelongsTo
+    {
+        return $this->belongsTo(MunicipioEs::class, 'municipio_id');
     }
 
     /**
@@ -128,6 +139,14 @@ class User extends Authenticatable
     public function isFamiliar(): bool
     {
         return $this->perfil?->slug === 'familiar';
+    }
+
+    /**
+     * Check if user has Suporte role.
+     */
+    public function isSuporte(): bool
+    {
+        return $this->perfil?->slug === 'suporte';
     }
 
     /**
