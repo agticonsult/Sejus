@@ -10,6 +10,7 @@ use App\Models\Egresso;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\LgpdSecurityService;
+use Carbon\Carbon;
 
 class ProntuarioController extends Controller
 {
@@ -25,22 +26,78 @@ class ProntuarioController extends Controller
     {
         $user = Auth::user();
 
+        if (!$user) {
+            return response()->json([
+                'error' => 'Não autenticado ou token inválido.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        // Delta sync filter (since / updated_after)
+        $sinceParam = $request->input('since', $request->input('updated_after'));
+        $since = null;
+        if ($sinceParam !== null && $sinceParam !== '') {
+            $isValid = false;
+            if (is_numeric($sinceParam)) {
+                $isValid = true;
+                $since = Carbon::createFromTimestamp((int) $sinceParam);
+            } elseif (is_string($sinceParam) && preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/i', trim($sinceParam), $matches)) {
+                $year = (int) $matches[1];
+                $month = (int) $matches[2];
+                $day = (int) $matches[3];
+
+                if (checkdate($month, $day, $year)) {
+                    try {
+                        $since = Carbon::parse($sinceParam);
+                        $isValid = true;
+                    } catch (\Throwable $e) {
+                        $isValid = false;
+                    }
+                }
+            }
+
+            if (!$isValid || $since === null) {
+                return response()->json([
+                    'error' => 'Parâmetro de data inválido para sincronização delta. Formato esperado: ISO-8601 (ex: 2026-09-15T12:00:00Z).',
+                    'code' => 'INVALID_SYNC_TIMESTAMP',
+                ], 422);
+            }
+        }
+
         // If Egresso, restrict directly to own prontuario
-        if ($user && $user->isEgresso()) {
+        if ($user->isEgresso()) {
             $egresso = $user->egresso;
             if (!$egresso) {
                 return response()->json([
                     'data' => [],
                     'total' => 0,
+                    'current_page' => 1,
+                    'per_page' => 15,
+                    'last_page' => 1,
                     'message' => 'Nenhum perfil de egresso vinculado ao usuário autenticado.',
+                    'meta' => [
+                        'server_timestamp' => now()->toIso8601String(),
+                        'sync_count' => 0,
+                        'since' => $sinceParam ?: null,
+                        'total' => 0,
+                        'current_page' => 1,
+                        'per_page' => 15,
+                        'last_page' => 1,
+                    ],
                 ]);
             }
 
-            $prontuario = Prontuario::with([
+            $query = Prontuario::with([
                 'egresso.municipio',
                 'tecnicoResponsavel:id,name,email',
                 'timeline' => fn($q) => $q->orderBy('data_evento', 'desc'),
-            ])->where('egresso_id', $egresso->id)->first();
+            ])->where('egresso_id', $egresso->id);
+
+            if ($since) {
+                $query->where('updated_at', '>=', $since->toDateTimeString());
+            }
+
+            $prontuario = $query->first();
 
             $this->audit->log(
                 $prontuario?->id,
@@ -51,12 +108,23 @@ class ProntuarioController extends Controller
                 $request->userAgent()
             );
 
+            $data = $prontuario ? [$this->formatProntuario($prontuario, true)] : [];
+
             return response()->json([
-                'data' => $prontuario ? [$this->formatProntuario($prontuario, true)] : [],
-                'total' => $prontuario ? 1 : 0,
+                'data' => $data,
+                'total' => count($data),
                 'current_page' => 1,
                 'per_page' => 15,
                 'last_page' => 1,
+                'meta' => [
+                    'server_timestamp' => now()->toIso8601String(),
+                    'sync_count' => count($data),
+                    'since' => $sinceParam ?: null,
+                    'total' => count($data),
+                    'current_page' => 1,
+                    'per_page' => 15,
+                    'last_page' => 1,
+                ],
             ]);
         }
 
@@ -64,6 +132,10 @@ class ProntuarioController extends Controller
             'egresso.municipio',
             'tecnicoResponsavel:id,name,email',
         ]);
+
+        if ($since) {
+            $query->where('updated_at', '>=', $since->toDateTimeString());
+        }
 
         // Search query filter (numero_prontuario, egresso name, or CPF blind index)
         if ($request->filled('q')) {
@@ -108,7 +180,7 @@ class ProntuarioController extends Controller
             'VIEW',
             [
                 'action' => 'list_prontuarios',
-                'filters' => $request->only(['q', 'situacao', 'tecnico_id', 'municipio_id', 'per_page']),
+                'filters' => $request->only(['q', 'situacao', 'tecnico_id', 'municipio_id', 'per_page', 'since', 'updated_after']),
                 'total_results' => $prontuarios->total(),
             ],
             $user?->id,
@@ -124,6 +196,15 @@ class ProntuarioController extends Controller
             'per_page' => $prontuarios->perPage(),
             'total' => $prontuarios->total(),
             'last_page' => $prontuarios->lastPage(),
+            'meta' => [
+                'server_timestamp' => now()->toIso8601String(),
+                'sync_count' => count($formattedData),
+                'since' => $sinceParam ?: null,
+                'total' => $prontuarios->total(),
+                'current_page' => $prontuarios->currentPage(),
+                'per_page' => $prontuarios->perPage(),
+                'last_page' => $prontuarios->lastPage(),
+            ],
         ]);
     }
 

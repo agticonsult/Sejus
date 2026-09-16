@@ -31,6 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'rbac' => \App\Http\Middleware\CheckRole::class,
             'audit.log' => \App\Http\Middleware\AuditAccessLog::class,
             'audit' => \App\Http\Middleware\AuditAccessLog::class,
+            'auth.mobile' => \App\Http\Middleware\AuthenticateMobileToken::class,
+            'mobile.token' => \App\Http\Middleware\AuthenticateMobileToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

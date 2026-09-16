@@ -11,6 +11,7 @@ use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use App\Models\User;
 use App\Models\Perfil;
+use App\Models\MobileAccessToken;
 use App\Services\GovBrAuthService;
 use App\Services\LgpdSecurityService;
 use App\Services\AuditService;
@@ -117,8 +118,14 @@ class AuthController extends Controller
         );
 
         if ($expectsJson) {
+            $deviceName = $request->input('device_name', 'Mobile App');
+            $tokenData = MobileAccessToken::createTokenForUser($user, $deviceName);
+
             return response()->json([
                 'status' => 'authenticated',
+                'token_type' => 'Bearer',
+                'access_token' => $tokenData['plainTextToken'],
+                'expires_at' => $tokenData['accessToken']->expires_at?->toIso8601String(),
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -126,6 +133,7 @@ class AuthController extends Controller
                     'role' => $user->perfil?->slug,
                     'role_name' => $user->perfil?->nome,
                     'cpf_masked' => $user->cpf ? $this->lgpd->maskCpf($user->cpf) : null,
+                    'telefone_masked' => $user->telefone ? $this->lgpd->maskTelefone($user->telefone) : null,
                     'ativo' => (bool) $user->ativo,
                     'egresso_id' => $user->egresso?->id,
                 ],
@@ -252,8 +260,25 @@ class AuthController extends Controller
     {
         $user = Auth::user();
 
+        if (!$user && $request->bearerToken()) {
+            $token = $request->bearerToken();
+            $hashed = hash('sha256', $token);
+            $accessToken = MobileAccessToken::with(['user.perfil', 'user.egresso'])
+                ->where('token', $hashed)
+                ->first();
+
+            if ($accessToken && $accessToken->isValid() && $accessToken->user && $accessToken->user->ativo) {
+                $accessToken->forceFill(['last_used_at' => now()])->save();
+                $user = $accessToken->user;
+                Auth::setUser($user);
+            }
+        }
+
         if (!$user) {
-            return response()->json(['error' => 'Não autenticado.'], 401);
+            return response()->json([
+                'error' => 'Não autenticado ou token inválido.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
         }
 
         return response()->json([
@@ -269,9 +294,11 @@ class AuthController extends Controller
             'egresso' => $user->egresso ? [
                 'id' => $user->egresso->id,
                 'nome_completo' => $user->egresso->nome_completo,
+                'nome_social' => $user->egresso->nome_social,
                 'status_penal' => $user->egresso->status_penal,
                 'municipio_id' => $user->egresso->municipio_residencia_id,
                 'municipio_nome' => $user->egresso->municipio?->nome,
+                'macrorregiao' => $user->egresso->municipio?->macrorregiao,
             ] : null,
         ]);
     }
@@ -282,12 +309,21 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse|RedirectResponse
     {
         $userId = Auth::id();
+        $bearerToken = $request->bearerToken();
+
+        if ($bearerToken) {
+            $hashed = hash('sha256', $bearerToken);
+            MobileAccessToken::where('token', $hashed)->delete();
+        }
 
         if ($userId) {
             $this->audit->log(
                 null,
                 'AUTH_LOGOUT',
-                ['user_id' => $userId],
+                [
+                    'user_id' => $userId,
+                    'auth_type' => $bearerToken ? 'bearer_token' : 'session',
+                ],
                 $userId,
                 $request->ip(),
                 $request->userAgent()
@@ -301,7 +337,10 @@ class AuthController extends Controller
         }
 
         if ($request->expectsJson() && !$request->header('X-Inertia')) {
-            return response()->json(['status' => 'logged_out', 'message' => 'Sessão encerrada com sucesso.']);
+            return response()->json([
+                'status' => 'logged_out',
+                'message' => 'Sessão e token revogados com sucesso.',
+            ]);
         }
 
         return redirect()->route('login')->with('success', 'Sessão encerrada com sucesso.');

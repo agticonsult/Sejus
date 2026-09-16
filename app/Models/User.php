@@ -110,6 +110,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Mobile access tokens issued for this user.
+     */
+    public function mobileAccessTokens(): HasMany
+    {
+        return $this->hasMany(MobileAccessToken::class, 'user_id');
+    }
+
+    /**
      * Check if user has Gestor role.
      */
     public function isGestor(): bool

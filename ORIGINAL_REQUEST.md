@@ -139,3 +139,56 @@ Integrity mode: development
 - [ ] A rota `/carteira/pdf` retorna um stream de PDF válido no navegador com cabeçalhos apropriados.
 </USER_REQUEST>
 
+## 2026-09-15T14:44:14Z
+
+<USER_REQUEST>
+Implement and validate the Mobile API backend foundation in Laravel for the Conecta Egresso (SEJUS/ES) platform. Note: The mobile app itself will be built by a separate external team; this task is strictly focused on preparing, securing, documenting, and testing the backend API and its data synchronization layer for seamless consumption by that mobile team.
+
+Working directory: d:/Agile/projeto dia 18
+Integrity mode: development
+Requested team: Full team
+
+## Requirements
+
+### R1. Mobile Authentication & Token Lifecycle
+Provide stateless, token-based authentication suitable for mobile apps (such as bearer tokens), allowing mobile clients to authenticate, securely store access credentials, retrieve the authenticated user profile, and handle session invalidation (logout).
+
+### R2. Core Mobile API Endpoints
+Expose RESTful endpoints returning clean JSON for mobile consumption covering core Conecta Egresso capabilities, including digital wallet verification, user profile, available job openings (vagas), courses, and attendance/case records (prontuário).
+
+### R3. Data Freshness & Incremental Synchronization
+Implement a mechanism for mobile clients to track data freshness and request incremental updates. The API must support querying modified records based on update timestamps (e.g. `since` or `updated_after`), ensuring the mobile team can build efficient local caching and avoid downloading full datasets on every refresh.
+
+### R4. API Integration Documentation & Contract
+Provide clear, comprehensive documentation of the API endpoints, authentication headers, request/response JSON schemas, error handling format, and delta synchronization guidelines to enable the external mobile team to integrate without ambiguity.
+
+## Verification Resources
+The project contains an existing PHPUnit test suite located at `tests/Feature` and `phpunit.xml`.
+
+## Acceptance Criteria
+
+### Authentication
+- [ ] Mobile authentication endpoint accepts credentials and returns a valid authorization token.
+- [ ] Protected API routes reject unauthenticated requests with HTTP 401.
+- [ ] Authenticated requests with a valid token successfully access user profile information.
+- [ ] Logout endpoint revokes the mobile token.
+
+### Core Endpoints & Payloads
+- [ ] Mobile API endpoints return clean JSON payloads adhering to standard HTTP status codes (200, 201, 400, 401, 403, 404, 422).
+- [ ] Key resources (carteira, vagas, cursos, prontuários) are queryable via the API with expected data fields.
+
+### Data Freshness & Synchronization
+- [ ] Resource listing endpoints support filtering or delta synchronization using a timestamp parameter (e.g. `since` or `updated_after`).
+- [ ] Querying with a timestamp returns only records created or updated on or after that timestamp.
+- [ ] All returned resource records include reliable update timestamps (`updated_at`).
+
+### External Team Handoff & Documentation
+- [ ] API integration guide / specification document clearly defines all endpoints, sample JSON payloads, authentication flow, and delta sync protocol for the mobile development team.
+
+### Test Coverage
+- [ ] Automated feature tests verify the mobile token authentication lifecycle.
+- [ ] Automated feature tests verify the incremental synchronization behavior and edge cases (no updates, partial updates, future timestamps).
+- [ ] All new and existing test suites pass cleanly without regressions via PHPUnit (`vendor/bin/phpunit` or `php artisan test`).
+
+</USER_REQUEST>
+

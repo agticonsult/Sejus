@@ -1,87 +1,137 @@
 # Conecta Egresso (SEJUS/ES)
 
-Plataforma digital para atendimento remoto, acolhimento psicossocial e reintegração social para a população egressa do sistema prisional e seus familiares no Estado do Espírito Santo. Desenvolvido em conformidade com as diretrizes do **Edital de Contratação Pública de Solução Inovadora (CPSI) Nº 010/2026** (SEJUS/SEGER).
-
-A plataforma visa superar a barreira geográfica do atendimento presencial (anteriormente restrito a 4 municípios) ao descentralizar os serviços do Escritório Social de forma remota e continuada para todos os **78 municípios capixabas**.
-
----
-
-## 🚀 Funcionalidades Principais
-
-- **Dashboard de Monitoramento & KPIs (Seção 3.2):** Acompanhamento de metas estaduais, egressos cadastrados, contagem de atendimentos psicossociais, taxa de encaminhamento para vagas de trabalho e índice de redução de reincidência criminal.
-- **Atendimento Remoto por Vídeo (Item 3.1 `f`):** Sala de videoconferência integrada com criptografia ponta a ponta, fila de espera inteligente por prioridade e integração direta de notas de atendimento.
-- **Oportunidades & Qualificação Profissional (Item 3.1 `h`):** Painel interativo de vagas de emprego inclusivas e cursos gratuitos (SENAI, IFES e cooperativas capixabas) com filtros e encaminhamento imediato.
-- **Carteira Digital do Egresso & Documentação (Item 3.1 `e`, `i`):** Emissão visual do documento oficial com QR Code de verificação criptográfica estadual e integração com os sistemas Acesso Cidadão e Gov.br.
-- **Mapeamento Territorial dos 78 Municípios (Item 3.1 `n`):** Painel dinâmico da rede de apoio socioassistencial (CRAS, CREAS, SINE e CAPS) integrada por geolocalização.
-- **Prontuário Único & Registros Imutáveis (Item 3.1 `d`, `j`):** Linha do tempo social automatizada com carimbo de data, hora e responsável para fins de auditoria e segurança.
+> **Plataforma Digital de Acolhimento, Gestão Social e Reintegração para Egressos do Sistema Prisional do Espírito Santo.**  
+> Desenvolvido em conformidade com o **Edital CPSI Nº 010/2026** (SEJUS/SEGER - Governo do Estado do Espírito Santo).
 
 ---
 
-## 🛠️ Tecnologias Utilizadas (Tech Stack)
+## 📌 Visão Geral do Sistema
 
-- **Frontend:** HTML5 Semântico, CSS3 Moderno (Variações de Design Tokens, Flexbox, CSS Grid, Glassmorphism).
-- **Lógica e Dinâmica:** Vanilla JavaScript (ES6+) modular para roteamento de Single Page Application (SPA).
-- **Gráficos:** Renderização nativa via HTML5 Canvas (sem dependência externa de pacotes pesados no carregamento inicial).
-- **Tipografia:** Google Fonts (`Inter` e `Outfit`).
-- **Acessibilidade:** Suporte integrado a Alto Contraste, Controle de Escala de Fonte e Linguagem Simplificada (baixo letramento digital).
+O **Conecta Egresso** é uma solução completa para descentralizar e garantir a continuidade dos serviços do Escritório Social em todos os **78 municípios capixabas**.
+
+O projeto é estruturado em **duas camadas integradas**:
+
+1. **Plataforma Web (Gestão e Atendimento Técnico):**
+   - Ambiente administrativo acessado via navegador por **Gestores**, **Técnicos Sociais** e **Equipe de Suporte**.
+   - Gerenciamento completo de prontuários eletrônicos, oportunidades de emprego, cursos, emissão de carteiras digitais e telemetria/KPIs de reincidência criminal.
+   - Construído com **Laravel 11**, **Inertia.js**, **Vue 3** e **Tailwind CSS**.
+
+2. **Camada de API Mobile (Backend para o Aplicativo Móvel):**
+   - Conjunto de endpoints RESTful prontos e otimizados para consumo por **aplicativos móveis (iOS e Android)**.
+   - **Autenticação por Tokens Bearer** (com hashing SHA-256 no banco de dados), desacoplada de cookies ou sessões de navegador.
+   - **Controle de Dados Atualizados (Sincronização Delta / Incremental):** Endpoints com suporte a filtros temporais (`?since=` / `?updated_after=`) e carimbo autoritativo do servidor (`meta.server_timestamp`), permitindo que o aplicativo sincronize apenas o que mudou, economize dados móveis e funcione com cache local offline.
+   - 📖 *Documentação completa de integração para a equipe do aplicativo disponível em:* [`MOBILE_API_SPEC.md`](./MOBILE_API_SPEC.md).
 
 ---
 
-## ⚙️ Pré-requisitos
+## 🚀 Principais Módulos e Recursos
 
-Para rodar e testar o protótipo, você só precisa de:
-- Um navegador de internet moderno (Google Chrome, Microsoft Edge, Mozilla Firefox ou Safari).
-- Python (opcional, apenas se quiser executar como um servidor HTTP local).
+* **Carteira Digital do Egresso:**
+  * Emissão digital do documento oficial com QR Code assinado criptograficamente (HMAC-SHA256) para validação pública e rápida conferência de autenticidade.
+  * Serviço de geração de PDF com resiliência tripla (microsserviço Node/Puppeteer, fallback local Dompdf e stream textual).
+* **Prontuário Social Único & Linha do Tempo:**
+  * Registro imutável de atendimentos, encaminhamentos e evoluções psicossociais com cadeia criptográfica auditável.
+  * Isolamento estrito de acesso: egressos visualizam somente seu próprio histórico; técnicos e gestores têm controle por perfil.
+* **Oportunidades de Emprego & Qualificação Profissional:**
+  * Painel de vagas inclusivas com filtros de municípios, ações afirmativas para egressos e incentivos do programa Empresa Amiga.
+  * Catálogo de cursos de capacitação técnica (IFES, SENAI) com filtros por modalidade EAD e benefício de bolsa auxílio.
+* **Atendimento Remoto por Vídeo (WebRTC):**
+  * Salas virtuais de videoconferência psicossocial com sinalização em tempo real e tokens de sessão temporários.
+* **Mapeamento da Rede de Apoio nos 78 Municípios:**
+  * Localização georreferenciada de unidades do CRAS, CREAS, SINE e CAPS em todo o Espírito Santo.
+* **Segurança e Conformidade com a LGPD:**
+  * Criptografia em repouso (AES-256-CBC) para campos sensíveis como CPF.
+  * Mascaramento automático de identificadores nas respostas de API móvel (`192.***.***-78`).
 
 ---
 
-## 💻 Como Rodar o Projeto Localmente
+## 🛠️ Tecnologias Utilizadas
 
-### Método 1: Abertura Direta (Sem Instalação)
-1. Clone o repositório ou baixe a pasta do projeto:
+* **Backend & API:** PHP 8.2+, Laravel 11, Eloquent ORM, SQLite / MySQL.
+* **Frontend Web:** Vue 3 (Composition API, `<script setup>`), Inertia.js, Tailwind CSS 3.4, Lucide Icons.
+* **Autenticação:** Dual-mode — Sessão Web (Gov.br / Acesso Cidadão / Credenciais) e Tokens Móveis Bearer RFC 6750.
+* **Microsserviços:** Serviço de sinalização WebRTC e gerador de documentos PDF.
+* **Testes & Qualidade:** PHPUnit com suítes de testes unitários, testes de integração, auditoria adversarial e verificação LGPD.
+
+---
+
+## ⚙️ Instalação e Execução Local
+
+### Pré-requisitos
+* PHP 8.2 ou superior (com extensões `pdo_sqlite` ou `pdo_mysql`, `mbstring`, `openssl`, `curl`)
+* Composer
+* Node.js (v18+) e NPM
+
+### Passo a Passo
+
+1. **Clonar o repositório:**
    ```bash
    git clone https://github.com/agticonsult/Sejus.git
    cd Sejus
    ```
-2. Dê um **duplo clique** no arquivo **`index.html`**.
-3. O projeto abrirá instantaneamente em seu navegador padrão.
+
+2. **Instalar as dependências do backend:**
+   ```bash
+   composer install
+   ```
+
+3. **Instalar as dependências do frontend:**
+   ```bash
+   npm install
+   npm run build
+   ```
+
+4. **Configurar as variáveis de ambiente:**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+
+5. **Executar migrações e popular dados iniciais:**
+   ```bash
+   php artisan migrate --seed
+   ```
+
+6. **Iniciar o servidor de desenvolvimento:**
+   ```bash
+   php artisan serve
+   ```
+   Acesse a aplicação no navegador em: **[http://localhost:8000](http://localhost:8000)**.
 
 ---
 
-### Método 2: Servidor Local HTTP (Recomendado para Apresentações)
-Para executar a aplicação rodando sob protocolo HTTP (evitando problemas de CORS em testes avançados):
+## 🧪 Testes Automatizados
 
-#### Utilizando Python:
-No diretório raiz do projeto, execute:
+O projeto conta com uma cobertura rigorosa de testes cobrindo rotas web, APIs móveis, segurança LGPD e cenários adversariais:
+
 ```bash
-python -m http.server 8080
-```
-Em seguida, abra o navegador e acesse:
-👉 **[http://localhost:8080](http://localhost:8080)**
-
-#### Utilizando Node.js (se instalado):
-Instale e execute um servidor simples:
-```bash
-npx serve ./
+php artisan test
 ```
 
----
-
-## 🗺️ Estrutura de Arquivos do Projeto
-
-```
-Sejus/
-├── index.html        # Estrutura principal da Single Page Application (SPA)
-├── styles.css        # Estilos globais, temas de acessibilidade e design system
-├── app.js            # Lógica de controle de rotas, gráficos e simulações
-├── README.md         # Documentação de referência do repositório
-└── DOCUMENTO_EXECUTIVO_CONECTA_EGRESSO.md  # Relatório executivo para a gestão e líderes
+### Resultados da Homologação
+```text
+Tests:    135 passed (768 assertions)
+Duration: 27.60s
+Status:   100% Sucesso (0 falhas)
 ```
 
 ---
 
-## 🔒 Segurança da Informação & LGPD
+## 📱 Guia de Integração para a Equipe Mobile
 
-* **Níveis de Acesso Diferenciados (Item 3.1 `l`):** A plataforma divide as visões em **Egresso** (visualização simples e solicitações), **Técnico** (operacional e prontuários) e **Gestor** (estatísticas globais descaracterizadas).
-* **Trilhas de Auditoria (Item 3.1 `d`):** Todas as alterações nos prontuários possuem identificação inequívoca do técnico executor e carimbo temporal automático do servidor.
-* **Segurança de Dados (Item 3.1 `c`):** Interface preparada para comunicação HTTPS e criptografia AES-256 no tráfego de prontuários.
+Se você faz parte da equipe responsável pelo desenvolvimento do aplicativo para celular (Android / iOS), consulte o arquivo de especificação técnica:
+
+👉 **[Especificação Completa da API Mobile (MOBILE_API_SPEC.md)](./MOBILE_API_SPEC.md)**
+
+Neste arquivo você encontrará:
+- Ciclo de vida da autenticação (Login via e-mail ou CPF, cabeçalho `Authorization: Bearer <token>`, perfil e logout).
+- Como funciona o protocolo de sincronização delta (`?since=YYYY-MM-DDTHH:MM:SSZ`).
+- Schemas JSON de requisição e resposta para Carteira Digital, Vagas, Cursos e Prontuários.
+- Tabela de códigos de erro HTTP e diretrizes de cache offline (SQLite local no dispositivo).
+
+---
+
+## 📄 Licença e Governança
+
+Projeto desenvolvido para a **Secretaria de Estado da Justiça do Espírito Santo (SEJUS/ES)** e Secretaria de Gestão e Recursos Humanos (SEGER/ES) no âmbito do Edital CPSI Nº 010/2026.
+

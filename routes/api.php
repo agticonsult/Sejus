@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CarteiraValidationController;
+use App\Http\Controllers\CarteiraController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProntuarioController;
 use App\Http\Controllers\ProntuarioTimelineController;
@@ -49,9 +50,13 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['web'])->group(function () {
-    Route::get('/auth/me', [AuthController::class, 'me'])->name('api.auth.me');
+Route::middleware(['web', 'auth.mobile:optional'])->group(function () {
+    Route::get('/auth/me', [AuthController::class, 'me'])->middleware('auth.mobile')->name('api.auth.me');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->name('api.auth.logout');
+
+    // Carteira Digital do Egresso (Mobile & Web)
+    Route::get('/carteira', [CarteiraController::class, 'show'])->middleware('auth.mobile')->name('api.carteira');
+    Route::get('/carteira/digital', [CarteiraController::class, 'show'])->middleware('auth.mobile')->name('api.carteira.digital');
 
     // WebRTC Signaling Room Token Generation
     Route::post('/webrtc/token', [WebRtcTokenController::class, 'generateToken'])->name('api.webrtc.token');

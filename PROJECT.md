@@ -27,16 +27,21 @@
 | 16 | User Management Navigation | Add "Gerenciamento de Usuários" link in `AppLayout.vue` visible for Gestor and Suporte | M4 | ORIGINAL_REQUEST §R4 |
 | 17 | Route & Link 404 Audit | Audit and eliminate all 404 errors across frontend navigation and backend routes | M5 | ORIGINAL_REQUEST §R5 |
 | 18 | E2E Testing & Verification Suite | Opaque-box and unit testing covering all features, zero-404 audit, and forensic integrity verification | M6 | ORIGINAL_REQUEST §Acceptance Criteria |
+| 19 | Mobile Access Tokens & Auth (R1) | Stateless Bearer token lifecycle, `mobile_access_tokens` table, `MobileAccessToken` model, `AuthenticateMobileToken` middleware, login token issuance, profile, revocation | M7 | ORIGINAL_REQUEST (2026-09-15) §R1 |
+| 20 | Core Mobile Endpoints (R2) | Dedicated `GET /api/carteira` digital wallet, QR code verification, role-scoped prontuários, vagas, cursos | M7 | ORIGINAL_REQUEST (2026-09-15) §R2 |
+| 21 | Data Freshness & Delta Sync (R3) | Incremental delta synchronization via `since` / `updated_after` with `>=` comparison, 422 format validation, and `meta.server_timestamp` | M7 | ORIGINAL_REQUEST (2026-09-15) §R3 |
+| 22 | Mobile API Contract & Spec (R4) | Authoritative `MOBILE_API_SPEC.md` integration guide for external mobile development team | M7 | ORIGINAL_REQUEST (2026-09-15) §R4 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | Reactive Toast Notifications | useToast composable, ToastContainer component, AppLayout integration, replace 5 alert() calls | none | PLANNED |
-| 2 | PDF Generation & Fallback | CarteiraPdfService API integration, Dompdf fallback, CarteiraPdfController, GET /carteira/pdf route | none | PLANNED |
-| 3 | Authentication & Gov.br Login | Login.vue, AuthController showLogin/logout, HandleInertiaRequests middleware, AppLayout logout button | none | PLANNED |
-| 4 | Agile Support User & User Mgmt | PerfilSeeder (suporte), UserSeeder (suporte.agile), User model, UserController, Usuarios.vue, navigation | M3 | PLANNED |
-| 5 | Route & Link 404 Audit | Verify and test all navigation links, web routes, and API endpoints for zero 404s | M1, M2, M3, M4 | PLANNED |
-| 6 | E2E Verification & Final Audit | Automated test suite execution, Challenger stress tests, Forensic Auditor integrity gate | M5 | PLANNED |
+| 1 | Reactive Toast Notifications | useToast composable, ToastContainer component, AppLayout integration, replace 5 alert() calls | none | COMPLETED |
+| 2 | PDF Generation & Fallback | CarteiraPdfService API integration, Dompdf fallback, CarteiraPdfController, GET /carteira/pdf route | none | COMPLETED |
+| 3 | Authentication & Gov.br Login | Login.vue, AuthController showLogin/logout, HandleInertiaRequests middleware, AppLayout logout button | none | COMPLETED |
+| 4 | Agile Support User & User Mgmt | PerfilSeeder (suporte), UserSeeder (suporte.agile), User model, UserController, Usuarios.vue, navigation | M3 | COMPLETED |
+| 5 | Route & Link 404 Audit | Verify and test all navigation links, web routes, and API endpoints for zero 404s | M1, M2, M3, M4 | COMPLETED |
+| 6 | E2E Verification & Final Audit | Automated test suite execution, Challenger stress tests, Forensic Auditor integrity gate | M5 | COMPLETED |
+| 7 | Mobile API Backend Foundation | Mobile Bearer auth lifecycle, Carteira digital endpoint, delta synchronization, comprehensive API spec | M6 | COMPLETED |
 
 ## Interface Contracts
 
@@ -60,14 +65,24 @@
 - `PUT /usuarios/{id}` -> Updates user fields, optional password update, updates audit log.
 - `DELETE /usuarios/{id}` -> Toggles active status or deletes user with audit log.
 
+### Mobile API Contract (`MOBILE_API_SPEC.md` & `routes/api.php`)
+- **Authentication**: `POST /api/auth/login` -> Bearer token generation, `GET /api/auth/me` -> Authenticated profile, `POST /api/auth/logout` -> Token revocation.
+- **Middleware**: `auth.mobile` (`AuthenticateMobileToken.php`) validating `Authorization: Bearer <token>`, hashing with SHA-256, expiration check, active account check.
+- **Digital Wallet**: `GET /api/carteira` -> Official wallet document payload, cryptographic QR token, validation URL, and auth code.
+- **Delta Sync Protocol**: `GET /api/vagas`, `GET /api/cursos`, `GET /api/prontuarios` support `since` / `updated_after` timestamp parameter, returning `meta.server_timestamp`, `sync_count`, and filtered data (`updated_at >= since`).
+
 ## Code Layout
 - `app/Services/CarteiraPdfService.php` - PDF rendering, microservice client, and Dompdf fallback
 - `app/Http/Controllers/CarteiraPdfController.php` - PDF download route handler
-- `app/Http/Controllers/AuthController.php` - Login, logout, gov.br SSO, and role switching
+- `app/Http/Controllers/AuthController.php` - Login, logout, gov.br SSO, role switching, and mobile Bearer token issuance
+- `app/Http/Controllers/CarteiraController.php` - Dedicated digital wallet endpoint
 - `app/Http/Controllers/UserController.php` - User management CRUD and listing
 - `app/Http/Middleware/HandleInertiaRequests.php` - Inertia shared props (auth user, flash)
 - `app/Http/Middleware/CheckRole.php` - Role authorization middleware
-- `app/Models/User.php` - User model, LGPD encryption mutators, role helper methods
+- `app/Http/Middleware/AuthenticateMobileToken.php` - Mobile Bearer token authentication middleware
+- `app/Models/User.php` - User model, LGPD encryption mutators, role helper methods, mobile access token relation
+- `app/Models/MobileAccessToken.php` - Mobile Bearer token model and factory
+- `database/migrations/2026_01_01_000013_create_mobile_access_tokens_table.php` - Mobile token table schema
 - `database/seeders/PerfilSeeder.php` - System profiles seeder (includes suporte)
 - `database/seeders/UserSeeder.php` - Default users seeder (includes suporte.agile)
 - `resources/js/Composables/useToast.js` - Reactive Toast composable
@@ -76,3 +91,8 @@
 - `resources/js/Pages/Usuarios.vue` - User management page with CRUD modal
 - `resources/js/Layouts/AppLayout.vue` - Main layout with ToastContainer, Logout button, and User Mgmt nav item
 - `routes/web.php` - Web routes definition
+- `routes/api.php` - API routes definition (Mobile Bearer and Web dual auth)
+- `MOBILE_API_SPEC.md` - Complete authoritative mobile API contract documentation
+- `tests/Feature/MobileAuthApiTest.php` - Automated tests for mobile token authentication lifecycle
+- `tests/Feature/MobileCoreEndpointsTest.php` - Automated tests for mobile core endpoints (wallet, vacancies, courses, prontuário)
+- `tests/Feature/MobileDeltaSyncTest.php` - Automated tests for incremental delta sync protocol

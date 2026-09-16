@@ -11,6 +11,7 @@ use App\Models\Egresso;
 use App\Models\Prontuario;
 use App\Models\ProntuarioTimeline;
 use App\Services\AuditService;
+use Carbon\Carbon;
 
 class VagaEmpregoController extends Controller
 {
@@ -90,6 +91,40 @@ class VagaEmpregoController extends Controller
             });
         }
 
+        // Delta sync filter (since / updated_after)
+        $sinceParam = $request->input('since', $request->input('updated_after'));
+        if ($sinceParam !== null && $sinceParam !== '') {
+            $isValid = false;
+            $since = null;
+
+            if (is_numeric($sinceParam)) {
+                $isValid = true;
+                $since = Carbon::createFromTimestamp((int) $sinceParam);
+            } elseif (is_string($sinceParam) && preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/i', trim($sinceParam), $matches)) {
+                $year = (int) $matches[1];
+                $month = (int) $matches[2];
+                $day = (int) $matches[3];
+
+                if (checkdate($month, $day, $year)) {
+                    try {
+                        $since = Carbon::parse($sinceParam);
+                        $isValid = true;
+                    } catch (\Throwable $e) {
+                        $isValid = false;
+                    }
+                }
+            }
+
+            if (!$isValid || $since === null) {
+                return response()->json([
+                    'error' => 'Parâmetro de data inválido para sincronização delta. Formato esperado: ISO-8601 (ex: 2026-09-15T12:00:00Z).',
+                    'code' => 'INVALID_SYNC_TIMESTAMP',
+                ], 422);
+            }
+
+            $query->where('updated_at', '>=', $since->toDateTimeString());
+        }
+
         $perPage = max(1, min(100, (int) $request->input('per_page', 15)));
         $vagas = $query->orderBy('id', 'desc')->paginate($perPage);
 
@@ -99,6 +134,15 @@ class VagaEmpregoController extends Controller
             'per_page' => $vagas->perPage(),
             'total' => $vagas->total(),
             'last_page' => $vagas->lastPage(),
+            'meta' => [
+                'server_timestamp' => now()->toIso8601String(),
+                'sync_count' => count($vagas->items()),
+                'since' => $sinceParam ?: null,
+                'total' => $vagas->total(),
+                'current_page' => $vagas->currentPage(),
+                'per_page' => $vagas->perPage(),
+                'last_page' => $vagas->lastPage(),
+            ],
         ]);
     }
 
