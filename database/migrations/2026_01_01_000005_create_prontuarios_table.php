@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('numero_prontuario', 30)->unique()->index();
             $table->foreignId('egresso_id')->unique()->constrained('egressos')->cascadeOnDelete();
-            $table->foreignId('tecnico_responsavel_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('tecnico_responsavel_id')->nullable()->constrained('users', 'id', 'fk_prontuarios_tecnico_respons')->nullOnDelete();
             $table->string('situacao', 30)->default('ativo')->index(); // ativo, em_acompanhamento, arquivado, desligado
             $table->text('resumo_diagnostico')->nullable();
             $table->text('meta_plano_individual')->nullable();

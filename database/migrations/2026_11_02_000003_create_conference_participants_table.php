@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('conference_participants', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('conference_record_id')->constrained('conference_records')->cascadeOnDelete()->index();
+            $table->foreignId('conference_record_id')->constrained('conference_records', 'id', 'fk_conference_partici_conferen')->cascadeOnDelete()->index();
             $table->string('participant_name', 191)->index();
             $table->string('display_name', 255)->nullable();
             $table->string('user_identifier', 191)->nullable()->index();
             $table->string('user_type', 30)->default('signedin')->index();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete()->index();
+            $table->foreignId('user_id')->nullable()->constrained('users', 'id', 'fk_conference_partici_user_id')->nullOnDelete()->index();
             $table->timestamp('earliest_start_time')->nullable();
             $table->timestamp('latest_end_time')->nullable();
             $table->integer('duration_seconds')->nullable();

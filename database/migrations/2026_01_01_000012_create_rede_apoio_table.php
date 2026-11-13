@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('nome', 150)->index();
             $table->string('tipo', 30)->index(); // CRAS, CREAS, SINE, CAPS, CASA_CIDADAO, DEFENSORIA
-            $table->foreignId('municipio_id')->constrained('municipios_es')->cascadeOnDelete()->index();
+            $table->foreignId('municipio_id')->constrained('municipios_es', 'id', 'fk_rede_apoio_municipio_id')->cascadeOnDelete()->index();
             $table->string('endereco', 255);
             $table->string('telefone', 50)->nullable();
             $table->string('email', 150)->nullable();

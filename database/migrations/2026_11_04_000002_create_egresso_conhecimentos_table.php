@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('egresso_conhecimentos', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('egresso_id')->constrained('egressos')->cascadeOnDelete()->index();
-            $table->foreignId('conhecimento_id')->constrained('conhecimentos')->cascadeOnDelete()->index();
+            $table->foreignId('egresso_id')->constrained('egressos', 'id', 'fk_egresso_conhecimen_egresso_')->cascadeOnDelete()->index();
+            $table->foreignId('conhecimento_id')->constrained('conhecimentos', 'id', 'fk_egresso_conhecimen_conhecim')->cascadeOnDelete()->index();
             $table->string('nivel', 20)->default('basico')->index(); // basico, intermediario, avancado
             $table->boolean('necessita_treinamento')->default(false)->index();
             $table->text('observacoes')->nullable();

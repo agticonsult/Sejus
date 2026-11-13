@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('hash_cpf', 64)->unique()->index();
             $table->text('rg_encrypted')->nullable();
             $table->text('filiacao_mae_encrypted')->nullable();
-            $table->foreignId('municipio_residencia_id')->constrained('municipios_es')->restrictOnDelete();
+            $table->foreignId('municipio_residencia_id')->constrained('municipios_es', 'id', 'fk_egressos_municipio_residenc')->restrictOnDelete();
             $table->text('endereco_encrypted')->nullable();
             $table->text('telefone_encrypted')->nullable();
             $table->string('escolaridade', 50)->nullable();

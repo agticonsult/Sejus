@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('titulo', 150)->index();
             $table->text('descricao');
             $table->string('categoria', 50)->index(); // industrial, tecnologia, gestao, servicos, artesanato
-            $table->foreignId('municipio_id')->nullable()->constrained('municipios_es')->nullOnDelete()->index();
+            $table->foreignId('municipio_id')->nullable()->constrained('municipios_es', 'id', 'fk_cursos_capacitacao_municipi')->nullOnDelete()->index();
             $table->integer('carga_horaria');
             $table->string('modalidade', 30)->default('presencial'); // presencial, ead, hibrido
             $table->decimal('bolsa_auxilio', 10, 2)->nullable();

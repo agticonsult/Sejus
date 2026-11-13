@@ -14,8 +14,8 @@ return new class extends Migration
     {
         Schema::create('prontuario_audit_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('prontuario_id')->nullable()->constrained('prontuarios')->cascadeOnDelete()->index();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete()->index();
+            $table->foreignId('prontuario_id')->nullable()->constrained('prontuarios', 'id', 'fk_prontuario_audit_l_prontuar')->cascadeOnDelete()->index();
+            $table->foreignId('user_id')->nullable()->constrained('users', 'id', 'fk_prontuario_audit_l_user_id')->nullOnDelete()->index();
             $table->string('acao', 50)->index(); // VIEW, CREATE, UPDATE, EXPORT_PDF, VALIDATE_QR, ANONYMIZE, UNAUTHORIZED_ACCESS
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();

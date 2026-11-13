@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('conference_records', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('meeting_room_id')->nullable()->constrained('meeting_rooms')->nullOnDelete()->index();
+            $table->foreignId('meeting_room_id')->nullable()->constrained('meeting_rooms', 'id', 'fk_conference_records_meeting_')->nullOnDelete()->index();
             $table->string('conference_record_name', 191)->unique()->index();
             $table->string('space_name', 191)->index();
             $table->string('status', 30)->default('ended')->index();

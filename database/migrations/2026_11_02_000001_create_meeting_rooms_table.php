@@ -24,8 +24,8 @@ return new class extends Migration
             $table->string('default_join_as_viewer_type', 20)->default('ON');
             $table->string('status', 30)->default('active')->index();
             $table->json('raw_config')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete()->index();
-            $table->foreignId('prontuario_id')->nullable()->constrained('prontuarios')->nullOnDelete()->index();
+            $table->foreignId('created_by')->nullable()->constrained('users', 'id', 'fk_meeting_rooms_created_by')->nullOnDelete()->index();
+            $table->foreignId('prontuario_id')->nullable()->constrained('prontuarios', 'id', 'fk_meeting_rooms_prontuario_id')->nullOnDelete()->index();
             $table->timestamps();
         });
     }

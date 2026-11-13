@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('titulo', 150)->index();
             $table->text('descricao');
             $table->string('categoria', 50)->index(); // logistica, construcao_civil, agropecuaria, servicos, industria, comercio
-            $table->foreignId('municipio_id')->constrained('municipios_es')->restrictOnDelete()->index();
+            $table->foreignId('municipio_id')->constrained('municipios_es', 'id', 'fk_vagas_emprego_municipio_id')->restrictOnDelete()->index();
             $table->decimal('salario', 10, 2)->nullable();
             $table->string('regime_contratacao', 30)->default('CLT'); // CLT, PJ, Temporario, Estagio
             $table->boolean('afirmativa_egresso')->default(true)->index();

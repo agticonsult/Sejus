@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('video_attendees', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('video_room_id')->constrained('video_rooms')->cascadeOnDelete()->index();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete()->index();
+            $table->foreignId('video_room_id')->constrained('video_rooms', 'id', 'fk_video_attendees_video_room_')->cascadeOnDelete()->index();
+            $table->foreignId('user_id')->nullable()->constrained('users', 'id', 'fk_video_attendees_user_id')->nullOnDelete()->index();
             $table->string('peer_id', 64)->nullable();
             $table->string('role', 30); // tecnico, egresso, familiar, observador
             $table->timestamp('joined_at')->useCurrent();

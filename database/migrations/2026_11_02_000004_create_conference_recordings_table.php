@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('conference_recordings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('conference_record_id')->constrained('conference_records')->cascadeOnDelete()->index();
+            $table->foreignId('conference_record_id')->constrained('conference_records', 'id', 'fk_conference_recordi_conferen')->cascadeOnDelete()->index();
             $table->string('recording_name', 191)->unique()->index();
             $table->string('state', 50)->default('FILE_GENERATED')->index();
             $table->string('drive_file_id', 191)->nullable()->index();

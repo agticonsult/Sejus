@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('mobile_access_tokens', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete()->index();
+            $table->foreignId('user_id')->constrained('users', 'id', 'fk_mobile_access_toke_user_id')->cascadeOnDelete()->index();
             $table->string('name', 100);
             $table->string('token', 64)->unique()->index();
             $table->json('abilities')->nullable();
