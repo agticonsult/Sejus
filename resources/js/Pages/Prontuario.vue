@@ -81,7 +81,7 @@
 
       <!-- Empty State quando nenhum prontuário está selecionado -->
       <div
-        v-if="!prontuarioData"
+        v-if="!egressoData"
         class="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3 shadow-xs"
       >
         <div class="w-14 h-14 bg-sky-50 text-sky-600 rounded-2xl mx-auto flex items-center justify-center text-2xl font-bold">
