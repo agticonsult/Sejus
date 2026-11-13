@@ -299,6 +299,7 @@
         @toggle-audio="handleToggleAudio"
         @toggle-video="handleToggleVideo"
         @toggle-screenshare="handleToggleScreenShare"
+        @open-meet="createGoogleMeetRoom"
       />
     </div>
   </AppLayout>
@@ -421,23 +422,74 @@ const admitAttendee = async (ticket) => {
   await initWebRTC();
 };
 
-const initWebRTC = async () => {
-  rtcClient = new WebRTCClient({
-    roomId: activeRoomId.value,
-    userName: localUserName.value,
-    role: localUserRole.value,
-    onTelemetryUpdate: (data) => {
-      currentTelemetry.value = data;
-    },
-    onQualityAlert: (alert) => {
-      console.warn('WebRTC Quality Alert:', alert);
-    },
-  });
+const videoModalRef = ref(null);
 
+const initWebRTC = async () => {
   try {
-    await rtcClient.startLocalMedia();
+    // 1. Obter token JWT de autenticação WebRTC da API Laravel
+    let token = '';
+    try {
+      const tokenRes = await fetch('/api/webrtc/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({
+          room_id: activeRoomId.value,
+          room_code: activeRoomId.value,
+          role: 'tecnico',
+        }),
+      });
+      if (tokenRes.ok) {
+        const tokenData = await tokenRes.json();
+        token = tokenData.token || '';
+      }
+    } catch (tokenErr) {
+      console.warn('Falha ao obter token WebRTC:', tokenErr);
+    }
+
+    // 2. Instanciar cliente WebRTC com signaling WebSocket
+    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.hostname;
+    // Nginx faz proxy do /ws/ para a porta 8001 do Python
+    const wsUrl = `${wsProto}//${wsHost}/ws`;
+
+    rtcClient = new WebRTCClient({
+      wsUrl,
+      token,
+      roomId: activeRoomId.value,
+      userName: localUserName.value,
+      role: localUserRole.value,
+      onRemoteStream: (stream) => {
+        if (videoModalRef.value) {
+          videoModalRef.value.hasRemoteStream = true;
+          if (videoModalRef.value.remoteVideoRef) {
+            videoModalRef.value.remoteVideoRef.srcObject = stream;
+          }
+        }
+      },
+      onTelemetryUpdate: (data) => {
+        currentTelemetry.value = data;
+      },
+      onQualityAlert: (alert) => {
+        console.warn('WebRTC Quality Alert:', alert);
+      },
+    });
+
+    // 3. Iniciar mídia local (webcam e microfone)
+    const localStream = await rtcClient.startLocalMedia({ audio: true, video: true });
+    if (localStream && videoModalRef.value?.localVideoRef) {
+      videoModalRef.value.localVideoRef.srcObject = localStream;
+    }
+
+    // 4. Conectar WebSocket de sinalização se houver token
+    if (token) {
+      await rtcClient.connect();
+    }
   } catch (err) {
-    console.warn('Could not start media tracks:', err);
+    console.warn('Erro ao inicializar WebRTC:', err);
   }
 };
 

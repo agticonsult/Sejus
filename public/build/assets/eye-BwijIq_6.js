@@ -1,4 +1,4 @@
-import{c}from"./AccessibilityToolbar-BPcREfB7.js";/**
+import{c}from"./AccessibilityToolbar-YFNcKIVB.js";/**
  * @license lucide-vue-next v0.460.0 - ISC
  *
  * This source code is licensed under the ISC license.

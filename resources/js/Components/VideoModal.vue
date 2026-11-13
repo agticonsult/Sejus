@@ -88,7 +88,38 @@
                 playsinline
                 class="w-full h-full object-cover"
               ></video>
-              <div class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded text-xs font-semibold text-white flex items-center gap-2">
+
+              <!-- Waiting overlay if remote participant not connected yet -->
+              <div
+                v-if="!hasRemoteStream"
+                class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-900/90 z-10"
+              >
+                <div class="w-14 h-14 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl mb-3 animate-pulse">
+                  👤
+                </div>
+                <h3 class="text-sm font-bold text-white mb-1">Aguardando o Egresso / Cidadão entrar...</h3>
+                <p class="text-xs text-slate-400 max-w-xs mb-4">
+                  Envie o link de convite ou abra uma sala do Google Meet caso ele tenha dificuldades de conexão.
+                </p>
+                <div class="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    @click="copyInviteLink"
+                    class="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <span>🔗 {{ inviteCopied ? 'Link Copiado!' : 'Copiar Link WebRTC' }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    @click="emit('open-meet')"
+                    class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <span>🎥 Migrar para Google Meet</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded text-xs font-semibold text-white flex items-center gap-2 z-20">
                 <span>{{ remoteUserName || 'Atendido / Egresso' }}</span>
                 <span v-if="isRemoteMuted" class="text-red-400">🔇</span>
               </div>
@@ -286,10 +317,12 @@ const emit = defineEmits([
   'toggle-video',
   'toggle-screenshare',
   'send-chat',
+  'open-meet',
 ]);
 
 const localVideoRef = ref(null);
 const remoteVideoRef = ref(null);
+const hasRemoteStream = ref(false);
 const showChat = ref(false);
 const chatInput = ref('');
 const chatMessages = ref([
@@ -367,5 +400,6 @@ const handleSendMessage = () => {
 defineExpose({
   localVideoRef,
   remoteVideoRef,
+  hasRemoteStream,
 });
 </script>
