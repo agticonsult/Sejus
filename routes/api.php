@@ -103,7 +103,7 @@ Route::middleware(['web', 'auth.mobile:optional'])->group(function () {
 
     // User Management API Resource
     Route::apiResource('users', UserController::class);
-    Route::apiResource('usuarios', UserController::class);
+    Route::apiResource('usuarios', UserController::class)->names('api.usuarios');
 
     // Management KPIs & Analytics
     Route::prefix('kpis')->group(function () {
