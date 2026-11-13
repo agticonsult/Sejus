@@ -12,12 +12,17 @@
 BEGIN;
 
 -- ------------------------------------------------------------------------------
--- 1. TRUNCAGEM DAS TABELAS TRANSACIONAIS E DE TESTE
+-- 0. DESATIVA TEMPORARIAMENTE AS REGRAS DE IMUTABILIDADE DO POSTGRESQL
 -- ------------------------------------------------------------------------------
--- RESTART IDENTITY: reinicia as sequences de chave primária para o valor 1.
--- CASCADE: propaga a limpeza para dependências de chaves estrangeiras.
--- Observação sobre prontuario_audit_logs: O comando TRUNCATE não dispara a regra
--- 'prontuario_audit_logs_no_delete', operando de forma 100% eficaz no PostgreSQL 16.
+-- A regra 'ON UPDATE TO prontuario_audit_logs DO INSTEAD NOTHING' bloqueia o 
+-- 'ON DELETE SET NULL' na foreign key fk_prontuario_aud_user_id quando deletamos
+-- usuários de teste. Desativamos temporariamente a regra durante a transação.
+-- ------------------------------------------------------------------------------
+DROP RULE IF EXISTS prontuario_audit_logs_no_update ON prontuario_audit_logs;
+DROP RULE IF EXISTS prontuario_audit_logs_no_delete ON prontuario_audit_logs;
+
+-- ------------------------------------------------------------------------------
+-- 1. TRUNCAGEM DAS TABELAS TRANSACIONAIS E DE TESTE
 -- ------------------------------------------------------------------------------
 TRUNCATE TABLE 
     conference_transcript_entries,
@@ -121,5 +126,11 @@ BEGIN
 
     RAISE NOTICE 'VALIDAÇÃO CONCLUÍDA: Banco de dados sanitizado com sucesso e 100%% íntegro para Go-Live.';
 END $$;
+
+-- ------------------------------------------------------------------------------
+-- 6. REATIVA AS REGRAS DE IMUTABILIDADE DO POSTGRESQL (LGPD)
+-- ------------------------------------------------------------------------------
+CREATE RULE prontuario_audit_logs_no_update AS ON UPDATE TO prontuario_audit_logs DO INSTEAD NOTHING;
+CREATE RULE prontuario_audit_logs_no_delete AS ON DELETE TO prontuario_audit_logs DO INSTEAD NOTHING;
 
 COMMIT;
