@@ -1,61 +1,82 @@
 <?php
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CarteiraController;
 use App\Http\Controllers\CarteiraValidationController;
 use App\Http\Controllers\CarteiraPdfController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ProntuarioController;
+use App\Http\Controllers\VagaEmpregoController;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return redirect('/dashboard');
+    return Auth::check() ? redirect('/dashboard') : redirect()->route('login');
 });
 
-// Rotas Web Reativas do Inertia.js
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->name('dashboard');
-
-Route::get('/atendimento', function () {
-    return Inertia::render('Atendimento');
-})->name('atendimento');
-
-Route::get('/oportunidades', function () {
-    return Inertia::render('Oportunidades');
-})->name('oportunidades');
-
-Route::get('/carteira', function () {
-    return Inertia::render('Carteira');
-})->name('carteira');
-
-Route::get('/carteira/pdf', [CarteiraPdfController::class, 'download'])->name('carteira.pdf');
-
-Route::get('/geolocalizacao', function () {
-    return Inertia::render('Geolocalizacao');
-})->name('geolocalizacao');
-
-Route::get('/prontuario/{id?}', function () {
-    return Inertia::render('Prontuario');
-})->name('prontuario');
-
-Route::get('/relatorios', function () {
-    return Inertia::render('Relatorios');
-})->name('relatorios');
-
-Route::get('/seguranca-lgpd', function () {
-    return Inertia::render('SegurancaLgpd');
-})->name('seguranca.lgpd');
-
-// Public Digital Wallet Validation Route
+// Public Digital Wallet Validation Routes
 Route::get('/validar-carteira/{token}', [CarteiraValidationController::class, 'validar'])->name('carteira.validar');
 Route::get('/validar-carteira', [CarteiraValidationController::class, 'validarPublico'])->name('carteira.validar.publico');
+
+// Carteira PDF Export (Controller enforces authentication in production)
+Route::get('/carteira/pdf', [CarteiraPdfController::class, 'download'])->name('carteira.pdf');
 
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::post('/auth/govbr/login', [AuthController::class, 'govbrLogin'])->name('auth.govbr.login');
 Route::post('/auth/switch-role', [AuthController::class, 'switchRole'])->name('auth.switch_role');
+
+// Authenticated Application Routes
+Route::middleware(['auth'])->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->name('dashboard');
+
+    Route::get('/atendimento', function () {
+        return Inertia::render('Atendimento');
+    })->middleware('role:gestor,tecnico,egresso,familiar,suporte')->name('atendimento');
+
+    Route::get('/oportunidades', [VagaEmpregoController::class, 'indexView'])
+        ->name('oportunidades');
+
+    Route::get('/oportunidades/inserir-vaga', [VagaEmpregoController::class, 'indexView'])
+        ->middleware('role:empregador,gestor,suporte,tecnico')
+        ->name('oportunidades.inserir_vaga');
+
+    Route::get('/vagas/modelo-csv', [VagaEmpregoController::class, 'downloadModeloCsv'])
+        ->middleware('role:empregador,gestor,suporte,tecnico')
+        ->name('vagas.modelo_csv');
+
+    Route::post('/vagas/importar-csv', [VagaEmpregoController::class, 'importarCsv'])
+        ->middleware('role:empregador,gestor,suporte,tecnico')
+        ->name('vagas.importar_csv');
+
+    Route::get('/carteira', [CarteiraController::class, 'showView'])
+        ->middleware('role:gestor,tecnico,egresso,suporte')
+        ->name('carteira');
+
+    Route::get('/geolocalizacao', function () {
+        return Inertia::render('Geolocalizacao');
+    })->name('geolocalizacao');
+
+    Route::get('/prontuario/{id?}', [ProntuarioController::class, 'showView'])
+        ->middleware('role:gestor,tecnico,egresso,suporte')
+        ->name('prontuario');
+
+    Route::get('/relatorios', function () {
+        return Inertia::render('Relatorios');
+    })->middleware('role:gestor,tecnico,suporte')->name('relatorios');
+
+    Route::get('/seguranca-lgpd', function () {
+        return Inertia::render('SegurancaLgpd');
+    })->name('seguranca.lgpd');
+
+    Route::get('/catalogo-temas', fn() => Inertia::render('CatalogoTemas'))->name('catalogo.temas');
+});
 
 // User Management Routes (Gestor & Suporte)
 Route::middleware(['auth', 'role:gestor,suporte'])->group(function () {
@@ -65,4 +86,5 @@ Route::middleware(['auth', 'role:gestor,suporte'])->group(function () {
     Route::delete('/usuarios/{id}', [UserController::class, 'destroy'])->name('usuarios.destroy');
     Route::post('/usuarios/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('usuarios.toggle');
 });
+
 

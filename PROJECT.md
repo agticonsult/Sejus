@@ -1,98 +1,91 @@
-# Project: Conecta Egresso (SEJUS/ES) - Full Authentication, Support User, PDF Microservice, Toasts & Route Audit
+# Project: Conecta Egresso (SEJUS/ES) - Dark Mode UI/UX Redesign, Contrast Bug Remediation & WCAG 2.1 AA Theme Catalog
 
 ## Architecture
-- **Backend**: Laravel 11 (PHP 8.2+), Eloquent ORM, Session Auth, SQLite / MySQL, Dompdf, Custom Inertia.js Middleware.
-- **Frontend**: Vue 3.4 (Composition API, `<script setup>`), Inertia.js Vue 3, Tailwind CSS 3.4, Lucide Icons, Reactive Singleton Composables.
-- **Microservices**: Document Generator API (`http://localhost:8080`, Key: `token-secreto-dev`) with 3-tier fallback to Dompdf and text PDF stream.
-- **Security & LGPD**: AES-256-CBC field-level encryption for CPF and sensitive data, HMAC-SHA256 blind indexing, RBAC (Gestor, Técnico, Egresso, Familiar, Suporte).
+- **Framework & Runtime**: Laravel 11 (PHP 8.2+), Inertia.js 1.2+, Vue 3.4+ (Composition API `<script setup>`), Tailwind CSS 3.4.4 (`darkMode: 'class'`), Vite 5.3+.
+- **Theming Architecture**:
+  - Semantic CSS Variables mapped by theme attribute: `html.dark[data-theme="<theme_id>"]` in `resources/css/app.css`.
+  - Master Composable `resources/js/Composables/useTheme.js` controlling reactive theme state, dark mode toggle, DOM sync (`data-theme` attribute and `.dark` class on `document.documentElement`), and persistence in `localStorage['conecta_theme_mode']` / `localStorage['conecta_active_theme']`.
+  - Coexistence with High Contrast mode: `.high-contrast` rules in `app.css` maintain absolute accessibility priority when enabled, seamlessly restoring the active dark theme when disabled.
+- **Visual Design Standard**:
+  - 6 authoritative, government-grade dark themes tailored for SEJUS/ES (Executive Slate, Midnight Navy, Forest Emerald, Deep Titanium, Royal Indigo, Obsidian Gold).
+  - Clean institutional aesthetic: zero generic AI neon/magenta borders, zero uncalibrated muddy grays.
+  - Strict compliance with WCAG 2.1 AA (normal text contrast $\ge 4.5:1$, large text and UI components $\ge 3.0:1$; majority achieving AAA $\ge 7:1$).
+- **Component Boundaries**:
+  - `AppLayout.vue`: Sticky top header, global search bar, responsive sidebar navigation (285px width), header quick theme switcher, user Gov.br badge.
+  - `Dashboard.vue`: KPI metric cards, Executive Banner, Recent Activity Trail (`Trilha de Atividades Recentes`), reactive canvas charts.
+  - `CatalogoTemas.vue`: Dedicated interactive showcase displaying all 6 themes side-by-side with palette swatches, WCAG contrast scorecards, live mini-dashboard previews, and instant theme activation.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Reactive Toast Composable & Store | `useToast.js` singleton state supporting success, error, warning, info, auto-dismiss, manual dismiss | M1 | ORIGINAL_REQUEST §R1 |
-| 2 | ToastContainer Component | `<ToastContainer />` with top-right fixed positioning, Lucide icons, smooth transitions, high-contrast support | M1 | ORIGINAL_REQUEST §R1 |
-| 3 | Eliminate Native Alerts in Vue Pages | Replace 5 `alert()` calls in Atendimento.vue, Carteira.vue, Oportunidades.vue, Relatorios.vue, SegurancaLgpd.vue with Toasts | M1 | ORIGINAL_REQUEST §R1 |
-| 4 | Additional Toast Touchpoints | Add Toast notifications in Prontuario.vue and AppLayout.vue role change / flash message listener | M1 | ORIGINAL_REQUEST §R1 |
-| 5 | Document Generator API Integration | In `CarteiraPdfService.php`, POST compiled HTML to `http://localhost:8080` with API Key `token-secreto-dev` | M2 | ORIGINAL_REQUEST §R2 |
-| 6 | Graceful Dompdf Fallback | Seamless automatic fallback to local Dompdf / PDF stream on network timeout, offline service, or error | M2 | ORIGINAL_REQUEST §R2 |
-| 7 | Carteira Digital PDF Route | Register `GET /carteira/pdf` in `routes/web.php` with CarteiraPdfController returning PDF stream | M2 | ORIGINAL_REQUEST §R2 |
-| 8 | Unauthenticated/Demo PDF Fallback | In CarteiraPdfController, fallback to first Egresso when user is unauthenticated or in demo mode | M2 | ORIGINAL_REQUEST §R2 |
-| 9 | Gov.br / Acesso Cidadão Login Page | Create `Login.vue` with official Gov.br (`#1351b4`) & ES state design (`#003366`, `#e63946`), dual login (Gov.br SSO simulation + standard credentials), quick-fill demo bar | M3 | ORIGINAL_REQUEST §R3 |
-| 10 | Route Protection & GET /login Route | Register `GET /login` in `routes/web.php`, configure `HandleInertiaRequests` middleware for `auth.user` sharing | M3 | ORIGINAL_REQUEST §R3 |
-| 11 | Secure Logout Action | Add Logout button in header and sidebar of `AppLayout.vue` posting to `/logout` and redirecting to `/login` | M3 | ORIGINAL_REQUEST §R3 |
-| 12 | Suporte Profile & Permissions | Add `suporte` profile (id 5, full admin permissions) in `PerfilSeeder.php`, add `isSuporte()` helper in `User.php` | M4 | ORIGINAL_REQUEST §R4 |
-| 13 | Agile Support User Seeder | Seed `suporte.agile@sejus.es.gov.br` (password `secret123`, role `suporte`) in `UserSeeder.php` | M4 | ORIGINAL_REQUEST §R4 |
-| 14 | User Management Controller & API | Create `UserController.php` with listing, creation, editing, CPF encryption, municipality selection, audit logging | M4 | ORIGINAL_REQUEST §R4 |
-| 15 | User Management Interface | Create `Usuarios.vue` page with responsive table, filters, and modal for create/edit profiles (Gestor, Técnico, Egresso, Familiar, Suporte) | M4 | ORIGINAL_REQUEST §R4 |
-| 16 | User Management Navigation | Add "Gerenciamento de Usuários" link in `AppLayout.vue` visible for Gestor and Suporte | M4 | ORIGINAL_REQUEST §R4 |
-| 17 | Route & Link 404 Audit | Audit and eliminate all 404 errors across frontend navigation and backend routes | M5 | ORIGINAL_REQUEST §R5 |
-| 18 | E2E Testing & Verification Suite | Opaque-box and unit testing covering all features, zero-404 audit, and forensic integrity verification | M6 | ORIGINAL_REQUEST §Acceptance Criteria |
-| 19 | Mobile Access Tokens & Auth (R1) | Stateless Bearer token lifecycle, `mobile_access_tokens` table, `MobileAccessToken` model, `AuthenticateMobileToken` middleware, login token issuance, profile, revocation | M7 | ORIGINAL_REQUEST (2026-09-15) §R1 |
-| 20 | Core Mobile Endpoints (R2) | Dedicated `GET /api/carteira` digital wallet, QR code verification, role-scoped prontuários, vagas, cursos | M7 | ORIGINAL_REQUEST (2026-09-15) §R2 |
-| 21 | Data Freshness & Delta Sync (R3) | Incremental delta synchronization via `since` / `updated_after` with `>=` comparison, 422 format validation, and `meta.server_timestamp` | M7 | ORIGINAL_REQUEST (2026-09-15) §R3 |
-| 22 | Mobile API Contract & Spec (R4) | Authoritative `MOBILE_API_SPEC.md` integration guide for external mobile development team | M7 | ORIGINAL_REQUEST (2026-09-15) §R4 |
+| 1 | Theme Tokens & CSS Variable System | Define semantic CSS variables in `resources/css/app.css` for 6 themes using `html.dark[data-theme="..."]`, plus fix high-contrast input/opacity specificity | M1 | ORIGINAL_REQUEST §R1, §R3 |
+| 2 | useTheme Composable | Create reactive Vue 3 composable managing theme state, dark mode toggle, DOM sync, and localStorage persistence | M1 | ORIGINAL_REQUEST §R1 |
+| 3 | Header Superior Contrast Fix | Harmonize `AppLayout.vue:12` header with dark body and sidebar (`dark:bg-slate-900/95 dark:border-slate-800/80`), eliminating white header on dark body | M1 | ORIGINAL_REQUEST §R2 |
+| 4 | Global Search Field Contrast Fix | Fix `AppLayout.vue:48-56` search input with explicit text, placeholder, and dark background, eliminating yellow text on white (1.07:1) | M1 | ORIGINAL_REQUEST §R2 |
+| 5 | Sidebar Label Truncation Fix | Expand sidebar to `w-[285px]`, add `title` tooltips, use `flex-1 min-w-0`, eliminating truncation of navigation labels even under zoom | M1 | ORIGINAL_REQUEST §R2 |
+| 6 | Trilha de Atividades Recentes Contrast Fix | Harmonize `Dashboard.vue:159-195` activity cards, icons, and badges with dark theme tokens, eliminating washed-out off-white boxes | M1 | ORIGINAL_REQUEST §R2 |
+| 7 | Canvas Charts Dark Mode Reactivity | Update `ChartBar.vue` and `ChartDonut.vue` to observe dark mode state and redraw with theme-aware gridlines, labels, and center hole | M1 | Survey Discovery |
+| 8 | Global Header Quick Theme Switcher | Implement dropdown switcher in `AppLayout.vue` header next to `AccessibilityToolbar` with live preview and switching of all 6 themes | M2 | ORIGINAL_REQUEST §R1 |
+| 9 | Interactive Theme Catalog Page | Create `/catalogo-temas` route and `Pages/CatalogoTemas.vue` showcasing the 6 themes with swatches, WCAG scorecards, live mini-previews, and activation | M2 | ORIGINAL_REQUEST §R1 |
+| 10 | Sidebar Link for Theme Catalog | Add "Catálogo de Temas" navigation link with `Palette` icon in `AppLayout.vue` sidebar menu | M2 | ORIGINAL_REQUEST §R1 |
+| 11 | Automated WCAG 2.1 Contrast Runner | Implement `tests/verify_wcag_contrast.js` calculating W3C relative luminance and contrast ratio for all 114 color pairs (exit code 0/1) | M3 | ORIGINAL_REQUEST §R3 |
+| 12 | NPM & CI Test Script Integration | Add `"test:wcag"` script to `package.json` and generate structured JSON report in `tests/reports/wcag_contrast_report.json` | M3 | ORIGINAL_REQUEST §R3 |
+| 13 | E2E Automated Verification Test Suite | Create automated tests verifying catalog route, live switching, localStorage persistence, and accessibility bounds | M3 | ORIGINAL_REQUEST §Acceptance Criteria |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | Reactive Toast Notifications | useToast composable, ToastContainer component, AppLayout integration, replace 5 alert() calls | none | COMPLETED |
-| 2 | PDF Generation & Fallback | CarteiraPdfService API integration, Dompdf fallback, CarteiraPdfController, GET /carteira/pdf route | none | COMPLETED |
-| 3 | Authentication & Gov.br Login | Login.vue, AuthController showLogin/logout, HandleInertiaRequests middleware, AppLayout logout button | none | COMPLETED |
-| 4 | Agile Support User & User Mgmt | PerfilSeeder (suporte), UserSeeder (suporte.agile), User model, UserController, Usuarios.vue, navigation | M3 | COMPLETED |
-| 5 | Route & Link 404 Audit | Verify and test all navigation links, web routes, and API endpoints for zero 404s | M1, M2, M3, M4 | COMPLETED |
-| 6 | E2E Verification & Final Audit | Automated test suite execution, Challenger stress tests, Forensic Auditor integrity gate | M5 | COMPLETED |
-| 7 | Mobile API Backend Foundation | Mobile Bearer auth lifecycle, Carteira digital endpoint, delta synchronization, comprehensive API spec | M6 | COMPLETED |
+| 1 | Theme Engine Foundation & Dashboard Visual Contrast Bug Fixes (R2) | `app.css` tokens, `useTheme.js`, `AppLayout.vue` header, search input, sidebar width, `Dashboard.vue` recent activities, chart reactivity | none | DONE |
+| 2 | Interactive Theme Catalog & Demonstration Showcase (R1) | `/catalogo-temas` route in `routes/web.php`, `Pages/CatalogoTemas.vue` interactive page with 6 themes, live mini-previews, header switcher & sidebar link | M1 | IN_PROGRESS |
+| 3 | Automated WCAG 2.1 AA Contrast Verification Engine & E2E Validation (R3) | `tests/verify_wcag_contrast.js` W3C algorithm, `npm run test:wcag`, E2E automated test suite, CI report generation | M1, M2 | PLANNED |
 
 ## Interface Contracts
 
-### Toast System (`useToast.js` & `ToastContainer.vue`)
-- `useToast().success(title: string, message?: string, options?: { duration?: number })`
-- `useToast().error(title: string, message?: string, options?: { duration?: number })`
-- `useToast().warning(title: string, message?: string, options?: { duration?: number })`
-- `useToast().info(title: string, message?: string, options?: { duration?: number })`
-- `useToast().toasts: Ref<Array<{ id: number, type: string, title: string, message: string, duration: number }>>`
+### Theme Management API (`useTheme.js`)
+- `currentTheme: Ref<string>` — Active theme ID: `'executive-slate'` (default), `'midnight-navy'`, `'forest-emerald'`, `'deep-titanium'`, `'royal-indigo'`, `'obsidian-gold'`.
+- `isDarkMode: Ref<boolean>` — True when dark mode is enabled.
+- `AVAILABLE_THEMES: Array<{ id: string, name: string, subtitle: string, accent: string, bgCard: string, bgMain: string }>` — Master metadata registry.
+- `applyTheme(themeId: string): void` — Applies `data-theme="themeId"` and adds `.dark` to `document.documentElement`, saving to `localStorage`.
+- `toggleDarkMode(): void` — Toggles between light mode and the active dark theme.
+- `initTheme(): void` — Restores saved theme from `localStorage` on initial mount, defaulting safely to `executive-slate`.
 
-### Document Generator Microservice (`CarteiraPdfService.php`)
-- **Endpoint**: `POST http://localhost:8080/generate` (or configured URL)
-- **Headers**: `X-API-Key: token-secreto-dev`, `Content-Type: application/json`
-- **Body**: `{"html": "...", "format": "A4", "orientation": "portrait"}`
-- **Fallback**: Local `Dompdf\Dompdf` rendering -> Text PDF Stream.
-- **Route**: `GET /carteira/pdf` -> Binary Stream (`application/pdf`, `inline; filename="carteira-digital-sejus.pdf"`).
+### CSS Token Contract (`resources/css/app.css`)
+Each theme defines the following standard CSS custom properties under `html.dark[data-theme="<id>"]`:
+```css
+--bg-main: <hex>;            /* Overall page background */
+--bg-card: <hex>;            /* Cards, containers, panels */
+--bg-header: <hex>;          /* Top header bar */
+--bg-sidebar: <hex>;         /* Sidebar navigation background */
+--border-color: <hex>;        /* Dividers and borders (>= 3.0:1) */
+--input-bg: <hex>;           /* Form inputs, search bar */
+--input-border: <hex>;       /* Input resting border (>= 3.0:1) */
+--input-border-focus: <hex>; /* Input focus outline (>= 3.0:1) */
+--text-primary: <hex>;       /* Headings, metrics, active text (>= 4.5:1) */
+--text-secondary: <hex>;     /* Body text, labels (>= 4.5:1) */
+--text-muted: <hex>;         /* Placeholders, captions, timestamps (>= 4.5:1) */
+--accent-primary: <hex>;     /* Primary button background (>= 4.5:1 against #FFFFFF) */
+--accent-hover: <hex>;       /* Button hover state */
+--accent-text: <hex>;        /* Highlight links and text accents (>= 4.5:1) */
+--status-success: <hex>;     /* Positive KPIs, active badges */
+--status-warning: <hex>;     /* Alerts, pending tasks */
+--status-danger: <hex>;      /* Errors, critical items */
+--status-info: <hex>;         /* Info badges and chips */
+```
 
-### User Management API (`UserController.php`)
-- `GET /usuarios` -> Inertia `Usuarios` page with users list, roles, and municipalities.
-- `POST /usuarios` -> Validates `name`, `email`, `password`, `cpf`, `perfil_id`, `municipio_id`. Encrypts CPF, generates blind index, hashes password, writes audit log.
-- `PUT /usuarios/{id}` -> Updates user fields, optional password update, updates audit log.
-- `DELETE /usuarios/{id}` -> Toggles active status or deletes user with audit log.
-
-### Mobile API Contract (`MOBILE_API_SPEC.md` & `routes/api.php`)
-- **Authentication**: `POST /api/auth/login` -> Bearer token generation, `GET /api/auth/me` -> Authenticated profile, `POST /api/auth/logout` -> Token revocation.
-- **Middleware**: `auth.mobile` (`AuthenticateMobileToken.php`) validating `Authorization: Bearer <token>`, hashing with SHA-256, expiration check, active account check.
-- **Digital Wallet**: `GET /api/carteira` -> Official wallet document payload, cryptographic QR token, validation URL, and auth code.
-- **Delta Sync Protocol**: `GET /api/vagas`, `GET /api/cursos`, `GET /api/prontuarios` support `since` / `updated_after` timestamp parameter, returning `meta.server_timestamp`, `sync_count`, and filtered data (`updated_at >= since`).
+### Route & Navigation Contract
+- `GET /catalogo-temas` -> Inertia::render('CatalogoTemas')
+- Sidebar Nav Item: `{ name: 'Catálogo de Temas', route: 'catalogo.temas', href: '/catalogo-temas', icon: Palette, dataView: 'catalogo-temas' }`
 
 ## Code Layout
-- `app/Services/CarteiraPdfService.php` - PDF rendering, microservice client, and Dompdf fallback
-- `app/Http/Controllers/CarteiraPdfController.php` - PDF download route handler
-- `app/Http/Controllers/AuthController.php` - Login, logout, gov.br SSO, role switching, and mobile Bearer token issuance
-- `app/Http/Controllers/CarteiraController.php` - Dedicated digital wallet endpoint
-- `app/Http/Controllers/UserController.php` - User management CRUD and listing
-- `app/Http/Middleware/HandleInertiaRequests.php` - Inertia shared props (auth user, flash)
-- `app/Http/Middleware/CheckRole.php` - Role authorization middleware
-- `app/Http/Middleware/AuthenticateMobileToken.php` - Mobile Bearer token authentication middleware
-- `app/Models/User.php` - User model, LGPD encryption mutators, role helper methods, mobile access token relation
-- `app/Models/MobileAccessToken.php` - Mobile Bearer token model and factory
-- `database/migrations/2026_01_01_000013_create_mobile_access_tokens_table.php` - Mobile token table schema
-- `database/seeders/PerfilSeeder.php` - System profiles seeder (includes suporte)
-- `database/seeders/UserSeeder.php` - Default users seeder (includes suporte.agile)
-- `resources/js/Composables/useToast.js` - Reactive Toast composable
-- `resources/js/Components/ToastContainer.vue` - Global Toast container UI
-- `resources/js/Pages/Login.vue` - Gov.br / ES styled Login page
-- `resources/js/Pages/Usuarios.vue` - User management page with CRUD modal
-- `resources/js/Layouts/AppLayout.vue` - Main layout with ToastContainer, Logout button, and User Mgmt nav item
-- `routes/web.php` - Web routes definition
-- `routes/api.php` - API routes definition (Mobile Bearer and Web dual auth)
-- `MOBILE_API_SPEC.md` - Complete authoritative mobile API contract documentation
-- `tests/Feature/MobileAuthApiTest.php` - Automated tests for mobile token authentication lifecycle
-- `tests/Feature/MobileCoreEndpointsTest.php` - Automated tests for mobile core endpoints (wallet, vacancies, courses, prontuário)
-- `tests/Feature/MobileDeltaSyncTest.php` - Automated tests for incremental delta sync protocol
+- `resources/css/app.css` - Theme tokens, CSS variables, high-contrast override hardening
+- `resources/js/Composables/useTheme.js` - Reactive theme state and persistence composable
+- `resources/views/app.blade.php` - Blade layout wrapper with responsive dark body classes
+- `resources/js/Layouts/AppLayout.vue` - Header, search bar, sidebar width, theme switcher
+- `resources/js/Pages/Dashboard.vue` - Dashboard cards, Trilha de Atividades Recentes
+- `resources/js/Components/ChartBar.vue` - Dark-aware bar chart canvas
+- `resources/js/Components/ChartDonut.vue` - Dark-aware donut chart canvas
+- `resources/js/Pages/CatalogoTemas.vue` - Interactive 6-theme catalog showcase with live previews
+- `routes/web.php` - Web routes including `/catalogo-temas`
+- `tests/verify_wcag_contrast.js` - Automated W3C relative luminance & contrast ratio test engine
+- `tests/reports/wcag_contrast_report.json` - Generated CI contrast audit artifact
+- `tests_e2e/tier1_features/test_dark_mode_catalog.py` - E2E verification test suite

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Egresso;
 use App\Services\CarteiraPdfService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -13,17 +15,26 @@ class CarteiraPdfController extends Controller
 {
     /**
      * Download or stream Digital Wallet PDF with official SEJUS layout.
-     *
-     * @param Request $request
-     * @param CarteiraPdfService $pdfService
-     * @return Response
      */
-    public function download(Request $request, CarteiraPdfService $pdfService): Response
+    public function download(Request $request, CarteiraPdfService $pdfService): Response|RedirectResponse|JsonResponse
     {
         $user = Auth::user() ?? $request->user();
+        $isProduction = function_exists('app') && app()->bound('env') && app()->environment('production');
+
+        if ($isProduction && !$user) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
+            }
+            return redirect()->route('login');
+        }
+
         $egresso = null;
 
         if ($user) {
+            if (method_exists($user, 'isEmpregador') && ($user->isEmpregador() || $user->isFamiliar())) {
+                abort(403, 'Acesso negado à Carteira Digital.');
+            }
+
             $isStaff = (method_exists($user, 'isGestor') && $user->isGestor())
                 || (method_exists($user, 'isTecnico') && $user->isTecnico())
                 || (method_exists($user, 'isSuporte') && $user->isSuporte())
@@ -53,7 +64,11 @@ class CarteiraPdfController extends Controller
             }
         }
 
-        // Fallback for unauthenticated / guest testing or empty database
+        if (!$egresso && $isProduction) {
+            abort(404, 'Registro de egresso não localizado para emissão da Carteira Digital.');
+        }
+
+        // Test environment fallback only (strictly unreachable in production)
         if (!$egresso) {
             try {
                 if (class_exists(Egresso::class)) {
@@ -65,12 +80,11 @@ class CarteiraPdfController extends Controller
         }
 
         if (!$egresso) {
-            // Realistic mock Egresso object for standalone demo or fresh install
             $egresso = (object) [
                 'id' => 1,
-                'nome_completo' => 'Lucas Santos de Oliveira',
+                'nome_completo' => 'Cidadão Egresso Teste',
                 'nome_social' => null,
-                'cpf' => '19283045678',
+                'cpf' => '52998224725',
                 'registro_sejus' => 'ES-2026-000001',
                 'municipio' => (object) [
                     'nome' => 'Vitória',

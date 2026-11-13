@@ -21,6 +21,9 @@ services:
     image: postgis/postgis:16-3.4
     container_name: conecta_postgres
     restart: unless-stopped
+    profiles:
+      - server1
+      - all
     environment:
       POSTGRES_DB: ${DB_DATABASE:-conecta_egresso}
       POSTGRES_USER: ${DB_USERNAME:-conecta_user}
@@ -47,6 +50,9 @@ services:
     image: redis:7.2-alpine
     container_name: conecta_redis
     restart: unless-stopped
+    profiles:
+      - server1
+      - all
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
@@ -69,6 +75,9 @@ services:
       dockerfile: docker/php/Dockerfile
     container_name: conecta_php
     restart: unless-stopped
+    profiles:
+      - server1
+      - all
     working_dir: /var/www/html
     volumes:
       - ./:/var/www/html
@@ -113,6 +122,9 @@ services:
       dockerfile: docker/python/Dockerfile
     container_name: conecta_python
     restart: unless-stopped
+    profiles:
+      - server2
+      - all
     working_dir: /app
     volumes:
       - ./webrtc_service:/app
@@ -120,6 +132,7 @@ services:
       REDIS_URL: "redis://redis:6379/0"
       LARAVEL_WEBHOOK_URL: "http://nginx/api/webhooks/webrtc"
       WEBHOOK_SECRET: "${WEBRTC_WEBHOOK_SECRET:-sejus_webrtc_webhook_secret_2026}"
+      JWT_SECRET_KEY: "${WEBRTC_JWT_SECRET:-sejus_jwt_shared_secret_2026}"
       JWT_SECRET: "${WEBRTC_JWT_SECRET:-sejus_jwt_shared_secret_2026}"
       COTURN_HOST: "${COTURN_HOST:-coturn}"
       COTURN_PORT: "${COTURN_PORT:-3478}"
@@ -147,6 +160,9 @@ services:
     image: nginx:1.25-alpine
     container_name: conecta_nginx
     restart: unless-stopped
+    profiles:
+      - server1
+      - all
     ports:
       - "80:80"
       - "443:443"
@@ -171,6 +187,9 @@ services:
     image: coturn/coturn:4.6-alpine
     container_name: conecta_coturn
     restart: unless-stopped
+    profiles:
+      - server2
+      - all
     volumes:
       - ./docker/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
     ports:
@@ -178,7 +197,7 @@ services:
       - "3478:3478/tcp"
       - "5349:5349/udp"
       - "5349:5349/tcp"
-      - "49152-49200:49152-49200/udp"
+      - "49152-65535:49152-65535/udp"
     networks:
       - conecta_net
     command: ["-c", "/etc/coturn/turnserver.conf"]

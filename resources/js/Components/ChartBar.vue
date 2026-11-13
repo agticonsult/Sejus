@@ -43,10 +43,22 @@ const props = defineProps({
     type: String,
     default: 'Distribuição dos atendimentos por município polo do Espírito Santo',
   },
+  isDark: {
+    type: Boolean,
+    default: null,
+  },
 });
 
 const canvasRef = ref(null);
 let resizeObserver = null;
+let themeObserver = null;
+
+const checkIsDark = () => {
+  if (props.isDark !== null) return props.isDark;
+  if (typeof document === 'undefined') return false;
+  return document.documentElement.classList.contains('dark') ||
+         document.documentElement.classList.contains('high-contrast');
+};
 
 const render = () => {
   const canvas = canvasRef.value;
@@ -64,6 +76,7 @@ const render = () => {
   canvas.height = height * dpr;
   ctx.scale(dpr, dpr);
 
+  const dark = checkIsDark();
   const data = props.data;
   const maxVal = props.maxVal || Math.max(...data.map(d => d.val), 100);
   const paddingLeft = 45;
@@ -78,7 +91,7 @@ const render = () => {
   ctx.clearRect(0, 0, width, height);
 
   // Draw horizontal gridlines and axis values
-  ctx.strokeStyle = '#e2e8f0';
+  ctx.strokeStyle = dark ? '#334155' : '#e2e8f0';
   ctx.lineWidth = 1;
   const steps = 4;
   for (let i = 0; i <= steps; i++) {
@@ -103,7 +116,17 @@ const render = () => {
     const bW = Math.max(8, barWidth - 14);
     const bX = x + (barWidth - bW) / 2;
 
-    ctx.fillStyle = item.color || '#0284c7';
+    // In dark mode, replace low-contrast deep navy (#003366 -> 1.42:1) with vibrant accessible sky-400 (#38bdf8 -> 9.36:1)
+    let barColor = item.color || '#0284c7';
+    if (dark) {
+      if (item.darkColor) {
+        barColor = item.darkColor;
+      } else if (barColor.toLowerCase() === '#003366') {
+        barColor = '#38bdf8';
+      }
+    }
+
+    ctx.fillStyle = barColor;
     ctx.beginPath();
     if (ctx.roundRect) {
       ctx.roundRect(bX, y, bW, barH, [4, 4, 0, 0]);
@@ -113,13 +136,13 @@ const render = () => {
     ctx.fill();
 
     // Value on top of bar
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = dark ? '#f1f5f9' : '#1e293b';
     ctx.font = 'bold 10px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(item.val.toLocaleString('pt-BR'), bX + bW / 2, Math.max(12, y - 6));
 
     // Label at bottom
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = dark ? '#cbd5e1' : '#64748b';
     ctx.font = '10px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(item.label, bX + bW / 2, height - 12);
@@ -132,13 +155,28 @@ onMounted(() => {
     resizeObserver = new ResizeObserver(() => render());
     resizeObserver.observe(canvasRef.value.parentElement);
   }
+
+  // Observe theme / dark mode class changes on <html>
+  if (typeof window !== 'undefined' && window.MutationObserver) {
+    themeObserver = new MutationObserver(() => {
+      render();
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
+    });
+  }
 });
 
 onBeforeUnmount(() => {
   if (resizeObserver) {
     resizeObserver.disconnect();
   }
+  if (themeObserver) {
+    themeObserver.disconnect();
+  }
 });
 
 watch(() => props.data, () => render(), { deep: true });
+watch(() => props.isDark, () => render());
 </script>

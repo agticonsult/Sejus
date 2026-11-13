@@ -118,6 +118,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Job vacancies published by this employer user.
+     */
+    public function vagasPublicadas(): HasMany
+    {
+        return $this->hasMany(VagaEmprego::class, 'user_id');
+    }
+
+    /**
      * Check if user has Gestor role.
      */
     public function isGestor(): bool
@@ -155,6 +163,14 @@ class User extends Authenticatable
     public function isSuporte(): bool
     {
         return $this->perfil?->slug === 'suporte';
+    }
+
+    /**
+     * Check if user has Empregador role.
+     */
+    public function isEmpregador(): bool
+    {
+        return $this->perfil?->slug === 'empregador';
     }
 
     /**

@@ -47,4 +47,15 @@ return [
             'realm' => env('COTURN_REALM', 'sejus.es.gov.br'),
         ],
     ],
+
+    'google_meet' => [
+        'base_url' => env('GOOGLE_MEET_BASE_URL', 'https://meet.googleapis.com/v2'),
+        'client_id' => env('GOOGLE_MEET_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_MEET_CLIENT_SECRET'),
+        'refresh_token' => env('GOOGLE_MEET_REFRESH_TOKEN'),
+        'token_url' => env('GOOGLE_MEET_TOKEN_URL', 'https://oauth2.googleapis.com/token'),
+        'access_token' => env('GOOGLE_MEET_ACCESS_TOKEN', 'mock-google-meet-token'),
+        'timeout' => (int) env('GOOGLE_MEET_TIMEOUT', 15),
+    ],
 ];
+

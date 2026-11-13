@@ -157,6 +157,11 @@ class GovBrAuthService
             return 'tecnico';
         }
 
+        // Empregador parceiro
+        if ($papel === 'empregador' || str_contains($cargo, 'empregador')) {
+            return 'empregador';
+        }
+
         // Familiar
         if ($papel === 'familiar' || str_contains($cargo, 'familiar')) {
             return 'familiar';
@@ -176,10 +181,14 @@ class GovBrAuthService
     }
 
     /**
-     * Rapid development/demonstration role switch.
+     * Automated test role switch helper (strictly blocked in production).
      */
     public function simulateRoleLogin(string $roleSlug): User
     {
+        if (function_exists('app') && app()->bound('env') && app()->environment('production')) {
+            abort(404);
+        }
+
         $perfil = Perfil::firstOrCreate(
             ['slug' => $roleSlug],
             [
@@ -192,11 +201,11 @@ class GovBrAuthService
         $user = User::where('perfil_id', $perfil->id)->where('ativo', true)->first();
 
         if (!$user) {
-            // Create a demo user for this role if none exists
             $demoCpf = match ($roleSlug) {
                 'gestor' => '52998224725',
                 'tecnico' => '70312384798',
                 'familiar' => '42873194012',
+                'empregador' => '39053344705',
                 default => '84123569804',
             };
 

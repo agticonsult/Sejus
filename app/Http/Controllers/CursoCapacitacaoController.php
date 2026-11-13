@@ -61,7 +61,7 @@ class CursoCapacitacaoController extends Controller
                       if (strlen($cleanIbge) === 7 && str_starts_with($cleanIbge, '32')) {
                           $mq->where('codigo_ibge', $cleanIbge);
                       } else {
-                          $mq->where('nome', 'ILIKE', "%{$munSearch}%");
+                          $mq->whereRaw('LOWER(nome) LIKE ?', ['%' . mb_strtolower($munSearch, 'UTF-8') . '%']);
                       }
                   });
             });
@@ -82,10 +82,11 @@ class CursoCapacitacaoController extends Controller
         // Search query q
         if ($request->filled('q')) {
             $q = trim($request->input('q'));
-            $query->where(function ($sub) use ($q) {
-                $sub->where('titulo', 'ILIKE', "%{$q}%")
-                    ->orWhere('instituicao', 'ILIKE', "%{$q}%")
-                    ->orWhere('descricao', 'ILIKE', "%{$q}%");
+            $qLower = '%' . mb_strtolower($q, 'UTF-8') . '%';
+            $query->where(function ($sub) use ($qLower) {
+                $sub->whereRaw('LOWER(titulo) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(instituicao) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(descricao) LIKE ?', [$qLower]);
             });
         }
 
@@ -159,14 +160,18 @@ class CursoCapacitacaoController extends Controller
     }
 
     /**
-     * Create new course (Gestor / Técnico).
+     * Create new course (Gestor / Técnico / Suporte).
      */
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
-            return response()->json(['error' => 'Acesso não autorizado.'], 403);
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json(['error' => 'Acesso não autorizado.', 'code' => 'FORBIDDEN'], 403);
         }
 
         $validated = $request->validate([
@@ -201,8 +206,12 @@ class CursoCapacitacaoController extends Controller
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
-            return response()->json(['error' => 'Acesso não autorizado.'], 403);
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json(['error' => 'Acesso não autorizado.', 'code' => 'FORBIDDEN'], 403);
         }
 
         $curso = CursoCapacitacao::find($id);
@@ -239,8 +248,12 @@ class CursoCapacitacaoController extends Controller
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
-            return response()->json(['error' => 'Acesso não autorizado.'], 403);
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json(['error' => 'Acesso não autorizado.', 'code' => 'FORBIDDEN'], 403);
         }
 
         $curso = CursoCapacitacao::find($id);
@@ -259,6 +272,15 @@ class CursoCapacitacaoController extends Controller
     public function inscrever(Request $request, string $id): JsonResponse
     {
         $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
+        }
+
+        if (!$user->isEgresso() && !$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json(['error' => 'Acesso não autorizado para inscrição em curso.', 'code' => 'FORBIDDEN'], 403);
+        }
+
         $curso = CursoCapacitacao::with('municipio')->find($id);
 
         if (!$curso) {

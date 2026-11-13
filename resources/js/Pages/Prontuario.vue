@@ -29,29 +29,29 @@
       </div>
 
       <!-- Egresso Profile Header Dossier -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+      <div v-if="egressoData" class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-900 text-white font-extrabold text-lg flex items-center justify-center border-2 border-white shadow-md flex-shrink-0">
-              LS
+              {{ egressoInitials }}
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <h2 class="text-base font-extrabold text-slate-900">{{ egresso.nome_completo }}</h2>
+                <h2 class="text-base font-extrabold text-slate-900">{{ egressoData.nome_completo }}</h2>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  {{ prontuario.situacao }}
+                  {{ prontuarioData.situacao }}
                 </span>
               </div>
               <p class="text-xs text-slate-500 mt-0.5">
-                Prontuário: <span class="font-mono font-bold text-slate-700">{{ prontuario.numero_prontuario }}</span> • Polo: <span class="font-semibold text-slate-700">{{ egresso.municipio.nome }}/ES</span>
+                Prontuário: <span class="font-mono font-bold text-slate-700">{{ prontuarioData.numero_prontuario }}</span> • Polo: <span class="font-semibold text-slate-700">{{ egressoData.municipio?.nome || 'Vitória' }}/ES</span>
               </p>
             </div>
           </div>
 
           <div class="text-right">
             <span class="text-[10px] uppercase font-bold text-slate-400 block">Técnico Responsável</span>
-            <strong class="text-xs text-slate-800 font-bold block">{{ prontuario.tecnico_responsavel.name }}</strong>
-            <span class="text-[11px] text-slate-500">Abertura: {{ prontuario.data_abertura }}</span>
+            <strong class="text-xs text-slate-800 font-bold block">{{ prontuarioData.tecnico_responsavel?.name || 'Equipe Técnica Escritório Social' }}</strong>
+            <span class="text-[11px] text-slate-500">Abertura: {{ prontuarioData.data_abertura }}</span>
           </div>
         </div>
 
@@ -59,19 +59,19 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 text-xs">
           <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
             <span class="text-[10px] uppercase font-bold text-slate-400 block">CPF Mascarado (LGPD)</span>
-            <strong class="text-slate-800 font-mono block mt-0.5">{{ egresso.cpf_masked }}</strong>
+            <strong class="text-slate-800 font-mono block mt-0.5">{{ egressoData.cpf_masked }}</strong>
           </div>
           <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
             <span class="text-[10px] uppercase font-bold text-slate-400 block">Data de Nascimento</span>
-            <strong class="text-slate-800 block mt-0.5">{{ egresso.data_nascimento }}</strong>
+            <strong class="text-slate-800 block mt-0.5">{{ egressoData.data_nascimento }}</strong>
           </div>
           <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
             <span class="text-[10px] uppercase font-bold text-slate-400 block">Escolaridade</span>
-            <strong class="text-slate-800 block mt-0.5">{{ egresso.escolaridade }}</strong>
+            <strong class="text-slate-800 block mt-0.5">{{ egressoData.escolaridade }}</strong>
           </div>
           <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
             <span class="text-[10px] uppercase font-bold text-slate-400 block">Processo de Execução</span>
-            <strong class="text-slate-800 font-mono block mt-0.5">{{ egresso.numero_processo_execucao }}</strong>
+            <strong class="text-slate-800 font-mono block mt-0.5">{{ egressoData.numero_processo_execucao }}</strong>
           </div>
         </div>
 
@@ -79,18 +79,118 @@
         <div class="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div>
             <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">Vulnerabilidades Mapeadas</span>
-            <div class="flex flex-wrap gap-1.5">
-              <span v-for="tag in egresso.vulnerabilidades" :key="tag" class="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-[11px] font-semibold">
+            <div v-if="egressoData.vulnerabilidades?.length" class="flex flex-wrap gap-1.5">
+              <span v-for="tag in egressoData.vulnerabilidades" :key="tag" class="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-[11px] font-semibold">
                 ⚠️ {{ tag }}
               </span>
             </div>
+            <span v-else class="text-xs text-slate-400 italic">Nenhuma vulnerabilidade registrada.</span>
           </div>
 
           <div>
             <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">Meta do Plano Individual de Reintegração</span>
             <p class="text-slate-700 bg-sky-50/70 p-2.5 rounded-xl border border-sky-200/70 text-[11px] leading-relaxed">
-              {{ prontuario.meta_plano_individual }}
+              {{ prontuarioData.meta_plano_individual }}
             </p>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="bg-white rounded-2xl border border-slate-200/80 p-8 text-center shadow-xs">
+        <p class="text-sm font-bold text-slate-700">Nenhum prontuário de egresso encontrado.</p>
+        <p class="text-xs text-slate-500 mt-1">Cadastre ou vincule um cidadão egresso para visualizar e gerenciar o Prontuário Único.</p>
+      </div>
+
+      <!-- Ficha do Egresso: Conhecimentos e Qualificações Profissionais (R1) -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4" id="section-conhecimentos">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xl">💼</span>
+              <h2 class="text-base font-extrabold text-slate-900 font-heading">
+                Ficha do Egresso: Conhecimentos e Qualificações
+              </h2>
+              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200">
+                {{ conhecimentos.length }} {{ conhecimentos.length === 1 ? 'conhecimento' : 'conhecimentos' }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Mapeamento de competências profissionais, níveis de proficiência e necessidades de qualificação para o mercado de trabalho.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="btn-gerenciar-conhecimentos"
+              :disabled="!egressoData?.id"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              @click="openEditModal"
+            >
+              <span>✏️ Gerenciar Conhecimentos</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div
+          v-if="conhecimentos.length === 0"
+          class="text-center py-8 px-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50"
+          id="conhecimentos-empty-state"
+        >
+          <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-xl text-slate-400 mb-2">
+            📋
+          </div>
+          <h3 class="text-xs font-bold text-slate-700">Nenhum conhecimento ou qualificação cadastrada</h3>
+          <p class="text-[11px] text-slate-500 mt-1 max-w-sm mx-auto">
+            Cadastre as habilidades técnicas e áreas de domínio do egresso para facilitar o encaminhamento a vagas de emprego e cursos.
+          </p>
+          <button
+            v-if="egressoData?.id"
+            type="button"
+            class="mt-3 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg transition cursor-pointer"
+            @click="openEditModal"
+          >
+            ➕ Cadastrar Conhecimento
+          </button>
+        </div>
+
+        <!-- Knowledge Badges / Grid Display -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="conhecimentos-grid">
+          <div
+            v-for="(item, idx) in conhecimentos"
+            :key="item.id || idx"
+            class="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-slate-300 transition space-y-2.5 conhecimento-card"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <h4 class="text-xs font-extrabold text-slate-900 leading-snug conhecimento-nome">
+                {{ item.nome }}
+              </h4>
+              <!-- Proficiency Level Badge -->
+              <span
+                class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border flex-shrink-0 nivel-badge"
+                :class="getNivelBadgeClass(item.nivel)"
+              >
+                {{ formatNivel(item.nivel) }}
+              </span>
+            </div>
+
+            <!-- Training Status Badge -->
+            <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500 font-medium">Necessita de treinamento:</span>
+              <span
+                v-if="item.necessita_treinamento"
+                class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 border border-amber-200 treinamento-badge-sim"
+              >
+                <span>⚠️</span> Sim
+              </span>
+              <span
+                v-else
+                class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 treinamento-badge-nao"
+              >
+                <span>✅</span> Não
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -105,8 +205,12 @@
           <span class="text-[11px] font-mono text-slate-400">Hash SHA-256 Validado</span>
         </div>
 
+        <div v-if="timeline.length === 0" class="text-center py-6 text-xs text-slate-400">
+          Nenhum registro cronológico lançado neste prontuário até o momento.
+        </div>
+
         <!-- Timeline Items -->
-        <div class="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
+        <div v-else class="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
           <div
             v-for="evt in timeline"
             :key="evt.id"
@@ -143,7 +247,7 @@
               </div>
 
               <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Responsável: <strong class="text-slate-600">{{ evt.responsavel.name }}</strong></span>
+                <span>Responsável: <strong class="text-slate-600">{{ evt.responsavel?.name || 'Sistema Central SEJUS' }}</strong></span>
                 <span class="text-emerald-700 font-bold">● Registro Imutável</span>
               </div>
             </div>
@@ -164,11 +268,11 @@
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Tipo de Evento</label>
               <select v-model="newEntryForm.tipo_evento" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none">
-                <option value="EVOLUCAO_TECNICA">Evolução Técnica / Psicossocial</option>
-                <option value="ATENDIMENTO_VIDEO">Atendimento Remoto por Vídeo</option>
-                <option value="ENCAMINHAMENTO_EMPREGO">Encaminhamento para Vaga de Emprego</option>
-                <option value="CURSO_CAPACITACAO">Matrícula em Curso de Capacitação</option>
-                <option value="EMISSAO_CARTEIRA">Emissão de Credencial / Documentos</option>
+                <option value="parecer_tecnico">Evolução Técnica / Psicossocial</option>
+                <option value="atendimento_remoto">Atendimento Remoto por Vídeo</option>
+                <option value="encaminhamento_vaga">Encaminhamento para Vaga de Emprego</option>
+                <option value="matricula_curso">Matrícula em Curso de Capacitação</option>
+                <option value="emissao_carteira">Emissão de Credencial / Documentos</option>
               </select>
             </div>
 
@@ -189,13 +293,196 @@
           </form>
         </div>
       </div>
+
+      <!-- Modal de Gestão de Conhecimentos (R1) -->
+      <div
+        v-if="isConhecimentosModalOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+        id="modal-conhecimentos"
+      >
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col">
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4 flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">💼</span>
+              <div>
+                <h3 class="text-base font-extrabold text-slate-900">
+                  Gerenciar Conhecimentos da Ficha do Egresso
+                </h3>
+                <p class="text-xs text-slate-500">
+                  Adicione múltiplos conhecimentos sem restrição de quantidade, defina o nível e informe se necessita de treinamento.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              @click="cancelEdit"
+              class="text-slate-400 hover:text-slate-600 p-1 rounded-lg text-lg leading-none cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Modal Body (Dynamic Scrollable List) -->
+          <div class="overflow-y-auto flex-1 pr-1 space-y-3">
+            <div
+              v-if="editingConhecimentos.length === 0"
+              class="text-center py-6 text-slate-400 text-xs"
+            >
+              Nenhum conhecimento na lista. Clique em "Adicionar Outro Conhecimento" ou salve para manter a ficha sem conhecimentos.
+            </div>
+
+            <div
+              v-for="(item, index) in editingConhecimentos"
+              :key="index"
+              class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3 relative group row-conhecimento"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-extrabold uppercase text-slate-500">
+                  Conhecimento #{{ index + 1 }}
+                </span>
+                <button
+                  type="button"
+                  @click="removeConhecimentoRow(index)"
+                  title="Remover conhecimento"
+                  class="text-xs text-rose-600 hover:text-rose-800 font-bold px-2 py-1 rounded hover:bg-rose-50 transition flex items-center gap-1 cursor-pointer btn-remover-conhecimento"
+                >
+                  <span>🗑️</span>
+                  <span>Remover</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <!-- Skill Name or Catalog Selection -->
+                <div class="sm:col-span-6">
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                    Conhecimento <span class="text-rose-500">*</span>
+                  </label>
+                  <div class="space-y-1.5">
+                    <!-- Quick Select from Catalog if available -->
+                    <select
+                      v-if="catalogo.length > 0"
+                      :value="item.conhecimento_id || ''"
+                      @change="handleCatalogSelect(item, $event.target.value)"
+                      class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none select-catalogo"
+                    >
+                      <option value="">-- Selecione do catálogo ou digite abaixo --</option>
+                      <option
+                        v-for="cat in catalogo"
+                        :key="cat.id"
+                        :value="cat.id"
+                      >
+                        {{ cat.nome }} {{ cat.categoria ? `(${cat.categoria})` : '' }}
+                      </option>
+                    </select>
+
+                    <!-- Custom Text Input for Skill Name -->
+                    <input
+                      v-model="item.nome"
+                      type="text"
+                      @input="handleCustomNameInput(item)"
+                      placeholder="Digite ou selecione o conhecimento..."
+                      class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none input-nome-conhecimento"
+                      :class="{ 'border-rose-400 bg-rose-50/30': formErrors[`item_${index}_nome`] }"
+                    />
+                    <span
+                      v-if="formErrors[`item_${index}_nome`]"
+                      class="text-[10px] text-rose-600 font-semibold block"
+                    >
+                      {{ formErrors[`item_${index}_nome`] }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Proficiency Level (3 Options: Básico, Intermediário, Avançado) -->
+                <div class="sm:col-span-3">
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                    Nível <span class="text-rose-500">*</span>
+                  </label>
+                  <select
+                    v-model="item.nivel"
+                    class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none select-nivel"
+                    :class="{ 'border-rose-400 bg-rose-50/30': formErrors[`item_${index}_nivel`] }"
+                  >
+                    <option value="basico">Básico</option>
+                    <option value="intermediario">Intermediário</option>
+                    <option value="avancado">Avançado</option>
+                  </select>
+                  <span
+                    v-if="formErrors[`item_${index}_nivel`]"
+                    class="text-[10px] text-rose-600 font-semibold block"
+                  >
+                    {{ formErrors[`item_${index}_nivel`] }}
+                  </span>
+                </div>
+
+                <!-- Necessita de Treinamento (Sim / Não) -->
+                <div class="sm:col-span-3">
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                    Necessita de treinamento <span class="text-rose-500">*</span>
+                  </label>
+                  <select
+                    v-model="item.necessita_treinamento"
+                    class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 outline-none select-treinamento"
+                  >
+                    <option :value="true">Sim</option>
+                    <option :value="false">Não</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add Row Button (Unlimited additions) -->
+            <div class="pt-1">
+              <button
+                type="button"
+                id="btn-adicionar-linha-conhecimento"
+                @click="addConhecimentoRow"
+                class="w-full py-2.5 border-2 border-dashed border-indigo-300 hover:border-indigo-500 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-50 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>➕ Adicionar Outro Conhecimento</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Modal Footer Actions -->
+          <div class="flex items-center justify-between pt-4 border-t border-slate-100 mt-4 flex-shrink-0">
+            <span class="text-[11px] text-slate-400">
+              {{ editingConhecimentos.length }} {{ editingConhecimentos.length === 1 ? 'conhecimento configurado' : 'conhecimentos configurados' }}
+            </span>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                id="btn-cancelar-conhecimentos"
+                @click="cancelEdit"
+                :disabled="isSavingConhecimentos"
+                class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                id="btn-salvar-conhecimentos"
+                @click="saveConhecimentos"
+                :disabled="isSavingConhecimentos"
+                class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-md hover:shadow transition flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span v-if="isSavingConhecimentos" class="animate-spin text-xs">⏳</span>
+                <span>{{ isSavingConhecimentos ? 'Salvando...' : 'Salvar Conhecimentos' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { ref, computed, onMounted } from 'vue';
+import { Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
 import { useToast } from '../Composables/useToast';
@@ -203,105 +490,383 @@ import { useToast } from '../Composables/useToast';
 const props = defineProps({
   egresso: {
     type: Object,
-    default: () => ({
-      nome_completo: 'Lucas Santos de Oliveira',
-      cpf_masked: '***.192.830-**',
-      data_nascimento: '15/06/1994',
-      escolaridade: 'Ensino Fundamental Completo',
-      municipio: { nome: 'São Mateus' },
-      numero_processo_execucao: '0012480-45.2024.8.08.0047',
-      vulnerabilidades: [
-        'Baixo Letramento Digital',
-        'Busca de Qualificação Profissional',
-        'Necessidade de Regularização de Documentos',
-      ],
-    }),
+    default: null,
   },
   prontuario: {
     type: Object,
-    default: () => ({
-      numero_prontuario: 'PRON-2026-3204906-10842',
-      situacao: 'ACOMPANHAMENTO ATIVO',
-      data_abertura: '17/08/2026',
-      tecnico_responsavel: { name: 'Dra. Márcia Oliveira (CRESS 4891/ES)' },
-      resumo_diagnostico: 'Egresso em cumprimento de livramento condicional, motivado para inserção no mercado de trabalho e capacitação técnica.',
-      meta_plano_individual: 'Concluir curso de qualificação profissional SENAI e obter colocação formal em vaga de cota afirmativa no polo Linhares/São Mateus.',
-    }),
+    default: null,
   },
   timeline: {
     type: Array,
-    default: () => [
-      {
-        id: 1,
-        tipo_evento: 'ACOLHIMENTO_INICIAL',
-        titulo: 'Cadastro Inicial e Acolhimento no Conecta Egresso',
-        descricao: 'Egresso realizou cadastro via Acesso Cidadão/Gov.br. Perfil integrado à política pública SEJUS e verificação de biometria.',
-        responsavel: { name: 'Sistema Central SEJUS' },
-        data_evento: '17/08/2026 às 09:05',
-        metadata: { 'Polo': 'Escritório Social Virtual - Norte', 'Origem': 'Acesso Cidadão Gov.br' },
-      },
-      {
-        id: 2,
-        tipo_evento: 'EMISSAO_CARTEIRA',
-        titulo: 'Emissão da Carteira de Identificação Digital',
-        descricao: 'Credencial oficial gerada com assinatura HMAC-SHA256 e QR Code para validação pública conforme Lei Estadual 182/2021.',
-        responsavel: { name: 'Sistema Central SEJUS' },
-        data_evento: '17/08/2026 às 09:12',
-        metadata: { 'Registro': 'ES-2026-3204906-10842', 'Status': 'REGULAR' },
-      },
-      {
-        id: 3,
-        tipo_evento: 'ATENDIMENTO_VIDEO',
-        titulo: 'Atendimento Psicossocial Remoto Realizado',
-        descricao: 'Sessão por videochamada via WebRTC para mapeamento de vocações e orientação de benefícios socioassistenciais.',
-        responsavel: { name: 'Dra. Márcia Oliveira' },
-        data_evento: '17/08/2026 às 14:30',
-        metadata: { 'Duração': '24 min', 'Qualidade (MOS)': '4.3 (Excelente)', 'Encaminhamento': 'SENAI Linhares' },
-      },
-    ],
+    default: () => [],
+  },
+  conhecimentos: {
+    type: Array,
+    default: null,
+  },
+  catalogoConhecimentos: {
+    type: Array,
+    default: () => [],
   },
 });
 
+const page = usePage();
 const { t } = useAccessibility();
 const toast = useToast();
 
-const timeline = ref([...props.timeline]);
+const egressoData = computed(() => props.egresso);
+
+const prontuarioData = computed(() => {
+  if (props.prontuario) {
+    return props.prontuario;
+  }
+  return {
+    id: null,
+    numero_prontuario: 'EM ABERTURA',
+    situacao: 'ACOMPANHAMENTO ATIVO',
+    data_abertura: '—',
+    tecnico_responsavel: { name: 'Equipe Técnica Escritório Social' },
+    resumo_diagnostico: '',
+    meta_plano_individual: 'Plano Individual em elaboração pela equipe multiprofissional.',
+  };
+});
+
+const egressoInitials = computed(() => {
+  const nome = egressoData.value?.nome_completo || '';
+  const parts = nome.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'EG';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+});
+
+const timeline = ref(Array.isArray(props.timeline) ? [...props.timeline] : []);
 const isNewEntryModalOpen = ref(false);
 
 const newEntryForm = ref({
-  tipo_evento: 'EVOLUCAO_TECNICA',
+  tipo_evento: 'parecer_tecnico',
   titulo: '',
   descricao: '',
 });
 
 const getEventIcon = (tipo) => {
   switch (tipo) {
+    case 'acolhimento_video':
     case 'ACOLHIMENTO_INICIAL': return '👋';
+    case 'emissao_carteira':
+    case 'emissao_documento':
     case 'EMISSAO_CARTEIRA': return '💳';
+    case 'atendimento_remoto':
     case 'ATENDIMENTO_VIDEO': return '📹';
+    case 'encaminhamento_vaga':
     case 'ENCAMINHAMENTO_EMPREGO': return '💼';
+    case 'inscricao_curso':
+    case 'matricula_curso':
     case 'CURSO_CAPACITACAO': return '🎓';
     default: return '📝';
   }
 };
 
-const handleCreateEntry = () => {
+const handleCreateEntry = async () => {
+  const responsavelName = page.props.auth?.user?.name || 'Equipe Técnica Escritório Social';
+  const prontuarioId = prontuarioData.value?.id;
+
+  if (prontuarioId) {
+    try {
+      const csrfToken = typeof document !== 'undefined'
+        ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        : null;
+
+      const res = await fetch(`/api/prontuarios/${prontuarioId}/timeline`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+        },
+        body: JSON.stringify({
+          tipo_evento: newEntryForm.value.tipo_evento,
+          titulo: newEntryForm.value.titulo,
+          descricao: newEntryForm.value.descricao,
+        }),
+      });
+
+      if (!res.ok) {
+        const errPayload = await res.json().catch(() => ({}));
+        toast.error('Erro ao Registrar', errPayload.error || 'Não foi possível gravar a evolução no prontuário.');
+        return;
+      }
+    } catch {
+      toast.error('Erro de Conexão', 'Falha de comunicação ao gravar a evolução técnica.');
+      return;
+    }
+  }
+
   timeline.value.unshift({
     id: Date.now(),
     tipo_evento: newEntryForm.value.tipo_evento,
     titulo: newEntryForm.value.titulo,
     descricao: newEntryForm.value.descricao,
-    responsavel: { name: 'Dra. Márcia Oliveira (CRESS 4891/ES)' },
+    responsavel: { name: responsavelName },
     data_evento: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     metadata: { 'Origem': 'Painel Web Escritório Social', 'Integridade': 'Assinado Digitalmente' },
   });
 
   isNewEntryModalOpen.value = false;
-  newEntryForm.value = { tipo_evento: 'EVOLUCAO_TECNICA', titulo: '', descricao: '' };
+  newEntryForm.value = { tipo_evento: 'parecer_tecnico', titulo: '', descricao: '' };
 
   toast.success(
     'Evolução Registrada no Prontuário',
     'Novo registro técnico inserido com sucesso no Prontuário Único do Egresso.'
   );
+};
+
+// -------------------------------------------------------------
+// Reactive State for Conhecimentos (R1)
+// -------------------------------------------------------------
+const getInitialConhecimentos = () => {
+  if (Array.isArray(props.conhecimentos)) {
+    return JSON.parse(JSON.stringify(props.conhecimentos));
+  }
+  if (props.egresso && Array.isArray(props.egresso.conhecimentos)) {
+    return JSON.parse(JSON.stringify(props.egresso.conhecimentos));
+  }
+  return [];
+};
+
+const conhecimentos = ref(getInitialConhecimentos());
+const catalogo = ref(Array.isArray(props.catalogoConhecimentos) ? [...props.catalogoConhecimentos] : []);
+const isConhecimentosModalOpen = ref(false);
+const isSavingConhecimentos = ref(false);
+const formErrors = ref({});
+const editingConhecimentos = ref([]);
+
+onMounted(async () => {
+  if (catalogo.value.length === 0) {
+    try {
+      const res = await fetch('/api/conhecimentos', { headers: { 'Accept': 'application/json' } });
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json.data)) {
+          catalogo.value = json.data;
+        }
+      }
+    } catch {
+      // Catálogo opcional para preenchimento rápido
+    }
+  }
+
+  if (props.conhecimentos === null && props.egresso?.id) {
+    try {
+      const res = await fetch(`/api/egressos/${props.egresso.id}/conhecimentos`, {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json.data)) {
+          conhecimentos.value = json.data;
+        }
+      }
+    } catch {
+      // Mantém lista atual caso haja falha de rede
+    }
+  }
+});
+
+// -------------------------------------------------------------
+// Helpers & Badge Formatters
+// -------------------------------------------------------------
+const getNivelBadgeClass = (nivel) => {
+  const norm = (nivel || '').toLowerCase();
+  switch (norm) {
+    case 'basico':
+    case 'básico':
+      return 'bg-sky-50 text-sky-700 border-sky-200';
+    case 'intermediario':
+    case 'intermediário':
+      return 'bg-amber-50 text-amber-800 border-amber-200';
+    case 'avancado':
+    case 'avançado':
+      return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+    default:
+      return 'bg-slate-100 text-slate-700 border-slate-200';
+  }
+};
+
+const formatNivel = (nivel) => {
+  const norm = (nivel || '').toLowerCase();
+  switch (norm) {
+    case 'basico':
+    case 'básico':
+      return 'Básico';
+    case 'intermediario':
+    case 'intermediário':
+      return 'Intermediário';
+    case 'avancado':
+    case 'avançado':
+      return 'Avançado';
+    default:
+      return nivel || 'Básico';
+  }
+};
+
+// -------------------------------------------------------------
+// Modal & Array Manipulation Handlers
+// -------------------------------------------------------------
+const openEditModal = () => {
+  editingConhecimentos.value = conhecimentos.value.map(item => ({
+    id: item.id || null,
+    conhecimento_id: item.conhecimento_id || null,
+    nome: item.nome || '',
+    nivel: item.nivel || 'basico',
+    necessita_treinamento: Boolean(item.necessita_treinamento),
+  }));
+
+  if (editingConhecimentos.value.length === 0) {
+    addConhecimentoRow();
+  }
+
+  formErrors.value = {};
+  isConhecimentosModalOpen.value = true;
+};
+
+const cancelEdit = () => {
+  editingConhecimentos.value = [];
+  formErrors.value = {};
+  isConhecimentosModalOpen.value = false;
+};
+
+const addConhecimentoRow = () => {
+  editingConhecimentos.value.push({
+    id: null,
+    conhecimento_id: null,
+    nome: '',
+    nivel: 'basico',
+    necessita_treinamento: false,
+  });
+};
+
+const removeConhecimentoRow = (index) => {
+  editingConhecimentos.value.splice(index, 1);
+};
+
+const handleCatalogSelect = (row, selectedId) => {
+  if (!selectedId) {
+    row.conhecimento_id = null;
+    return;
+  }
+  const selected = catalogo.value.find(c => c.id === Number(selectedId));
+  if (selected) {
+    row.conhecimento_id = selected.id;
+    row.nome = selected.nome;
+  }
+};
+
+const handleCustomNameInput = (row) => {
+  if (!row.conhecimento_id) return;
+  const selected = catalogo.value.find(c => c.id === Number(row.conhecimento_id));
+  if (!selected || selected.nome.trim().toLowerCase() !== (row.nome || '').trim().toLowerCase()) {
+    row.conhecimento_id = null;
+  }
+};
+
+const saveConhecimentos = async () => {
+  formErrors.value = {};
+  const cleanedItems = [];
+  const seenNames = new Set();
+  let hasError = false;
+
+  for (let i = 0; i < editingConhecimentos.value.length; i++) {
+    const item = editingConhecimentos.value[i];
+    const trimmedName = (item.nome || '').trim();
+
+    if (!trimmedName) {
+      formErrors.value[`item_${i}_nome`] = 'Informe o nome do conhecimento.';
+      hasError = true;
+      continue;
+    }
+
+    const normalizedLower = trimmedName.toLowerCase();
+    if (seenNames.has(normalizedLower)) {
+      formErrors.value[`item_${i}_nome`] = 'Este conhecimento já foi adicionado.';
+      hasError = true;
+      continue;
+    }
+    seenNames.add(normalizedLower);
+
+    if (!['basico', 'intermediario', 'avancado'].includes(item.nivel)) {
+      formErrors.value[`item_${i}_nivel`] = 'Nível deve ser Básico, Intermediário ou Avançado.';
+      hasError = true;
+      continue;
+    }
+
+    cleanedItems.push({
+      conhecimento_id: item.conhecimento_id || null,
+      nome: trimmedName,
+      nivel: item.nivel,
+      necessita_treinamento: Boolean(item.necessita_treinamento),
+    });
+  }
+
+  if (hasError) {
+    toast.error('Atenção', 'Corrija os erros destacados no formulário antes de salvar.');
+    return;
+  }
+
+  const egressoId = egressoData.value?.id;
+  if (!egressoId) {
+    toast.error('Erro', 'Nenhum egresso selecionado para salvar conhecimentos.');
+    return;
+  }
+
+  isSavingConhecimentos.value = true;
+
+  try {
+    const csrfToken = typeof document !== 'undefined'
+      ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      : null;
+
+    const response = await fetch(`/api/egressos/${egressoId}/conhecimentos`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+      },
+      body: JSON.stringify({ conhecimentos: cleanedItems }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (response.ok) {
+      conhecimentos.value = Array.isArray(data.data) ? data.data : cleanedItems;
+      // Atualiza também o catálogo local caso novos conhecimentos tenham sido criados dinamicamente
+      for (const saved of conhecimentos.value) {
+        if (saved.conhecimento_id && !catalogo.value.some(c => c.id === saved.conhecimento_id)) {
+          catalogo.value.push({
+            id: saved.conhecimento_id,
+            nome: saved.nome,
+            categoria: saved.categoria || null,
+          });
+        }
+      }
+      isConhecimentosModalOpen.value = false;
+      toast.success(
+        'Conhecimentos Atualizados',
+        'Ficha do Egresso atualizada com sucesso com as qualificações registradas.'
+      );
+    } else {
+      toast.error(
+        'Falha ao Salvar Conhecimentos',
+        data.error || 'Verifique os dados informados e tente novamente.'
+      );
+    }
+  } catch {
+    toast.error(
+      'Erro de Conexão',
+      'Não foi possível comunicar com o servidor para salvar os conhecimentos.'
+    );
+  } finally {
+    isSavingConhecimentos.value = false;
+  }
 };
 </script>

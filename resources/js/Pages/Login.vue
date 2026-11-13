@@ -1,11 +1,11 @@
 <template>
-  <div class="login-page min-h-screen bg-gradient-to-br from-slate-900 via-[#003366] to-slate-950 text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans">
-    <!-- Background Ambient Glows & ES Geometry -->
-    <div class="absolute top-0 right-0 -mr-32 -mt-32 w-96 h-96 rounded-full bg-[#1351b4]/20 blur-3xl pointer-events-none" aria-hidden="true"></div>
-    <div class="absolute bottom-0 left-0 -ml-32 -mb-32 w-96 h-96 rounded-full bg-[#e63946]/15 blur-3xl pointer-events-none" aria-hidden="true"></div>
+  <div class="login-page min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans antialiased">
+    <!-- Subtle Ambient Glows -->
+    <div class="absolute top-0 right-0 -mr-40 -mt-40 w-96 h-96 rounded-full bg-sky-600/10 blur-3xl pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute bottom-0 left-0 -ml-40 -mb-40 w-96 h-96 rounded-full bg-indigo-600/10 blur-3xl pointer-events-none" aria-hidden="true"></div>
 
     <!-- Top Header / Accessibility Bar -->
-    <header class="top-nav w-full px-4 sm:px-8 py-4 flex items-center justify-between z-10 border-b border-white/10 backdrop-blur-md bg-slate-900/40">
+    <header class="top-nav w-full px-4 sm:px-8 py-3.5 flex items-center justify-between z-10 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md">
       <!-- Institutional Branding -->
       <div class="flex items-center gap-3">
         <!-- ES Flag Ribbon -->
@@ -15,10 +15,10 @@
           <span class="h-1/3 bg-[#003366]"></span>
         </div>
         <div>
-          <span class="text-xs sm:text-sm font-extrabold tracking-wider text-white uppercase block leading-tight">
+          <span class="text-xs sm:text-sm font-bold tracking-tight text-white uppercase block leading-tight">
             Governo do Estado do Espírito Santo
           </span>
-          <span class="text-[10px] sm:text-[11px] font-semibold text-sky-300 uppercase tracking-widest block">
+          <span class="text-[10px] sm:text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
             SEJUS • Secretaria de Estado da Justiça
           </span>
         </div>
@@ -32,24 +32,23 @@
 
     <!-- Main Container / Center Login Card -->
     <main class="flex-1 flex items-center justify-center p-4 sm:p-6 z-10 my-4 sm:my-8" role="main">
-      <div class="w-full max-w-xl bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 text-slate-800 p-6 sm:p-8 md:p-10 transition-all duration-300">
-        
+      <div class="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 text-slate-800 p-6 sm:p-8 md:p-10 transition-all duration-300">
         <!-- Header: Portal Title & Seal -->
         <div class="text-center mb-6">
-          <div class="inline-flex items-center justify-center gap-2 mb-2">
-            <span class="text-2xl" aria-hidden="true">🏛️</span>
+          <div class="inline-flex items-center justify-center gap-2.5 mb-1.5">
+            <Building2 class="w-6 h-6 text-[#003366] stroke-[2]" />
             <h1 class="text-2xl sm:text-3xl font-extrabold text-[#003366] tracking-tight">
               CONECTA <span class="text-sky-600">EGRESSO</span>
             </h1>
           </div>
-          <p class="text-xs sm:text-sm text-slate-600 font-medium">
+          <p class="text-xs sm:text-sm text-slate-500 font-medium">
             Plataforma Integrada de Reintegração Social e Cidadania do ES
           </p>
-          <div class="flex items-center justify-center gap-2 mt-2">
-            <span class="bg-sky-100 text-sky-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-sky-200">
+          <div class="flex items-center justify-center gap-2 mt-2.5">
+            <span class="bg-sky-50 text-sky-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-sky-100">
               Escritório Social Digital
             </span>
-            <span class="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+            <span class="bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-100">
               78 Municípios
             </span>
           </div>
@@ -62,30 +61,30 @@
               <div class="w-full border-t border-slate-200"></div>
             </div>
             <div class="relative flex justify-center text-xs uppercase">
-              <span class="bg-white px-2 text-slate-500 font-bold tracking-wider">Acesso Unificado do Cidadão</span>
+              <span class="bg-white px-2.5 text-slate-400 font-semibold tracking-wider text-[11px]">Acesso Unificado do Cidadão</span>
             </div>
           </div>
 
           <button
             id="govBrSsoBtn"
             type="button"
-            class="w-full bg-[#1351b4] hover:bg-[#0c326f] active:bg-[#092452] text-white font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-blue-900/20 hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3 cursor-pointer min-h-[48px] focus:ring-4 focus:ring-blue-300 outline-none group disabled:opacity-60"
+            class="w-full bg-[#1351b4] hover:bg-[#0c326f] active:bg-[#092452] text-white font-bold py-3.5 px-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-3 cursor-pointer min-h-[48px] focus:ring-4 focus:ring-blue-100 outline-none group disabled:opacity-60"
             :disabled="isLoadingGovBr"
             @click="handleGovBrLogin"
           >
-            <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-xs">
+            <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-2xs">
               <span class="text-[#1351b4] font-black text-xs">gov</span>
             </div>
             <span class="text-sm sm:text-base">
-              {{ isLoadingGovBr ? 'Autenticando com Gov.br...' : 'Entrar com Gov.br / Acesso Cidadão' }}
+              {{ isLoadingGovBr ? 'Redirecionando ao Gov.br...' : 'Entrar com Gov.br / Acesso Cidadão' }}
             </span>
-            <span class="ml-auto text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-bold group-hover:bg-white/30 hidden sm:inline">
+            <span class="ml-auto text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-semibold group-hover:bg-white/30 hidden sm:inline">
               Ouro / Prata / Bronze
             </span>
           </button>
-          
-          <p class="text-[11px] text-slate-500 text-center mt-1.5">
-            Acesso único para cidadãos, egressos, familiares e servidores estaduais
+
+          <p class="text-[11px] text-slate-400 text-center mt-2">
+            Autenticação oficial habilitada para perfis autorizados: gestor, tecnico, egresso, empregador e suporte.
           </p>
         </div>
 
@@ -95,7 +94,7 @@
             <div class="w-full border-t border-slate-200"></div>
           </div>
           <div class="relative flex justify-center text-xs uppercase">
-            <span class="bg-white px-3 text-slate-400 font-semibold tracking-wider">ou acesse com suas credenciais</span>
+            <span class="bg-white px-3 text-slate-400 font-medium tracking-wider text-[11px]">ou acesse com suas credenciais</span>
           </div>
         </div>
 
@@ -103,31 +102,31 @@
         <form @submit.prevent="handleCredentialsLogin" class="space-y-4" novalidate>
           <!-- Email or CPF Input -->
           <div>
-            <label for="loginIdentifier" class="block text-xs font-bold text-slate-700 mb-1">
+            <label for="loginIdentifier" class="block text-xs font-semibold text-slate-700 mb-1">
               CPF ou E-mail Institucional <span class="text-rose-500">*</span>
             </label>
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">👤</span>
+              <User class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 stroke-[2]" aria-hidden="true" />
               <input
                 id="loginIdentifier"
                 v-model="form.login"
                 type="text"
                 autocomplete="username"
-                placeholder="000.000.000-00 ou usuario@sejus.es.gov.br"
-                class="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition"
+                placeholder="000.000.000-00 ou usuario@instituicao.gov.br"
+                class="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-100 focus:border-sky-500 outline-none transition"
                 :class="errors.login ? 'border-rose-400 bg-rose-50/50' : 'border-slate-300'"
                 required
               />
             </div>
             <p v-if="errors.login" class="text-rose-600 text-xs font-medium mt-1 flex items-center gap-1">
-              <span>⚠️</span> {{ errors.login }}
+              <AlertCircle class="w-3.5 h-3.5" /> {{ errors.login }}
             </p>
           </div>
 
           <!-- Password Input -->
           <div>
             <div class="flex items-center justify-between mb-1">
-              <label for="loginPassword" class="block text-xs font-bold text-slate-700">
+              <label for="loginPassword" class="block text-xs font-semibold text-slate-700">
                 Senha de Acesso <span class="text-rose-500">*</span>
               </label>
               <a href="#" @click.prevent="handleForgotPassword" class="text-xs text-sky-700 hover:text-sky-900 font-semibold hover:underline">
@@ -135,28 +134,29 @@
               </a>
             </div>
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">🔒</span>
+              <Lock class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 stroke-[2]" aria-hidden="true" />
               <input
                 id="loginPassword"
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
                 autocomplete="current-password"
                 placeholder="Digite sua senha"
-                class="w-full pl-9 pr-10 py-2.5 text-sm bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition"
+                class="w-full pl-9 pr-10 py-2.5 text-sm bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-sky-100 focus:border-sky-500 outline-none transition"
                 :class="errors.password ? 'border-rose-400 bg-rose-50/50' : 'border-slate-300'"
                 required
               />
               <button
                 type="button"
-                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 p-1 text-sm rounded cursor-pointer"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded cursor-pointer"
                 :aria-label="showPassword ? 'Ocultar senha' : 'Exibir senha'"
                 @click="showPassword = !showPassword"
               >
-                {{ showPassword ? '🙈' : '👁️' }}
+                <EyeOff v-if="showPassword" class="w-4 h-4 stroke-[1.75]" />
+                <Eye v-else class="w-4 h-4 stroke-[1.75]" />
               </button>
             </div>
             <p v-if="errors.password" class="text-rose-600 text-xs font-medium mt-1 flex items-center gap-1">
-              <span>⚠️</span> {{ errors.password }}
+              <AlertCircle class="w-3.5 h-3.5" /> {{ errors.password }}
             </p>
           </div>
 
@@ -177,207 +177,38 @@
           <button
             id="loginSubmitBtn"
             type="submit"
-            class="w-full bg-[#003366] hover:bg-[#002244] active:bg-[#001730] text-white font-extrabold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer min-h-[44px] focus:ring-4 focus:ring-sky-300 outline-none disabled:opacity-60"
+            class="w-full bg-[#003366] hover:bg-[#002244] active:bg-[#001730] text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer min-h-[44px] focus:ring-4 focus:ring-sky-200 outline-none disabled:opacity-60"
             :disabled="isLoadingCredentials"
           >
-            <span v-if="isLoadingCredentials" class="animate-spin text-base">⏳</span>
-            <span class="text-sm font-bold">
+            <span v-if="isLoadingCredentials" class="animate-spin text-sm">↻</span>
+            <span class="text-sm font-semibold">
               {{ isLoadingCredentials ? 'Entrando no sistema...' : 'Entrar no Conecta Egresso' }}
             </span>
           </button>
         </form>
 
-        <!-- Quick-Fill Demo Credentials Bar -->
-        <div class="mt-6 pt-5 border-t border-slate-200">
-          <div class="flex items-center justify-between mb-2.5">
-            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-              <span>⚡</span> Preenchimento Rápido para Demonstração:
-            </span>
-            <span class="text-[10px] text-slate-400">Clique para preencher</span>
-          </div>
-
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <!-- Suporte Agile -->
-            <button
-              id="demoSuporteBtn"
-              type="button"
-              class="p-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 text-left transition cursor-pointer group"
-              @click="quickFill('suporte')"
-            >
-              <div class="flex items-center gap-1 mb-0.5">
-                <span class="text-xs">🛡️</span>
-                <strong class="text-[11px] font-bold block truncate">Suporte Agile</strong>
-              </div>
-              <span class="text-[9px] text-purple-700 block truncate">Admin Geral</span>
-            </button>
-
-            <!-- Gestor Estadual -->
-            <button
-              id="demoGestorBtn"
-              type="button"
-              class="p-2 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-900 text-left transition cursor-pointer group"
-              @click="quickFill('gestor')"
-            >
-              <div class="flex items-center gap-1 mb-0.5">
-                <span class="text-xs">👔</span>
-                <strong class="text-[11px] font-bold block truncate">Gestor Estadual</strong>
-              </div>
-              <span class="text-[9px] text-blue-700 block truncate">SEJUS Central</span>
-            </button>
-
-            <!-- Técnico Social -->
-            <button
-              id="demoTecnicoBtn"
-              type="button"
-              class="p-2 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-left transition cursor-pointer group"
-              @click="quickFill('tecnico')"
-            >
-              <div class="flex items-center gap-1 mb-0.5">
-                <span class="text-xs">📋</span>
-                <strong class="text-[11px] font-bold block truncate">Técnico Social</strong>
-              </div>
-              <span class="text-[9px] text-emerald-700 block truncate">Escritório Social</span>
-            </button>
-
-            <!-- Egresso Cidadão -->
-            <button
-              id="demoEgressoBtn"
-              type="button"
-              class="p-2 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-left transition cursor-pointer group"
-              @click="quickFill('egresso')"
-            >
-              <div class="flex items-center gap-1 mb-0.5">
-                <span class="text-xs">🤝</span>
-                <strong class="text-[11px] font-bold block truncate">Egresso Cidadão</strong>
-              </div>
-              <span class="text-[9px] text-amber-700 block truncate">Autoatendimento</span>
-            </button>
-          </div>
-        </div>
-
         <!-- Security & LGPD Seal Badge -->
-        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
           <div class="flex items-center gap-1.5">
-            <span class="text-sm">🔒</span>
+            <Lock class="w-3.5 h-3.5 stroke-[2] text-slate-400" />
             <span>Criptografia <strong>AES-256</strong> & LGPD Blind Index</span>
           </div>
-          <span class="text-emerald-700 font-bold flex items-center gap-1">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-emerald-700 font-semibold flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             Conexão Segura
           </span>
         </div>
-
       </div>
     </main>
 
-    <!-- Gov.br / Acesso Cidadão SSO Modal Dialog -->
-    <div
-      v-if="showGovBrModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="govBrModalTitle"
-    >
-      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden text-slate-800 animate-in fade-in zoom-in duration-200">
-        <!-- Gov.br Modal Header -->
-        <div class="bg-[#1351b4] text-white p-5 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-xs">
-              <span class="text-[#1351b4] font-black text-sm">gov</span>
-            </div>
-            <div>
-              <h2 id="govBrModalTitle" class="text-base font-extrabold leading-tight">Identificação gov.br</h2>
-              <span class="text-[11px] text-blue-200 block">Acesso Cidadão • Governo do Espírito Santo</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="text-white/80 hover:text-white text-xl font-bold p-1 cursor-pointer"
-            @click="showGovBrModal = false"
-            aria-label="Fechar janela"
-          >
-            ✕
-          </button>
-        </div>
-
-        <!-- Gov.br Modal Body -->
-        <div class="p-6 space-y-4">
-          <p class="text-xs text-slate-600 font-medium">
-            Selecione a identidade digital verificada para autorizar o acesso à plataforma <strong>CONECTA EGRESSO (SEJUS/ES)</strong>:
-          </p>
-
-          <div class="space-y-2.5">
-            <label
-              v-for="persona in govBrPersonas"
-              :key="persona.id"
-              class="flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition"
-              :class="selectedPersona.id === persona.id ? 'border-[#1351b4] bg-blue-50/70 ring-2 ring-blue-500/20' : 'border-slate-200 hover:bg-slate-50'"
-            >
-              <input
-                type="radio"
-                name="govBrPersona"
-                :value="persona"
-                v-model="selectedPersona"
-                class="text-[#1351b4] focus:ring-[#1351b4]"
-              />
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between">
-                  <strong class="text-xs font-bold text-slate-800">{{ persona.name }}</strong>
-                  <span
-                    class="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
-                    :class="persona.badgeClass"
-                  >
-                    {{ persona.badge }}
-                  </span>
-                </div>
-                <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
-                  <span>CPF: {{ persona.cpf }}</span>
-                  <span>•</span>
-                  <span>{{ persona.roleDesc }}</span>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-start gap-2">
-            <span class="text-sm">🛡️</span>
-            <span>
-              Ao autorizar, você concede acesso às suas credenciais públicas e dados funcionais conforme a <strong>LGPD (Lei 13.709/2018)</strong>.
-            </span>
-          </div>
-
-          <!-- Buttons -->
-          <div class="pt-2 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              class="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
-              @click="showGovBrModal = false"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              class="px-6 py-2.5 text-xs font-extrabold bg-[#1351b4] hover:bg-[#0c326f] text-white rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-60"
-              :disabled="isLoadingGovBr"
-              @click="executeGovBrLogin"
-            >
-              <span v-if="isLoadingGovBr">Autorizando Sessão...</span>
-              <span v-else>Autorizar e Entrar</span>
-              <span>→</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Footer -->
-    <footer class="w-full px-4 sm:px-8 py-3 text-center text-slate-400 text-xs z-10 border-t border-white/10 bg-slate-900/50 backdrop-blur-md">
+    <footer class="w-full px-4 sm:px-8 py-3 text-center text-slate-400 text-xs z-10 border-t border-slate-800/80 bg-slate-900/60 backdrop-blur-md">
       <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
         <span>© 2026 Secretaria de Estado da Justiça (SEJUS) — Governo do Estado do Espírito Santo.</span>
         <div class="flex items-center gap-4 text-[11px]">
-          <a href="#" @click.prevent="toast.info('Termos de Uso', 'Em conformidade com as diretrizes do CNJ e DEPEN.')" class="hover:text-white">Termos de Uso</a>
+          <a href="#" @click.prevent="isPrivacyModalOpen = true" class="hover:text-white transition underline cursor-pointer">Termos de Uso</a>
           <span>•</span>
-          <a href="#" @click.prevent="toast.info('Política de Privacidade', 'Dados protegidos pela LGPD (Lei 13.709/2018).')" class="hover:text-white">Privacidade & LGPD</a>
+          <a href="#" @click.prevent="isPrivacyModalOpen = true" class="hover:text-white transition underline cursor-pointer">Privacidade & LGPD</a>
           <span>•</span>
           <a href="#" @click.prevent="toast.info('Suporte Técnico SEJUS', 'Central de Atendimento: (27) 3636-5700.')" class="hover:text-white">Suporte Técnico</a>
         </div>
@@ -386,15 +217,40 @@
 
     <!-- Global Reactive Toast Container -->
     <ToastContainer />
+
+    <!-- LGPD Cookie Consent Banner -->
+    <CookieConsentBanner @open-privacy="isPrivacyModalOpen = true" />
+
+    <!-- Legal Terms of Use & Privacy Policy Modal -->
+    <PrivacyTermsModal :is-open="isPrivacyModalOpen" @close="isPrivacyModalOpen = false" />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
+import {
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+  Building2,
+  AlertCircle,
+} from 'lucide-vue-next';
 import AccessibilityToolbar from '../Components/AccessibilityToolbar.vue';
 import ToastContainer from '../Components/ToastContainer.vue';
+import CookieConsentBanner from '../Components/CookieConsentBanner.vue';
+import PrivacyTermsModal from '../Components/PrivacyTermsModal.vue';
 import { useToast } from '../Composables/useToast';
+
+const isPrivacyModalOpen = ref(false);
+
+const props = defineProps({
+  govbrAuthUrl: {
+    type: String,
+    default: null,
+  },
+});
 
 const page = usePage();
 const toast = useToast();
@@ -413,138 +269,40 @@ const errors = reactive({
 const showPassword = ref(false);
 const isLoadingCredentials = ref(false);
 const isLoadingGovBr = ref(false);
-const showGovBrModal = ref(false);
-
-const demoAccounts = {
-  suporte: {
-    login: 'suporte.agile@sejus.es.gov.br',
-    password: 'secret123',
-    roleName: 'Suporte Técnico Agile',
-    cpf: '999.888.777-00',
-  },
-  gestor: {
-    login: 'gestor@sejus.es.gov.br',
-    password: 'secret123',
-    roleName: 'Gestor Estadual SEJUS',
-    cpf: '111.222.333-44',
-  },
-  tecnico: {
-    login: 'marcia.oliveira@sejus.es.gov.br',
-    password: 'secret123',
-    roleName: 'Assistente Social Escritório Social',
-    cpf: '555.666.777-88',
-  },
-  egresso: {
-    login: 'lucas.santos@cidadao.es.gov.br',
-    password: 'secret123',
-    roleName: 'Lucas Santos (Egresso Cidadão)',
-    cpf: '192.830.456-78',
-  },
-};
-
-const govBrPersonas = [
-  {
-    id: 'gestor',
-    name: 'Carlos Eduardo Silva',
-    cpf: '111.222.333-44',
-    email: 'gestor@sejus.es.gov.br',
-    sub: 'govbr-gestor-001',
-    badge: 'Nível Ouro 🥇',
-    badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300',
-    roleDesc: 'Gestor Estadual SEJUS (Secretaria de Estado da Justiça)',
-    orgao: 'SEJUS',
-    cargo: 'Gestor de Políticas Penais',
-    confianca: 'Ouro',
-  },
-  {
-    id: 'tecnico',
-    name: 'Dra. Márcia Oliveira',
-    cpf: '555.666.777-88',
-    email: 'marcia.oliveira@sejus.es.gov.br',
-    sub: 'govbr-tecnico-002',
-    badge: 'Nível Prata 🥈',
-    badgeClass: 'bg-slate-100 text-slate-800 border border-slate-300',
-    roleDesc: 'Técnico Especialista • Escritório Social',
-    orgao: 'SEJUS',
-    cargo: 'Assistente Social',
-    confianca: 'Prata',
-  },
-  {
-    id: 'egresso',
-    name: 'Lucas Santos',
-    cpf: '192.830.456-78',
-    email: 'lucas.santos@cidadao.es.gov.br',
-    sub: 'govbr-egresso-003',
-    badge: 'Nível Bronze 🥉',
-    badgeClass: 'bg-orange-100 text-orange-900 border border-orange-300',
-    roleDesc: 'Cidadão Egresso • Acesso a Vagas e Carteira Digital',
-    orgao: 'Cidadão',
-    cargo: 'Egresso',
-    confianca: 'Bronze',
-  },
-  {
-    id: 'suporte',
-    name: 'Suporte Agile SEJUS',
-    cpf: '999.888.777-00',
-    email: 'suporte.agile@sejus.es.gov.br',
-    sub: 'govbr-suporte-005',
-    badge: 'Administrador 🛡️',
-    badgeClass: 'bg-indigo-100 text-indigo-900 border border-indigo-300',
-    roleDesc: 'Empresa Desenvolvedora / Suporte Técnico',
-    orgao: 'Agile Tecnologia',
-    cargo: 'Suporte Técnico',
-    confianca: 'Ouro',
-  },
-];
-
-const selectedPersona = ref(govBrPersonas[0]);
-
-const quickFill = (roleKey) => {
-  const account = demoAccounts[roleKey];
-  if (!account) return;
-
-  form.login = account.login;
-  form.password = account.password;
-  errors.login = '';
-  errors.password = '';
-
-  toast.info('Credenciais Preenchidas', `Perfil ${account.roleName} carregado. Clique em Entrar.`);
-};
 
 const handleCredentialsLogin = () => {
   errors.login = '';
   errors.password = '';
 
-  if (!form.login || form.login.trim() === '') {
-    errors.login = 'Por favor, informe seu CPF ou e-mail.';
-    toast.warning('Campo Obrigatório', 'Informe seu CPF ou e-mail institucional.');
+  if (!form.login.trim()) {
+    errors.login = 'Informe seu CPF ou E-mail institucional.';
+    toast.error('Campo Obrigatório', errors.login);
     return;
   }
 
-  if (!form.password || form.password.trim() === '') {
-    errors.password = 'Por favor, digite sua senha de acesso.';
-    toast.warning('Campo Obrigatório', 'Digite sua senha de acesso.');
+  if (!form.password) {
+    errors.password = 'Digite sua senha de acesso.';
+    toast.error('Campo Obrigatório', errors.password);
     return;
   }
 
   isLoadingCredentials.value = true;
 
   router.post('/login', {
-    login: form.login.trim(),
-    email: form.login.trim(),
-    cpf: form.login.trim(),
+    login: form.login,
     password: form.password,
     remember: form.remember,
   }, {
     preserveScroll: true,
     onSuccess: () => {
-      toast.success('Autenticação Realizada', 'Bem-vindo ao Conecta Egresso!');
+      isLoadingCredentials.value = false;
+      toast.success('Autenticação Realizada', 'Redirecionando para o painel operacional...');
     },
     onError: (errs) => {
       isLoadingCredentials.value = false;
       if (errs.login) errors.login = errs.login;
       if (errs.password) errors.password = errs.password;
-      toast.error('Falha no Login', errs.login || errs.password || 'Credenciais inválidas. Verifique os dados digitados.');
+      toast.error('Falha de Autenticação', errs.login || errs.password || 'Credenciais inválidas.');
     },
     onFinish: () => {
       isLoadingCredentials.value = false;
@@ -553,47 +311,20 @@ const handleCredentialsLogin = () => {
 };
 
 const handleGovBrLogin = () => {
-  showGovBrModal.value = true;
-};
+  const ssoUrl = props.govbrAuthUrl || page.props.govbrAuthUrl;
+  if (ssoUrl && typeof window !== 'undefined') {
+    isLoadingGovBr.value = true;
+    window.location.href = ssoUrl;
+    return;
+  }
 
-const executeGovBrLogin = () => {
-  isLoadingGovBr.value = true;
-  toast.info('Gov.br / Acesso Cidadão', `Autenticando como ${selectedPersona.value.name}...`);
-
-  const claims = {
-    sub: selectedPersona.value.sub,
-    cpf: selectedPersona.value.cpf,
-    name: selectedPersona.value.name,
-    email: selectedPersona.value.email,
-    nivel_confianca: selectedPersona.value.confianca,
-    orgao: selectedPersona.value.orgao,
-    cargo: selectedPersona.value.cargo,
-    scope: 'openid email profile govbr_cidadao',
-  };
-
-  router.post('/auth/govbr/login', claims, {
-    preserveScroll: true,
-    onSuccess: () => {
-      showGovBrModal.value = false;
-      toast.success('Autenticado via Gov.br', `Sessão OIDC validada com ${selectedPersona.value.badge}.`);
-    },
-    onError: (errs) => {
-      isLoadingGovBr.value = false;
-      toast.error('Erro na Autenticação Gov.br', errs.govbr || 'Não foi possível autenticar via Gov.br.');
-    },
-    onFinish: () => {
-      isLoadingGovBr.value = false;
-    },
-  });
+  toast.info(
+    'Provedor Gov.br / Acesso Cidadão',
+    'Utilize seu CPF ou E-mail e senha institucional para autenticar nesta instância.'
+  );
 };
 
 const handleForgotPassword = () => {
-  toast.info('Recuperação de Senha', 'Para redefinir sua senha, entre em contato com o Suporte SEJUS pelo e-mail suporte.agile@sejus.es.gov.br ou telefone (27) 3636-5700.');
+  toast.info('Recuperação de Senha', 'Entre em contato com o administrador SEJUS ou utilize o portal Acesso Cidadão ES.');
 };
 </script>
-
-<style scoped>
-.login-page {
-  background-size: 200% 200%;
-}
-</style>

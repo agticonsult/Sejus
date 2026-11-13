@@ -35,8 +35,8 @@ class WebRtcJwtService
         User $user,
         string $roomId,
         ?string $role = null,
-        ?int $prontuarioId = null,
-        ?int $unitId = null,
+        int|string|null $prontuarioId = null,
+        int|string|null $unitId = null,
         ?string $roomCode = null
     ): array {
         $now = time();
@@ -59,8 +59,8 @@ class WebRtcJwtService
             'role' => $resolvedRole,
             'room_id' => $roomId,
             'room_code' => $resolvedRoomCode,
-            'prontuario_id' => $prontuarioId,
-            'unit_id' => $unitId,
+            'prontuario_id' => $prontuarioId !== null ? (string) $prontuarioId : null,
+            'unit_id' => $unitId !== null ? (string) $unitId : null,
             'iat' => $now,
             'nbf' => $now,
             'exp' => $expiresAt,
@@ -76,7 +76,7 @@ class WebRtcJwtService
             'role' => $resolvedRole,
             'expires_in' => $this->ttl,
             'expires_at' => date('c', $expiresAt),
-            'ice_servers' => $this->getIceServers(),
+            'ice_servers' => $this->getIceServers($user),
             'ws_url' => $this->getWebSocketUrl($roomId),
         ];
     }
@@ -152,9 +152,9 @@ class WebRtcJwtService
     }
 
     /**
-     * Return Coturn STUN/TURN ICE servers configuration.
+     * Return Coturn STUN/TURN ICE servers configuration with ephemeral HMAC credentials (RFC 5766).
      */
-    public function getIceServers(): array
+    public function getIceServers(mixed $user = null, ?int $ttl = null): array
     {
         $coturnHost = function_exists('config') && config('services.webrtc.coturn.host')
             ? (string) config('services.webrtc.coturn.host')
@@ -164,18 +164,33 @@ class WebRtcJwtService
             ? (int) config('services.webrtc.coturn.port')
             : (int) (getenv('COTURN_PORT') ?: 3478);
 
+        $coturnSecret = function_exists('config') && config('services.webrtc.coturn.secret')
+            ? (string) config('services.webrtc.coturn.secret')
+            : (string) (getenv('COTURN_SECRET') ?: 'sejus_turn_secret_key_2026');
+
+        $turnTtl = $ttl ?? (function_exists('config') && config('services.webrtc.coturn.ttl')
+            ? (int) config('services.webrtc.coturn.ttl')
+            : 86400);
+
+        $timestamp = time() + $turnTtl;
+        $userId = is_object($user)
+            ? (isset($user->id) && (is_string($user->id) || is_numeric($user->id)) ? (string) $user->id : 'anonymous')
+            : (is_string($user) || is_numeric($user) ? (string) $user : 'anonymous');
+        $username = "{$timestamp}:{$userId}";
+        $credential = base64_encode(hash_hmac('sha1', $username, $coturnSecret, true));
+
         return [
             ['urls' => 'stun:stun.l.google.com:19302'],
             ['urls' => "stun:{$coturnHost}:{$coturnPort}"],
             [
                 'urls' => "turn:{$coturnHost}:{$coturnPort}?transport=udp",
-                'username' => 'conecta_user',
-                'credential' => 'conecta_password',
+                'username' => $username,
+                'credential' => $credential,
             ],
             [
                 'urls' => "turn:{$coturnHost}:{$coturnPort}?transport=tcp",
-                'username' => 'conecta_user',
-                'credential' => 'conecta_password',
+                'username' => $username,
+                'credential' => $credential,
             ],
         ];
     }

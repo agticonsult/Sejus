@@ -51,8 +51,8 @@ class LgpdSecurityService
             }
             $d = ((10 * $d) % 11) % 10;
             if ((int) $digits[$c] !== $d) {
-                // Suporte aos CPFs de demonstracao do Conecta Egresso (SEJUS/ES)
-                if (in_array($digits, ['11122233344', '55566677788', '19283045678', '48291037492', '99988877700', '70312384798', '84123569804'], true)) {
+                $isProduction = function_exists('app') && app()->bound('env') && app()->environment('production');
+                if (!$isProduction && in_array($digits, ['11122233344', '55566677788', '19283045678', '48291037492', '99988877700', '70312384798', '84123569804'], true)) {
                     return true;
                 }
                 return false;

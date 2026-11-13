@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use App\Models\Prontuario;
 use App\Models\Egresso;
+use App\Models\Conhecimento;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\LgpdSecurityService;
@@ -20,6 +23,158 @@ class ProntuarioController extends Controller
     ) {}
 
     /**
+     * Render Inertia page for Prontuário Único / Ficha do Egresso with persisted DB data.
+     *
+     * GET /prontuario/{id?}
+     */
+    public function showView(Request $request, ?string $id = null): InertiaResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(401, 'Não autenticado.');
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte() && !$user->isEgresso()) {
+            abort(403, 'Acesso negado ao Prontuário Único.');
+        }
+
+        $prontuario = null;
+        $egresso = null;
+
+        if ($user->isEgresso()) {
+            $egresso = $user->egresso?->load(['municipio', 'conhecimentos', 'prontuario.tecnicoResponsavel', 'prontuario.timeline.responsavel']);
+            $prontuario = $egresso?->prontuario;
+
+            if ($id !== null && $egresso) {
+                $matchesEgresso = is_numeric($id) && (int) $id === $egresso->id;
+                $matchesProntuario = $prontuario && ((is_numeric($id) && (int) $id === $prontuario->id) || $id === $prontuario->numero_prontuario);
+                if (!$matchesEgresso && !$matchesProntuario) {
+                    abort(403, 'Acesso negado: você só pode consultar o seu próprio prontuário.');
+                }
+            }
+        } else {
+            if ($id !== null) {
+                $prontuario = Prontuario::with([
+                    'egresso.municipio',
+                    'egresso.conhecimentos',
+                    'tecnicoResponsavel:id,name,email',
+                    'timeline' => fn($q) => $q->orderBy('data_evento', 'desc'),
+                    'timeline.responsavel:id,name',
+                ])
+                ->where('numero_prontuario', $id)
+                ->orWhere(function ($q) use ($id) {
+                    if (is_numeric($id)) {
+                        $q->where('id', (int) $id)->orWhere('egresso_id', (int) $id);
+                    }
+                })
+                ->first();
+
+                if (!$prontuario && is_numeric($id)) {
+                    $egresso = Egresso::with(['municipio', 'conhecimentos', 'prontuario.tecnicoResponsavel', 'prontuario.timeline.responsavel'])
+                        ->find((int) $id);
+                    $prontuario = $egresso?->prontuario;
+                } else {
+                    $egresso = $prontuario?->egresso;
+                }
+            } else {
+                $prontuario = Prontuario::with([
+                    'egresso.municipio',
+                    'egresso.conhecimentos',
+                    'tecnicoResponsavel:id,name,email',
+                    'timeline' => fn($q) => $q->orderBy('data_evento', 'desc'),
+                    'timeline.responsavel:id,name',
+                ])->orderBy('id', 'asc')->first();
+
+                if ($prontuario) {
+                    $egresso = $prontuario->egresso;
+                } else {
+                    $egresso = Egresso::with(['municipio', 'conhecimentos'])->orderBy('id', 'asc')->first();
+                }
+            }
+        }
+
+        $conhecimentos = $egresso
+            ? $egresso->conhecimentos->map(function ($c) {
+                return [
+                    'id' => $c->pivot->id ?? $c->id,
+                    'conhecimento_id' => $c->id,
+                    'nome' => $c->nome,
+                    'categoria' => $c->categoria,
+                    'nivel' => $c->pivot->nivel,
+                    'necessita_treinamento' => (bool) $c->pivot->necessita_treinamento,
+                    'observacoes' => $c->pivot->observacoes ?? null,
+                ];
+            })->values()->all()
+            : [];
+
+        $catalogoConhecimentos = Conhecimento::query()
+            ->where('ativo', true)
+            ->orderBy('nome', 'asc')
+            ->get(['id', 'nome', 'categoria', 'descricao'])
+            ->map(fn($c) => [
+                'id' => $c->id,
+                'nome' => $c->nome,
+                'categoria' => $c->categoria,
+                'descricao' => $c->descricao,
+            ])
+            ->values()
+            ->all();
+
+        $egressoPayload = $egresso ? [
+            'id' => $egresso->id,
+            'nome_completo' => $egresso->nome_completo,
+            'nome_social' => $egresso->nome_social,
+            'cpf_masked' => $egresso->cpf ? $this->lgpd->maskCpf($egresso->cpf) : 'Não informado',
+            'data_nascimento' => $egresso->data_nascimento ? $egresso->data_nascimento->format('d/m/Y') : 'Não informada',
+            'escolaridade' => $egresso->escolaridade ?? 'Não informada',
+            'municipio' => [
+                'id' => $egresso->municipio?->id,
+                'nome' => $egresso->municipio?->nome ?? 'Vitória',
+            ],
+            'numero_processo_execucao' => $egresso->numero_processo_execucao ?? 'Sob sigilo legal',
+            'vulnerabilidades' => is_array($egresso->vulnerabilidades) ? $egresso->vulnerabilidades : [],
+            'conhecimentos' => $conhecimentos,
+        ] : null;
+
+        $prontuarioPayload = $prontuario ? [
+            'id' => $prontuario->id,
+            'numero_prontuario' => $prontuario->numero_prontuario,
+            'situacao' => mb_strtoupper(str_replace('_', ' ', (string) $prontuario->situacao)),
+            'data_abertura' => $prontuario->data_abertura ? $prontuario->data_abertura->format('d/m/Y') : '—',
+            'tecnico_responsavel' => [
+                'id' => $prontuario->tecnicoResponsavel?->id,
+                'name' => $prontuario->tecnicoResponsavel?->name ?? 'Equipe Técnica Escritório Social',
+            ],
+            'resumo_diagnostico' => $prontuario->resumo_diagnostico ?? '',
+            'meta_plano_individual' => $prontuario->meta_plano_individual ?? 'Plano Individual em elaboração pela equipe multiprofissional.',
+        ] : null;
+
+        $timelinePayload = ($prontuario && $prontuario->relationLoaded('timeline'))
+            ? $prontuario->timeline->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'tipo_evento' => $t->tipo_evento,
+                    'titulo' => $t->titulo,
+                    'descricao' => $t->descricao,
+                    'metadata' => is_array($t->metadata) ? $t->metadata : [],
+                    'responsavel' => [
+                        'name' => $t->responsavel?->name ?? 'Sistema Central SEJUS',
+                    ],
+                    'data_evento' => $t->data_evento ? $t->data_evento->format('d/m/Y \à\s H:i') : '',
+                ];
+            })->values()->all()
+            : [];
+
+        return Inertia::render('Prontuario', [
+            'egresso' => $egressoPayload,
+            'prontuario' => $prontuarioPayload,
+            'timeline' => $timelinePayload,
+            'conhecimentos' => $conhecimentos,
+            'catalogoConhecimentos' => $catalogoConhecimentos,
+        ]);
+    }
+
+    /**
      * List prontuários with filtering, blind-index search, and pagination clamping.
      */
     public function index(Request $request): JsonResponse
@@ -31,6 +186,13 @@ class ProntuarioController extends Controller
                 'error' => 'Não autenticado ou token inválido.',
                 'code' => 'UNAUTHENTICATED',
             ], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte() && !$user->isEgresso()) {
+            return response()->json([
+                'error' => 'Acesso negado ao Prontuário Único.',
+                'code' => 'FORBIDDEN',
+            ], 403);
         }
 
         // Delta sync filter (since / updated_after)
@@ -89,6 +251,7 @@ class ProntuarioController extends Controller
 
             $query = Prontuario::with([
                 'egresso.municipio',
+                'egresso.conhecimentos',
                 'tecnicoResponsavel:id,name,email',
                 'timeline' => fn($q) => $q->orderBy('data_evento', 'desc'),
             ])->where('egresso_id', $egresso->id);
@@ -130,6 +293,7 @@ class ProntuarioController extends Controller
 
         $query = Prontuario::with([
             'egresso.municipio',
+            'egresso.conhecimentos',
             'tecnicoResponsavel:id,name,email',
         ]);
 
@@ -140,12 +304,13 @@ class ProntuarioController extends Controller
         // Search query filter (numero_prontuario, egresso name, or CPF blind index)
         if ($request->filled('q')) {
             $searchTerm = trim($request->input('q'));
+            $searchLower = '%' . mb_strtolower($searchTerm, 'UTF-8') . '%';
             $cleanCpf = preg_replace('/\D/', '', $searchTerm);
 
-            $query->where(function ($q) use ($searchTerm, $cleanCpf) {
-                $q->where('numero_prontuario', 'ILIKE', "%{$searchTerm}%")
-                  ->orWhereHas('egresso', function ($eq) use ($searchTerm, $cleanCpf) {
-                      $eq->where('nome_completo', 'ILIKE', "%{$searchTerm}%");
+            $query->where(function ($q) use ($searchLower, $cleanCpf) {
+                $q->whereRaw('LOWER(numero_prontuario) LIKE ?', [$searchLower])
+                  ->orWhereHas('egresso', function ($eq) use ($searchLower, $cleanCpf) {
+                      $eq->whereRaw('LOWER(nome_completo) LIKE ?', [$searchLower]);
                       if (strlen($cleanCpf) === 11) {
                           $hashCpf = $this->lgpd->generateBlindIndex($cleanCpf);
                           $eq->orWhere('hash_cpf', $hashCpf);
@@ -215,9 +380,16 @@ class ProntuarioController extends Controller
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
+        if (!$user) {
             return response()->json([
-                'error' => 'Acesso negado: egressos não possuem permissão para criar prontuários.',
+                'error' => 'Não autenticado ou token inválido.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json([
+                'error' => 'Acesso negado: perfil sem permissão para criar prontuários.',
                 'code' => 'FORBIDDEN',
             ], 403);
         }
@@ -262,7 +434,7 @@ class ProntuarioController extends Controller
         return response()->json([
             'status' => 'created',
             'message' => 'Prontuário criado com sucesso.',
-            'data' => $this->formatProntuario($prontuario->load(['egresso.municipio', 'tecnicoResponsavel']), false),
+            'data' => $this->formatProntuario($prontuario->load(['egresso.municipio', 'egresso.conhecimentos', 'tecnicoResponsavel']), false),
         ], 201);
     }
 
@@ -273,8 +445,23 @@ class ProntuarioController extends Controller
     {
         $user = Auth::user();
 
+        if (!$user) {
+            return response()->json([
+                'error' => 'Não autenticado ou token inválido.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte() && !$user->isEgresso()) {
+            return response()->json([
+                'error' => 'Acesso negado ao Prontuário Único.',
+                'code' => 'FORBIDDEN',
+            ], 403);
+        }
+
         $prontuario = Prontuario::with([
             'egresso.municipio',
+            'egresso.conhecimentos',
             'tecnicoResponsavel:id,name,email',
             'timeline.responsavel:id,name',
             'videoRooms',
@@ -291,7 +478,7 @@ class ProntuarioController extends Controller
         }
 
         // Authorization check: Egresso can only view own record
-        if ($user && $user->isEgresso()) {
+        if ($user->isEgresso()) {
             if (!$user->egresso || $user->egresso->id !== $prontuario->egresso_id) {
                 return response()->json([
                     'error' => 'Acesso negado: você só pode consultar o seu próprio prontuário.',
@@ -307,12 +494,12 @@ class ProntuarioController extends Controller
                 'action' => 'show_prontuario',
                 'numero_prontuario' => $prontuario->numero_prontuario,
             ],
-            $user?->id,
+            $user->id,
             $request->ip(),
             $request->userAgent()
         );
 
-        $isEgressoSelf = $user && $user->isEgresso();
+        $isEgressoSelf = $user->isEgresso();
 
         return response()->json([
             'data' => $this->formatProntuario($prontuario, $isEgressoSelf),
@@ -326,9 +513,16 @@ class ProntuarioController extends Controller
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
+        if (!$user) {
             return response()->json([
-                'error' => 'Acesso negado: egressos não podem alterar dados do prontuário.',
+                'error' => 'Não autenticado ou token inválido.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json([
+                'error' => 'Acesso negado: seu perfil não pode alterar dados do prontuário.',
                 'code' => 'FORBIDDEN',
             ], 403);
         }
@@ -365,7 +559,7 @@ class ProntuarioController extends Controller
         return response()->json([
             'status' => 'updated',
             'message' => 'Prontuário atualizado com sucesso.',
-            'data' => $this->formatProntuario($prontuario->load(['egresso.municipio', 'tecnicoResponsavel']), false),
+            'data' => $this->formatProntuario($prontuario->load(['egresso.municipio', 'egresso.conhecimentos', 'tecnicoResponsavel']), false),
         ]);
     }
 
@@ -450,6 +644,19 @@ class ProntuarioController extends Controller
                 'municipio_id' => $egresso->municipio_residencia_id,
                 'municipio_nome' => $egresso->municipio?->nome,
                 'macrorregiao' => $egresso->municipio?->macrorregiao,
+                'conhecimentos' => $egresso->relationLoaded('conhecimentos')
+                    ? $egresso->conhecimentos->map(function ($c) {
+                        return [
+                            'id' => $c->pivot->id ?? $c->id,
+                            'conhecimento_id' => $c->id,
+                            'nome' => $c->nome,
+                            'categoria' => $c->categoria,
+                            'nivel' => $c->pivot->nivel,
+                            'necessita_treinamento' => (bool) $c->pivot->necessita_treinamento,
+                            'observacoes' => $c->pivot->observacoes ?? null,
+                        ];
+                    })->values()->all()
+                    : [],
             ] : null,
             'tecnico_responsavel' => $prontuario->tecnicoResponsavel ? [
                 'id' => $prontuario->tecnicoResponsavel->id,

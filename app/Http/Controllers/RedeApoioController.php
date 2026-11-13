@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use App\Models\RedeApoio;
 use App\Models\MunicipioEs;
+use Carbon\Carbon;
 
 class RedeApoioController extends Controller
 {
@@ -43,16 +44,49 @@ class RedeApoioController extends Controller
         // Search q
         if ($request->filled('q')) {
             $q = trim($request->input('q'));
-            $query->where(function ($sub) use ($q) {
-                $sub->where('nome', 'ILIKE', "%{$q}%")
-                    ->orWhere('endereco', 'ILIKE', "%{$q}%")
-                    ->orWhere('tipo', 'ILIKE', "%{$q}%");
+            $qLower = '%' . mb_strtolower($q, 'UTF-8') . '%';
+            $query->where(function ($sub) use ($qLower) {
+                $sub->whereRaw('LOWER(nome) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(endereco) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(tipo) LIKE ?', [$qLower]);
             });
         }
 
-        $units = $query->orderBy('tipo')->orderBy('nome')->get();
+        // Delta sync filter (since / updated_after)
+        $sinceParam = $request->input('since', $request->input('updated_after'));
+        if ($sinceParam !== null && $sinceParam !== '') {
+            $isValid = false;
+            $since = null;
 
-        $formatted = $units->map(function ($unit) {
+            if (is_numeric($sinceParam)) {
+                $isValid = true;
+                $since = Carbon::createFromTimestamp((int) $sinceParam);
+            } elseif (is_string($sinceParam) && preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/i', trim($sinceParam), $matches)) {
+                $year = (int) $matches[1];
+                $month = (int) $matches[2];
+                $day = (int) $matches[3];
+
+                if (checkdate($month, $day, $year)) {
+                    try {
+                        $since = Carbon::parse($sinceParam);
+                        $isValid = true;
+                    } catch (\Throwable $e) {
+                        $isValid = false;
+                    }
+                }
+            }
+
+            if (!$isValid || $since === null) {
+                return response()->json([
+                    'error' => 'Parâmetro de data inválido para sincronização delta. Formato esperado: ISO-8601 (ex: 2026-09-15T12:00:00Z).',
+                    'code' => 'INVALID_SYNC_TIMESTAMP',
+                ], 422);
+            }
+
+            $query->where('updated_at', '>=', $since->toDateTimeString());
+        }
+
+        $mapUnit = function ($unit) {
             $mun = $unit->municipio;
             $hasExactGps = $unit->latitude !== null && $unit->longitude !== null;
 
@@ -73,11 +107,43 @@ class RedeApoioController extends Controller
                 'origem_coordenada' => $hasExactGps ? 'exact_gps' : 'municipality_centroid_fallback',
                 'ativo' => (bool) $unit->ativo,
             ];
-        });
+        };
+
+        if ($request->has('per_page') || $request->has('page')) {
+            $perPage = max(1, min(100, (int) $request->input('per_page', 20)));
+            $paginator = $query->orderBy('tipo')->orderBy('nome')->paginate($perPage);
+            $formatted = collect($paginator->items())->map($mapUnit);
+
+            return response()->json([
+                'total' => $paginator->total(),
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+                'data' => $formatted,
+                'meta' => [
+                    'server_timestamp' => now()->toIso8601String(),
+                    'sync_count' => $formatted->count(),
+                    'since' => $sinceParam ?: null,
+                    'total' => $paginator->total(),
+                    'current_page' => $paginator->currentPage(),
+                    'per_page' => $paginator->perPage(),
+                    'last_page' => $paginator->lastPage(),
+                ],
+            ]);
+        }
+
+        $units = $query->orderBy('tipo')->orderBy('nome')->get();
+        $formatted = $units->map($mapUnit);
 
         return response()->json([
             'total' => $formatted->count(),
             'data' => $formatted,
+            'meta' => [
+                'server_timestamp' => now()->toIso8601String(),
+                'sync_count' => $formatted->count(),
+                'since' => $sinceParam ?: null,
+                'total' => $formatted->count(),
+            ],
         ]);
     }
 
@@ -117,14 +183,18 @@ class RedeApoioController extends Controller
     }
 
     /**
-     * Create new support unit (Gestor).
+     * Create new support unit (Gestor / Técnico / Suporte).
      */
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
-            return response()->json(['error' => 'Acesso não autorizado.'], 403);
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json(['error' => 'Acesso não autorizado.', 'code' => 'FORBIDDEN'], 403);
         }
 
         $validated = $request->validate([
@@ -159,8 +229,12 @@ class RedeApoioController extends Controller
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
-            return response()->json(['error' => 'Acesso não autorizado.'], 403);
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json(['error' => 'Acesso não autorizado.', 'code' => 'FORBIDDEN'], 403);
         }
 
         $unit = RedeApoio::find($id);
@@ -197,8 +271,12 @@ class RedeApoioController extends Controller
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
-            return response()->json(['error' => 'Acesso não autorizado.'], 403);
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json(['error' => 'Acesso não autorizado.', 'code' => 'FORBIDDEN'], 403);
         }
 
         $unit = RedeApoio::find($id);

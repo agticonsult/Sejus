@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Builder;
 use App\Services\LgpdSecurityService;
 
@@ -89,6 +90,32 @@ class Egresso extends Model
     public function videoRooms(): HasMany
     {
         return $this->hasMany(VideoRoom::class, 'egresso_id');
+    }
+
+    /**
+     * Conhecimentos e qualificações associadas ao egresso (muitos-para-muitos).
+     */
+    public function conhecimentos(): BelongsToMany
+    {
+        return $this->belongsToMany(Conhecimento::class, 'egresso_conhecimentos')
+            ->withPivot(['id', 'nivel', 'necessita_treinamento', 'observacoes'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Registros individuais da tabela pivot egresso_conhecimentos.
+     */
+    public function egressoConhecimentos(): HasMany
+    {
+        return $this->hasMany(EgressoConhecimento::class, 'egresso_id');
+    }
+
+    /**
+     * Conhecimentos onde o egresso marcou necessidade de treinamento.
+     */
+    public function conhecimentosNecessitamTreinamento(): BelongsToMany
+    {
+        return $this->conhecimentos()->wherePivot('necessita_treinamento', true);
     }
 
     /**

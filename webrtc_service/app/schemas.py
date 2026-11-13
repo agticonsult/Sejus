@@ -80,6 +80,13 @@ class JWTClaims(BaseModel):
     iat: Optional[int] = None
     exp: Optional[int] = None
 
+    @field_validator("sub", "room_id", "unit_id", "prontuario_id", mode="before")
+    @classmethod
+    def coerce_ids_to_str(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        return str(v)
+
     @property
     def user_id(self) -> int:
         try:

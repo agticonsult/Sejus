@@ -24,20 +24,55 @@ class UserController extends Controller
     ) {}
 
     /**
+     * Enforce authentication and Gestor/Suporte RBAC on user management endpoints.
+     */
+    protected function authorizeAdmin(Request $request): ?JsonResponse
+    {
+        $isInertia = (bool) $request->header('X-Inertia');
+        $expectsJson = $request->expectsJson() && !$isInertia;
+        $user = Auth::user();
+
+        if (!$user) {
+            if ($expectsJson) {
+                return response()->json([
+                    'error' => 'Não autenticado ou token inválido.',
+                    'code' => 'UNAUTHENTICATED',
+                ], 401);
+            }
+            abort(401, 'Não autenticado.');
+        }
+
+        if (!$user->isGestor() && !$user->isSuporte()) {
+            if ($expectsJson) {
+                return response()->json([
+                    'error' => 'Acesso restrito a Gestores SEJUS e Suporte Técnico.',
+                    'code' => 'FORBIDDEN',
+                ], 403);
+            }
+            abort(403, 'Acesso restrito a Gestores SEJUS e Suporte Técnico.');
+        }
+
+        return null;
+    }
+
+    /**
      * Render the Usuarios management Inertia view with full datasets.
      */
     public function indexView(Request $request): InertiaResponse
     {
+        $this->authorizeAdmin($request);
+
         $query = User::with(['perfil', 'municipio']);
 
         // Filter by text search (name, email, or CPF)
         if ($request->filled('q')) {
             $q = trim($request->input('q'));
+            $qLower = '%' . mb_strtolower($q, 'UTF-8') . '%';
             $cleanDigits = preg_replace('/\D/', '', $q);
 
-            $query->where(function ($sub) use ($q, $cleanDigits) {
-                $sub->where('name', 'ILIKE', "%{$q}%")
-                    ->orWhere('email', 'ILIKE', "%{$q}%");
+            $query->where(function ($sub) use ($qLower, $cleanDigits) {
+                $sub->whereRaw('LOWER(name) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(email) LIKE ?', [$qLower]);
 
                 if (strlen($cleanDigits) === 11) {
                     $hashCpf = $this->lgpd->generateBlindIndex($cleanDigits);
@@ -124,15 +159,20 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        if ($denied = $this->authorizeAdmin($request)) {
+            return $denied;
+        }
+
         $query = User::with(['perfil', 'municipio']);
 
         if ($request->filled('q')) {
             $q = trim($request->input('q'));
+            $qLower = '%' . mb_strtolower($q, 'UTF-8') . '%';
             $cleanDigits = preg_replace('/\D/', '', $q);
 
-            $query->where(function ($sub) use ($q, $cleanDigits) {
-                $sub->where('name', 'ILIKE', "%{$q}%")
-                    ->orWhere('email', 'ILIKE', "%{$q}%");
+            $query->where(function ($sub) use ($qLower, $cleanDigits) {
+                $sub->whereRaw('LOWER(name) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(email) LIKE ?', [$qLower]);
 
                 if (strlen($cleanDigits) === 11) {
                     $hashCpf = $this->lgpd->generateBlindIndex($cleanDigits);
@@ -190,10 +230,46 @@ class UserController extends Controller
     }
 
     /**
+     * Show single user details (Gestor / Suporte only).
+     */
+    public function show(Request $request, int|string $id): JsonResponse
+    {
+        if ($denied = $this->authorizeAdmin($request)) {
+            return $denied;
+        }
+
+        $u = User::with(['perfil', 'municipio'])->find($id);
+        if (!$u) {
+            return response()->json(['error' => 'Usuário não encontrado.'], 404);
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'perfil_id' => $u->perfil_id,
+                'role' => $u->perfil?->slug ?? 'egresso',
+                'role_name' => $u->perfil?->nome ?? 'Egresso',
+                'cpf_masked' => $u->cpf ? $this->lgpd->maskCpf($u->cpf) : null,
+                'telefone' => $u->telefone,
+                'ativo' => (bool) $u->ativo,
+                'municipio_id' => $u->municipio_id,
+                'municipio_nome' => $u->municipio?->nome ?? 'Não informado',
+                'created_at' => $u->created_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
      * Store a newly created user in database with encryption, blind indexing, and audit logging.
      */
     public function store(Request $request): JsonResponse|RedirectResponse
     {
+        if ($denied = $this->authorizeAdmin($request)) {
+            return $denied;
+        }
+
         $isInertia = (bool) $request->header('X-Inertia');
         $expectsJson = $request->expectsJson() && !$isInertia;
 
@@ -315,6 +391,10 @@ class UserController extends Controller
      */
     public function update(Request $request, int|string $id): JsonResponse|RedirectResponse
     {
+        if ($denied = $this->authorizeAdmin($request)) {
+            return $denied;
+        }
+
         $isInertia = (bool) $request->header('X-Inertia');
         $expectsJson = $request->expectsJson() && !$isInertia;
 
@@ -448,6 +528,10 @@ class UserController extends Controller
      */
     public function destroy(Request $request, int|string $id): JsonResponse|RedirectResponse
     {
+        if ($denied = $this->authorizeAdmin($request)) {
+            return $denied;
+        }
+
         $isInertia = (bool) $request->header('X-Inertia');
         $expectsJson = $request->expectsJson() && !$isInertia;
 
@@ -492,6 +576,10 @@ class UserController extends Controller
      */
     public function toggleStatus(Request $request, int|string $id): JsonResponse|RedirectResponse
     {
+        if ($denied = $this->authorizeAdmin($request)) {
+            return $denied;
+        }
+
         $isInertia = (bool) $request->header('X-Inertia');
         $expectsJson = $request->expectsJson() && !$isInertia;
 

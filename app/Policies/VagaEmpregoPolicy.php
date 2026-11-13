@@ -31,7 +31,7 @@ class VagaEmpregoPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isGestor() || $user->isTecnico();
+        return $user->isGestor() || $user->isTecnico() || $user->isSuporte() || $user->isEmpregador();
     }
 
     /**
@@ -39,7 +39,11 @@ class VagaEmpregoPolicy
      */
     public function update(User $user, VagaEmprego $vaga): bool
     {
-        return $user->isGestor() || $user->isTecnico();
+        if ($user->isEmpregador()) {
+            return $vaga->user_id !== null && (int) $vaga->user_id === (int) $user->id;
+        }
+
+        return $user->isGestor() || $user->isTecnico() || $user->isSuporte();
     }
 
     /**
@@ -47,7 +51,11 @@ class VagaEmpregoPolicy
      */
     public function delete(User $user, VagaEmprego $vaga): bool
     {
-        return $user->isGestor() || $user->isTecnico();
+        if ($user->isEmpregador()) {
+            return $vaga->user_id !== null && (int) $vaga->user_id === (int) $user->id;
+        }
+
+        return $user->isGestor() || $user->isTecnico() || $user->isSuporte();
     }
 
     /**
@@ -55,6 +63,6 @@ class VagaEmpregoPolicy
      */
     public function candidatar(User $user, VagaEmprego $vaga): bool
     {
-        return $user->isEgresso() || $user->isTecnico() || $user->isGestor();
+        return $user->isEgresso() || $user->isTecnico() || $user->isGestor() || $user->isSuporte();
     }
 }

@@ -31,10 +31,13 @@ class AuthController extends Controller
     public function showLogin(Request $request): InertiaResponse|RedirectResponse
     {
         if (Auth::check()) {
-            return redirect()->intended('/dashboard');
+            $defaultTarget = Auth::user()?->isEmpregador() ? '/oportunidades/inserir-vaga' : '/dashboard';
+            return redirect()->intended($defaultTarget);
         }
 
-        return Inertia::render('Login');
+        return Inertia::render('Login', [
+            'govbrAuthUrl' => config('services.govbr.authorize_url'),
+        ]);
     }
 
     /**
@@ -140,22 +143,34 @@ class AuthController extends Controller
             ]);
         }
 
-        return redirect()->intended('/dashboard')->with('success', 'Bem-vindo ao Conecta Egresso!');
+        $defaultRedirect = $user->isEmpregador() ? '/oportunidades/inserir-vaga' : '/dashboard';
+        return redirect()->intended($defaultRedirect)->with('success', 'Bem-vindo ao Conecta Egresso!');
     }
 
     /**
-     * Simulated Gov.br / Acesso Cidadão OIDC login endpoint.
+     * Gov.br / Acesso Cidadão OIDC login callback endpoint.
+     * Raw unsigned claim simulation is strictly disabled in production.
      */
     public function govbrLogin(Request $request): JsonResponse|RedirectResponse
     {
+        $isInertia = (bool) $request->header('X-Inertia');
+        $expectsJson = $request->expectsJson() && !$isInertia;
+
+        if (app()->environment('production') && empty(config('services.govbr.client_secret'))) {
+            if ($expectsJson) {
+                return response()->json([
+                    'error' => 'Autenticação simulada Gov.br desabilitada em produção.',
+                    'code' => 'FORBIDDEN_IN_PRODUCTION',
+                ], 403);
+            }
+            abort(403, 'Autenticação simulada Gov.br desabilitada em produção.');
+        }
+
         $claims = $request->all();
 
         if (empty($claims['sub'])) {
             $claims['sub'] = 'govbr_' . ($claims['cpf'] ?? uniqid());
         }
-
-        $isInertia = (bool) $request->header('X-Inertia');
-        $expectsJson = $request->expectsJson() && !$isInertia;
 
         try {
             $user = $this->govBrService->handleOidcCallback($claims);
@@ -195,7 +210,8 @@ class AuthController extends Controller
                 ]);
             }
 
-            return redirect()->intended('/dashboard')->with('success', 'Autenticação Gov.br / Acesso Cidadão realizada com sucesso!');
+            $defaultRedirect = $user->isEmpregador() ? '/oportunidades/inserir-vaga' : '/dashboard';
+            return redirect()->intended($defaultRedirect)->with('success', 'Autenticação Gov.br / Acesso Cidadão realizada com sucesso!');
         } catch (Throwable $e) {
             if ($expectsJson) {
                 return response()->json([
@@ -208,13 +224,17 @@ class AuthController extends Controller
     }
 
     /**
-     * Switch demo role rapidly for development / testing.
+     * Switch role for automated test suites ONLY (strictly disabled with 404 in production).
      */
     public function switchRole(Request $request): JsonResponse|RedirectResponse
     {
+        if (app()->environment('production')) {
+            abort(404);
+        }
+
         $role = $request->input('role', 'egresso');
 
-        if (!in_array($role, ['gestor', 'tecnico', 'egresso', 'familiar', 'suporte'], true)) {
+        if (!in_array($role, ['gestor', 'tecnico', 'egresso', 'familiar', 'suporte', 'empregador'], true)) {
             if ($request->expectsJson() && !$request->header('X-Inertia')) {
                 return response()->json(['error' => 'Perfil inválido especificado.'], 422);
             }
@@ -300,6 +320,91 @@ class AuthController extends Controller
                 'municipio_nome' => $user->egresso->municipio?->nome,
                 'macrorregiao' => $user->egresso->municipio?->macrorregiao,
             ] : null,
+        ]);
+    }
+
+    /**
+     * Refresh mobile access token: revoke previous token and issue a fresh 30-day token.
+     */
+    public function refresh(Request $request): JsonResponse
+    {
+        $user = Auth::user() ?? $request->user();
+
+        if (!$user && $request->bearerToken()) {
+            $token = $request->bearerToken();
+            $hashed = hash('sha256', $token);
+            $accessToken = MobileAccessToken::with(['user.perfil', 'user.egresso'])
+                ->where('token', $hashed)
+                ->first();
+
+            if ($accessToken && $accessToken->isValid() && $accessToken->user) {
+                $user = $accessToken->user;
+                Auth::setUser($user);
+            }
+        }
+
+        if (!$user) {
+            return response()->json([
+                'error' => 'Não autenticado ou token inválido.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        if (!$user->ativo) {
+            return response()->json([
+                'error' => 'Conta de usuário desativada. Entre em contato com a administração SEJUS.',
+                'code' => 'ACCOUNT_DEACTIVATED',
+            ], 403);
+        }
+
+        $deviceName = 'Mobile App';
+        $bearerToken = $request->bearerToken();
+
+        // Invalidate / delete current MobileAccessToken record to prevent replay and token proliferation
+        if ($bearerToken) {
+            $hashed = hash('sha256', $bearerToken);
+            $oldToken = MobileAccessToken::where('token', $hashed)->first();
+            if ($oldToken) {
+                $deviceName = $oldToken->name ?? $deviceName;
+                $oldToken->delete();
+            }
+        }
+
+        // Issue fresh secure mobile token with 30-day expiration
+        $tokenData = MobileAccessToken::createTokenForUser($user, $deviceName, now()->addDays(30));
+
+        // Record audit log
+        $this->audit->log(
+            null,
+            'AUTH_TOKEN_REFRESHED',
+            [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'device_name' => $deviceName,
+            ],
+            $user->id,
+            $request->ip(),
+            $request->userAgent()
+        );
+
+        $user->loadMissing(['perfil', 'egresso']);
+
+        return response()->json([
+            'status' => 'refreshed',
+            'token_type' => 'Bearer',
+            'access_token' => $tokenData['plainTextToken'],
+            'expires_at' => $tokenData['accessToken']->expires_at?->toIso8601String(),
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->perfil?->slug,
+                'role_name' => $user->perfil?->nome,
+                'cpf_masked' => $user->cpf ? $this->lgpd->maskCpf($user->cpf) : null,
+                'telefone_masked' => $user->telefone ? $this->lgpd->maskTelefone($user->telefone) : null,
+                'ativo' => (bool) $user->ativo,
+                'egresso_id' => $user->egresso?->id,
+            ],
         ]);
     }
 

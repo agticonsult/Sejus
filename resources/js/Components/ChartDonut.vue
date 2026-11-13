@@ -43,10 +43,45 @@ const props = defineProps({
     type: String,
     default: 'Distribuição dos eixos de reintegração social',
   },
+  isDark: {
+    type: Boolean,
+    default: null,
+  },
 });
 
 const canvasRef = ref(null);
 let resizeObserver = null;
+let themeObserver = null;
+
+const checkIsDark = () => {
+  if (props.isDark !== null) return props.isDark;
+  if (typeof document === 'undefined') return false;
+  return document.documentElement.classList.contains('dark') ||
+         document.documentElement.classList.contains('high-contrast');
+};
+
+const getEffectiveBg = (canvas, isDark) => {
+  if (typeof window === 'undefined') return isDark ? '#0f172a' : '#ffffff';
+
+  // Check CSS custom property --bg-card first if defined by active theme
+  const rootStyle = window.getComputedStyle(document.documentElement);
+  const bgCardVar = rootStyle.getPropertyValue('--bg-card').trim();
+  if (bgCardVar && bgCardVar !== 'inherit' && bgCardVar !== 'initial') {
+    return bgCardVar;
+  }
+
+  // Walk up DOM to find containing card background
+  let el = canvas.parentElement;
+  while (el && el !== document.body) {
+    const bg = window.getComputedStyle(el).backgroundColor;
+    if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+      return bg;
+    }
+    el = el.parentElement;
+  }
+
+  return isDark ? '#0f172a' : '#ffffff';
+};
 
 const render = () => {
   const canvas = canvasRef.value;
@@ -65,6 +100,7 @@ const render = () => {
 
   ctx.clearRect(0, 0, width, height);
 
+  const dark = checkIsDark();
   const centerX = width < 480 ? width / 2 : width / 3.2;
   const centerY = width < 480 ? height / 2.8 : height / 2;
   const radius = Math.min(centerX - 20, centerY - 15, 75);
@@ -87,20 +123,20 @@ const render = () => {
     startAngle += sliceAngle;
   });
 
-  // Inner cutout hole
-  ctx.fillStyle = '#ffffff';
+  // Inner cutout hole dynamically matched to card background
+  ctx.fillStyle = getEffectiveBg(canvas, dark);
   ctx.beginPath();
   ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
   ctx.fill();
 
   // Center text
-  ctx.fillStyle = '#0f172a';
+  ctx.fillStyle = dark ? '#f8fafc' : '#0f172a';
   ctx.font = 'bold 15px Outfit, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(props.centerText, centerX, centerY - 2);
 
   ctx.font = '10px Inter, sans-serif';
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = dark ? '#94a3b8' : '#64748b';
   ctx.fillText(props.centerSubtext, centerX, centerY + 13);
 
   // Draw Legend (Right side on desktop, bottom on mobile)
@@ -119,7 +155,7 @@ const render = () => {
       ctx.fill();
 
       // Label text
-      ctx.fillStyle = '#1e293b';
+      ctx.fillStyle = dark ? '#e2e8f0' : '#1e293b';
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.fillText(slice.label, legendX + 14, ly + 4);
     });
@@ -132,13 +168,28 @@ onMounted(() => {
     resizeObserver = new ResizeObserver(() => render());
     resizeObserver.observe(canvasRef.value.parentElement);
   }
+
+  // Observe theme / dark mode class changes on <html>
+  if (typeof window !== 'undefined' && window.MutationObserver) {
+    themeObserver = new MutationObserver(() => {
+      render();
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
+    });
+  }
 });
 
 onBeforeUnmount(() => {
   if (resizeObserver) {
     resizeObserver.disconnect();
   }
+  if (themeObserver) {
+    themeObserver.disconnect();
+  }
 });
 
 watch(() => props.data, () => render(), { deep: true });
+watch(() => props.isDark, () => render());
 </script>

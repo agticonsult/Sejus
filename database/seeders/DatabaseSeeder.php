@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             MunicipioEsSeeder::class,
             UserSeeder::class,
             EgressoSeeder::class,
+            ConhecimentoSeeder::class,
             ProntuarioSeeder::class,
             VagaEmpregoSeeder::class,
             CursoCapacitacaoSeeder::class,

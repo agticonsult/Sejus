@@ -36,8 +36,17 @@
         </div>
       </div>
 
+      <!-- Empty State when no Egresso record is available -->
+      <div
+        v-if="!egressoData"
+        class="bg-white rounded-2xl border border-slate-200/80 p-10 text-center space-y-2 shadow-xs"
+      >
+        <p class="text-sm font-bold text-slate-800">Nenhuma Carteira Digital vinculada</p>
+        <p class="text-xs text-slate-500">Cadastre ou vincule um perfil de egresso para emitir a credencial oficial com assinatura criptográfica SEJUS/ES.</p>
+      </div>
+
       <!-- Credential Card Container -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <!-- Official Digital Wallet Card (2 cols) -->
         <div class="lg:col-span-2 flex justify-center">
           <div class="w-full max-w-2xl bg-white rounded-3xl border-2 border-slate-300/80 shadow-2xl overflow-hidden relative guilloche-pattern">
@@ -138,6 +147,7 @@
                     Aponte a câmera do celular para consultar a autenticidade oficial da credencial.
                   </p>
                   <Link
+                    v-if="carteiraToken"
                     :href="`/validar-carteira/${carteiraToken}`"
                     class="text-xs font-bold text-sky-600 hover:underline inline-flex items-center gap-1 mt-1"
                   >
@@ -200,7 +210,7 @@
             <p class="text-xs text-slate-300 leading-relaxed">
               A Carteira Digital utiliza assinatura digital padrão HMAC-SHA256 canônica sobre dados de identificação imutáveis, garantindo inviolabilidade perante os órgãos de segurança pública e empregadores.
             </p>
-            <div class="pt-2 border-t border-slate-800 text-[11px] text-slate-400 font-mono break-all">
+            <div v-if="carteiraToken" class="pt-2 border-t border-slate-800 text-[11px] text-slate-400 font-mono break-all">
               HMAC: {{ carteiraToken.slice(0, 32) }}...
             </div>
           </div>
@@ -211,7 +221,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import QrCodeDisplay from '../Components/QrCodeDisplay.vue';
@@ -221,19 +231,11 @@ import { useToast } from '../Composables/useToast';
 const props = defineProps({
   egresso: {
     type: Object,
-    default: () => ({
-      nome_completo: 'Lucas Santos de Oliveira',
-      cpf_masked: '***.192.830-**',
-      data_nascimento: '15/06/1994',
-      municipio: 'São Mateus / ES',
-      registro_sejus: 'ES-2026-3204906-10842',
-      data_emissao: '17/08/2026',
-      data_validade: '17/08/2027',
-    }),
+    default: null,
   },
   token: {
     type: String,
-    default: 'eyJjaWQiOiJTRUpVUy1FRy0yMDI2LTMyMDQ5MDYtMTA4NDIiLCJleHAiOjE3ODcwNjI0MDAsImlhdCI6MTc1NTUyNjQwMCwiaWJnZSI6IjMyMDQ5MDYiLCJtdW5pY2lwaW8iOiJTw6NvIE1hdGV1cyIsIm5vbWUiOiJMdWNhcyBTYW50b3MgZGUgT2xpdmVpcmEiLCJvcGZfbWFza2VkIjoiKioqLjE5Mi44MzAtKiogIiwic3RhdHVzIjoiUkVHVUxBUiJ9.8f4c2e6b9a1d0f5c8e3b7a2d4f6c1e9a8b7c5d3e1f0a2b4c6d8e0f1a3b5c7d9e',
+    default: '',
   },
   pdfDownloadUrl: {
     type: String,
@@ -244,8 +246,8 @@ const props = defineProps({
 const { t } = useAccessibility();
 const toast = useToast();
 
-const egressoData = ref({ ...props.egresso });
-const carteiraToken = ref(props.token);
+const egressoData = computed(() => props.egresso);
+const carteiraToken = computed(() => props.token || '');
 
 const handlePrint = () => {
   if (typeof window !== 'undefined') {

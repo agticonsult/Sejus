@@ -1,0 +1,127 @@
+version: '3.8'
+
+networks:
+  conecta_net:
+    driver: bridge
+    name: conecta_net
+
+volumes:
+  postgres_data:
+    driver: local
+    name: conecta_postgres_data
+  redis_data:
+    driver: local
+    name: conecta_redis_data
+
+services:
+  # -------------------------------------------------------------
+  # Servidor 1 (Core Web & APIs):
+  # Laravel 11 (PHP 8.3), PostgreSQL 16 com criptografia de campos
+  # sensiveis (LGPD), Redis e Nginx (portas 80/443).
+  # Contem regras de negocio, APIs mobile, Chatbot e Prontuario.
+  # -------------------------------------------------------------
+
+  # 1. PostgreSQL 16 com PostGIS 3.4 e pgcrypto
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: conecta_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-conecta_egresso}
+      POSTGRES_USER: ${DB_USERNAME:-conecta_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-conecta_secret_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - conecta_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-conecta_user} -d ${DB_DATABASE:-conecta_egresso}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # 2. Redis 7.2 (Cache, Sessoes e Filas)
+  redis:
+    image: redis:7.2-alpine
+    container_name: conecta_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - conecta_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # 3. PHP 8.3 FPM (Laravel 11 Core, Mobile APIs, Chatbot & Prontuario)
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: conecta_php
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    environment:
+      APP_NAME: "${APP_NAME:-CONECTA EGRESSO (SEJUS/ES)}"
+      APP_ENV: "${APP_ENV:-production}"
+      APP_KEY: "${APP_KEY:-base64:CONECTAEGRESSOPLATFORMSEJUSES2026KEY=}"
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_URL: "${APP_URL:-http://localhost}"
+      DB_CONNECTION: pgsql
+      DB_HOST: "${DB_HOST:-postgres}"
+      DB_PORT: "${DB_PORT:-5432}"
+      DB_DATABASE: "${DB_DATABASE:-conecta_egresso}"
+      DB_USERNAME: "${DB_USERNAME:-conecta_user}"
+      DB_PASSWORD: "${DB_PASSWORD:-conecta_secret_password}"
+      REDIS_HOST: "${REDIS_HOST:-redis}"
+      REDIS_PORT: "${REDIS_PORT:-6379}"
+      WEBRTC_SERVICE_URL: "${WEBRTC_SERVICE_URL:-http://webrtc-server2:8001}"
+      WEBRTC_WEBHOOK_SECRET: "${WEBRTC_WEBHOOK_SECRET:-sejus_webrtc_webhook_secret_2026}"
+      WEBRTC_JWT_SECRET: "${WEBRTC_JWT_SECRET:-sejus_jwt_shared_secret_2026}"
+      COTURN_HOST: "${COTURN_HOST:-coturn-server2}"
+      COTURN_PORT: "${COTURN_PORT:-3478}"
+      COTURN_SECRET: "${COTURN_SECRET:-sejus_turn_secret_key_2026}"
+      COTURN_REALM: "${COTURN_REALM:-sejus.es.gov.br}"
+      LGPD_PEPPER_KEY: "${LGPD_PEPPER_KEY:-conecta_egresso_lgpd_pepper_2026_sejus_es}"
+      CARTEIRA_SIGNING_KEY: "${CARTEIRA_SIGNING_KEY:-sejus_carteira_digital_master_key_2026}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - conecta_net
+
+  # 4. Nginx Reverse Proxy (Frontend Web, APIs e Terminacao HTTP/HTTPS)
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: conecta_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    networks:
+      - conecta_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost/health || wget --spider -q http://localhost/ || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

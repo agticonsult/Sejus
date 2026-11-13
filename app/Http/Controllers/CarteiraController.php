@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+use App\Models\Egresso;
 use App\Services\QrCodeSecurityService;
 use App\Services\LgpdSecurityService;
 use App\Services\AuditService;
@@ -16,6 +19,66 @@ class CarteiraController extends Controller
         protected LgpdSecurityService $lgpdService,
         protected AuditService $auditService
     ) {}
+
+    /**
+     * Render Inertia page for Carteira Digital with real DB citizen record and authentic HMAC token.
+     */
+    public function showView(Request $request): InertiaResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(401, 'Não autenticado.');
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte() && !$user->isEgresso()) {
+            abort(403, 'Acesso negado à Carteira Digital.');
+        }
+
+        if ($user->isEgresso()) {
+            $egresso = $user->egresso;
+        } else {
+            $requestedId = $request->input('egresso_id');
+            $egresso = $requestedId && is_numeric($requestedId)
+                ? Egresso::find((int) $requestedId)
+                : Egresso::orderBy('id', 'asc')->first();
+        }
+
+        if (!$egresso) {
+            return Inertia::render('Carteira', [
+                'egresso' => null,
+                'token' => '',
+                'pdfDownloadUrl' => '/carteira/pdf',
+            ]);
+        }
+
+        $egresso->loadMissing(['municipio', 'prontuario']);
+
+        $payload = $this->qrService->generatePayload($egresso);
+        $token = $this->qrService->generateToken($payload);
+        $registroSejus = $egresso->registro_sejus ?? ('ES-2026-' . str_pad((string) $egresso->id, 6, '0', STR_PAD_LEFT));
+
+        $dataNascimento = 'Não informada';
+        if ($egresso->data_nascimento) {
+            $dataNascimento = is_string($egresso->data_nascimento)
+                ? substr($egresso->data_nascimento, 0, 10)
+                : $egresso->data_nascimento->format('d/m/Y');
+        }
+
+        return Inertia::render('Carteira', [
+            'egresso' => [
+                'id' => $egresso->id,
+                'nome_completo' => $egresso->nome_completo,
+                'cpf_masked' => $this->lgpdService->maskCpf($egresso->cpf ?? '00000000000'),
+                'data_nascimento' => $dataNascimento,
+                'municipio' => ($egresso->municipio?->nome ?? 'Vitória') . ' / ES',
+                'registro_sejus' => $registroSejus,
+                'data_emissao' => now()->format('d/m/Y'),
+                'data_validade' => now()->addYear()->format('d/m/Y'),
+            ],
+            'token' => $token,
+            'pdfDownloadUrl' => '/carteira/pdf' . ($user->isEgresso() ? '' : '?egresso_id=' . $egresso->id),
+        ]);
+    }
 
     /**
      * Get the digital wallet (Carteira Digital) for the authenticated Egresso.

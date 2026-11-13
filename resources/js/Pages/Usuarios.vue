@@ -105,6 +105,7 @@
               <option value="">Todos os Perfis</option>
               <option value="gestor">Gestor SEJUS</option>
               <option value="tecnico">Técnico Escritório Social</option>
+              <option value="empregador">Empregador Parceiro</option>
               <option value="egresso">Egresso</option>
               <option value="familiar">Familiar</option>
               <option value="suporte">Suporte Técnico Agile</option>
@@ -570,6 +571,8 @@ const getRoleBadgeClass = (role) => {
       return 'bg-indigo-50 text-indigo-700 border border-indigo-200';
     case 'tecnico':
       return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    case 'empregador':
+      return 'bg-violet-50 text-violet-700 border border-violet-200';
     case 'egresso':
       return 'bg-sky-50 text-sky-700 border border-sky-200';
     case 'familiar':
@@ -587,6 +590,8 @@ const getRoleIcon = (role) => {
       return '👔';
     case 'tecnico':
       return '💼';
+    case 'empregador':
+      return '🏢';
     case 'egresso':
       return '👤';
     case 'familiar':
@@ -676,9 +681,8 @@ const openEditModal = (user) => {
     password: '', // Blank unless reset
     perfil_id: user.perfil_id,
     municipio_id: user.municipio_id || null,
-    ativo: (bool) => user.ativo,
+    ativo: Boolean(user.ativo),
   };
-  userForm.value.ativo = user.ativo;
   isModalOpen.value = true;
 };
 

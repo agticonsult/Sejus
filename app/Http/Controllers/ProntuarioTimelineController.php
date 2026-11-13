@@ -27,6 +27,15 @@ class ProntuarioTimelineController extends Controller
         'apoio_psicossocial',
     ];
 
+    protected const EVENT_TYPE_ALIASES = [
+        'EVOLUCAO_TECNICA' => 'parecer_tecnico',
+        'ATENDIMENTO_VIDEO' => 'atendimento_remoto',
+        'ENCAMINHAMENTO_EMPREGO' => 'encaminhamento_vaga',
+        'CURSO_CAPACITACAO' => 'matricula_curso',
+        'EMISSAO_CARTEIRA' => 'emissao_carteira',
+        'ACOLHIMENTO_INICIAL' => 'acolhimento_video',
+    ];
+
     public function __construct(
         protected AuditService $audit
     ) {}
@@ -38,6 +47,20 @@ class ProntuarioTimelineController extends Controller
     {
         $user = Auth::user();
 
+        if (!$user) {
+            return response()->json([
+                'error' => 'Não autenticado ou token inválido.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte() && !$user->isEgresso()) {
+            return response()->json([
+                'error' => 'Acesso negado ao histórico deste prontuário.',
+                'code' => 'FORBIDDEN',
+            ], 403);
+        }
+
         $prontuario = Prontuario::where('id', is_numeric($prontuarioId) ? (int)$prontuarioId : 0)
             ->orWhere('numero_prontuario', $prontuarioId)
             ->first();
@@ -47,7 +70,7 @@ class ProntuarioTimelineController extends Controller
         }
 
         // Egresso authorization check
-        if ($user && $user->isEgresso()) {
+        if ($user->isEgresso()) {
             if (!$user->egresso || $user->egresso->id !== $prontuario->egresso_id) {
                 return response()->json([
                     'error' => 'Acesso negado ao histórico deste prontuário.',
@@ -63,6 +86,40 @@ class ProntuarioTimelineController extends Controller
             $query->where('tipo_evento', $request->input('tipo_evento'));
         }
 
+        // Delta sync filter (since / updated_after)
+        $sinceParam = $request->input('since', $request->input('updated_after'));
+        if ($sinceParam !== null && $sinceParam !== '') {
+            $isValid = false;
+            $since = null;
+
+            if (is_numeric($sinceParam)) {
+                $isValid = true;
+                $since = Carbon::createFromTimestamp((int) $sinceParam);
+            } elseif (is_string($sinceParam) && preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/i', trim($sinceParam), $matches)) {
+                $year = (int) $matches[1];
+                $month = (int) $matches[2];
+                $day = (int) $matches[3];
+
+                if (checkdate($month, $day, $year)) {
+                    try {
+                        $since = Carbon::parse($sinceParam);
+                        $isValid = true;
+                    } catch (\Throwable $e) {
+                        $isValid = false;
+                    }
+                }
+            }
+
+            if (!$isValid || $since === null) {
+                return response()->json([
+                    'error' => 'Parâmetro de data inválido para sincronização delta. Formato esperado: ISO-8601 (ex: 2026-09-15T12:00:00Z).',
+                    'code' => 'INVALID_SYNC_TIMESTAMP',
+                ], 422);
+            }
+
+            $query->where('updated_at', '>=', $since->toDateTimeString());
+        }
+
         $limit = max(1, min(100, (int) $request->input('per_page', $request->input('limit', 50))));
         $events = $query->orderBy('data_evento', 'desc')->paginate($limit);
 
@@ -74,6 +131,15 @@ class ProntuarioTimelineController extends Controller
             'per_page' => $events->perPage(),
             'total' => $events->total(),
             'last_page' => $events->lastPage(),
+            'meta' => [
+                'server_timestamp' => now()->toIso8601String(),
+                'sync_count' => count($events->items()),
+                'since' => $sinceParam ?: null,
+                'total' => $events->total(),
+                'current_page' => $events->currentPage(),
+                'per_page' => $events->perPage(),
+                'last_page' => $events->lastPage(),
+            ],
         ]);
     }
 
@@ -100,10 +166,17 @@ class ProntuarioTimelineController extends Controller
     {
         $user = Auth::user();
 
-        // 1. RBAC Check: Egressos are strictly forbidden from writing evolutions
-        if (!$user || $user->isEgresso() || $user->isFamiliar()) {
+        if (!$user) {
             return response()->json([
-                'error' => 'Acesso negado: egressos ou familiares não podem registrar evoluções ou eventos na linha do tempo.',
+                'error' => 'Não autenticado ou token inválido.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        // 1. RBAC Check: Only Gestor, Técnico, and Suporte may write clinical evolutions/timeline events
+        if (!$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json([
+                'error' => 'Acesso negado: seu perfil não possui permissão para registrar evoluções ou eventos na linha do tempo.',
                 'code' => 'FORBIDDEN_ROLE_RESTRICTION',
             ], 403);
         }
@@ -150,6 +223,8 @@ class ProntuarioTimelineController extends Controller
         $tipoEvento = $request->input('tipo_evento');
         if (empty($tipoEvento)) {
             $tipoEvento = $isEvolucao ? 'atendimento_presencial' : 'parecer_tecnico';
+        } elseif (is_string($tipoEvento) && isset(self::EVENT_TYPE_ALIASES[$tipoEvento])) {
+            $tipoEvento = self::EVENT_TYPE_ALIASES[$tipoEvento];
         }
 
         if (!in_array($tipoEvento, self::ALLOWED_EVENT_TYPES, true)) {

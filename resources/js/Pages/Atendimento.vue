@@ -242,7 +242,7 @@
         ref="videoModalRef"
         :is-open="isVideoModalOpen"
         :room-id="activeRoomId"
-        :local-user-name="'Dra. Márcia Oliveira'"
+        :local-user-name="localUserName"
         :remote-user-name="activeAttendeeName"
         :telemetry="currentTelemetry"
         :is-local-audio-muted="isLocalAudioMuted"
@@ -259,8 +259,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import VideoModal from '../Components/VideoModal.vue';
 import { WebRTCClient } from '../Services/webrtc';
@@ -270,16 +270,16 @@ import { useToast } from '../Composables/useToast';
 const props = defineProps({
   initialQueue: {
     type: Array,
-    default: () => [
-      { ticket_id: 'TCK-101', name: 'Lucas Santos de Oliveira', municipio: 'São Mateus', prioridade: 'urgente', motivo: 'Orientação para emissão da Carteira Digital e cota de emprego', tempo_espera: '4 min' },
-      { ticket_id: 'TCK-102', name: 'Marcos Vinícius Barbosa', municipio: 'Linhares', prioridade: 'preferencial', motivo: 'Agendamento de atendimento psicossocial presencial no CRAS', tempo_espera: '12 min' },
-      { ticket_id: 'TCK-103', name: 'Amanda Ferreira Lima', municipio: 'Vitória', prioridade: 'normal', motivo: 'Inscrição no curso de Qualificação SENAI', tempo_espera: '18 min' },
-    ],
+    default: () => [],
   },
 });
 
+const page = usePage();
 const { t } = useAccessibility();
 const toast = useToast();
+
+const localUserName = computed(() => page.props.auth?.user?.name || 'Equipe Técnica SEJUS');
+const localUserRole = computed(() => page.props.auth?.user?.role || 'tecnico');
 
 const queueList = ref([...props.initialQueue]);
 const isVideoModalOpen = ref(false);
@@ -287,7 +287,7 @@ const isJoinQueueModalOpen = ref(false);
 const isNotesModalOpen = ref(false);
 
 const activeRoomId = ref('SEJUS-ROOM-ES-2026');
-const activeAttendeeName = ref('Lucas Santos');
+const activeAttendeeName = ref('Atendido / Egresso');
 const lastCallDuration = ref('00:00');
 
 const isLocalAudioMuted = ref(false);
@@ -335,8 +335,8 @@ const admitAttendee = async (ticket) => {
 const initWebRTC = async () => {
   rtcClient = new WebRTCClient({
     roomId: activeRoomId.value,
-    userName: 'Dra. Márcia Oliveira',
-    role: 'tecnico',
+    userName: localUserName.value,
+    role: localUserRole.value,
     onTelemetryUpdate: (data) => {
       currentTelemetry.value = data;
     },

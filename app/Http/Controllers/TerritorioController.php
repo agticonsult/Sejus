@@ -24,15 +24,16 @@ class TerritorioController extends Controller
         // Accent-insensitive search on name or IBGE code
         if ($request->filled('q')) {
             $q = trim($request->input('q'));
+            $qLower = '%' . mb_strtolower($q, 'UTF-8') . '%';
             $cleanIbge = preg_replace('/\D/', '', $q);
 
-            $query->where(function ($sub) use ($q, $cleanIbge) {
+            $query->where(function ($sub) use ($qLower, $cleanIbge) {
                 if (strlen($cleanIbge) >= 2) {
                     $sub->where('codigo_ibge', 'like', "%{$cleanIbge}%");
                 }
-                $sub->orWhere('nome', 'ILIKE', "%{$q}%")
-                    ->orWhere('microrregiao', 'ILIKE', "%{$q}%")
-                    ->orWhere('macrorregiao', 'ILIKE', "%{$q}%");
+                $sub->orWhereRaw('LOWER(nome) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(microrregiao) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(macrorregiao) LIKE ?', [$qLower]);
             });
         }
 

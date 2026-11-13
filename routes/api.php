@@ -16,6 +16,7 @@ use App\Http\Controllers\KpiDashboardController;
 use App\Http\Controllers\WebRtcTokenController;
 use App\Http\Controllers\WebRtcWebhookController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\EgressoConhecimentoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -52,6 +53,7 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware(['web', 'auth.mobile:optional'])->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me'])->middleware('auth.mobile')->name('api.auth.me');
+    Route::post('/auth/refresh', [AuthController::class, 'refresh'])->middleware('auth.mobile')->name('api.auth.refresh');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->name('api.auth.logout');
 
     // Carteira Digital do Egresso (Mobile & Web)
@@ -61,13 +63,29 @@ Route::middleware(['web', 'auth.mobile:optional'])->group(function () {
     // WebRTC Signaling Room Token Generation
     Route::post('/webrtc/token', [WebRtcTokenController::class, 'generateToken'])->name('api.webrtc.token');
 
+    // Catálogo de Conhecimentos e Qualificações Profissionais (Milestone 1)
+    Route::get('conhecimentos', [EgressoConhecimentoController::class, 'indexCatalog'])
+        ->name('api.conhecimentos.catalog');
+
+    // Conhecimentos vinculados à Ficha do Egresso
+    Route::get('egressos/{egresso}/conhecimentos', [EgressoConhecimentoController::class, 'index'])
+        ->name('api.egressos.conhecimentos.index');
+    Route::put('egressos/{egresso}/conhecimentos', [EgressoConhecimentoController::class, 'sync'])
+        ->name('api.egressos.conhecimentos.sync');
+    Route::post('egressos/{egresso}/conhecimentos', [EgressoConhecimentoController::class, 'sync'])
+        ->name('api.egressos.conhecimentos.sync.post');
+
     // Prontuário Único & Timeline
     Route::apiResource('prontuarios', ProntuarioController::class);
     Route::get('prontuarios/{prontuario}/timeline', [ProntuarioTimelineController::class, 'index'])->name('api.prontuarios.timeline.index');
     Route::post('prontuarios/{prontuario}/timeline', [ProntuarioTimelineController::class, 'store'])->name('api.prontuarios.timeline.store');
     Route::post('prontuarios/{prontuario}/evolucao', [ProntuarioTimelineController::class, 'storeEvolucao'])->name('api.prontuarios.evolucao');
 
-    // Vagas de Emprego & Candidaturas
+    // Vagas de Emprego, Modelo/Importação CSV & Candidaturas
+    Route::get('vagas/modelo-csv', [VagaEmpregoController::class, 'downloadModeloCsv'])
+        ->name('api.vagas.modelo_csv');
+    Route::post('vagas/importar-csv', [VagaEmpregoController::class, 'importarCsv'])
+        ->name('api.vagas.importar_csv');
     Route::apiResource('vagas', VagaEmpregoController::class);
     Route::post('vagas/{vaga}/candidatar', [VagaEmpregoController::class, 'candidatar'])->name('api.vagas.candidatar');
     Route::apiResource('candidaturas', CandidaturaController::class)->only(['index', 'store', 'show']);
@@ -94,4 +112,16 @@ Route::middleware(['web', 'auth.mobile:optional'])->group(function () {
         Route::get('timeline', [KpiDashboardController::class, 'timeline'])->name('api.kpis.timeline');
         Route::get('telemetria', [KpiDashboardController::class, 'telemetria'])->name('api.kpis.telemetria');
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Google Meet API Routes (Milestone 3)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('meet')->name('api.meet.')->group(function () {
+    Route::post('/rooms', [\App\Http\Controllers\Api\GoogleMeetController::class, 'createRoom'])->name('rooms.create');
+    Route::get('/rooms/{id}', [\App\Http\Controllers\Api\GoogleMeetController::class, 'getRoom'])->where('id', '.*')->name('rooms.show');
+    Route::post('/conferences/sync', [\App\Http\Controllers\Api\GoogleMeetController::class, 'syncConference'])->name('conferences.sync');
+    Route::get('/conferences/{id}', [\App\Http\Controllers\Api\GoogleMeetController::class, 'getConference'])->where('id', '.*')->name('conferences.show');
 });

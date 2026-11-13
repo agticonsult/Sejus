@@ -3,28 +3,186 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use App\Models\VagaEmprego;
+use App\Models\CursoCapacitacao;
+use App\Models\Conhecimento;
 use App\Models\MunicipioEs;
 use App\Models\Egresso;
 use App\Models\Prontuario;
 use App\Models\ProntuarioTimeline;
 use App\Services\AuditService;
+use App\Services\CsvVagaImportService;
 use Carbon\Carbon;
 
 class VagaEmpregoController extends Controller
 {
     public function __construct(
-        protected AuditService $audit
+        protected AuditService $audit,
+        protected CsvVagaImportService $csvImporter
     ) {}
+
+    /**
+     * Render Inertia page for Oportunidades & Inserir Vaga (Empregador / Gestor / Egresso).
+     *
+     * GET /oportunidades
+     * GET /oportunidades/inserir-vaga
+     */
+    public function indexView(Request $request): InertiaResponse
+    {
+        $user = Auth::user();
+
+        $vagasQuery = VagaEmprego::with([
+            'municipio:id,nome,codigo_ibge,macrorregiao',
+            'conhecimentos:id,nome,categoria',
+        ])->where('status', 'aberta');
+
+        $vagas = $vagasQuery->orderBy('id', 'desc')->get()->map(function (VagaEmprego $v) {
+            return [
+                'id' => $v->id,
+                'user_id' => $v->user_id,
+                'empresa' => $v->empresa,
+                'titulo' => $v->titulo,
+                'descricao' => $v->descricao,
+                'categoria' => $v->categoria,
+                'municipio_id' => $v->municipio_id,
+                'municipio' => $v->municipio ? [
+                    'id' => $v->municipio->id,
+                    'nome' => $v->municipio->nome,
+                    'codigo_ibge' => $v->municipio->codigo_ibge,
+                    'macrorregiao' => $v->municipio->macrorregiao,
+                ] : ['nome' => 'Vitória'],
+                'salario' => $v->salario !== null ? (float) $v->salario : null,
+                'regime_contratacao' => $v->regime_contratacao ?? 'CLT',
+                'afirmativa_egresso' => (bool) $v->afirmativa_egresso,
+                'empresa_amiga_reintegracao' => (bool) $v->empresa_amiga_reintegracao,
+                'escolaridade_minima' => $v->escolaridade_minima ?? 'Ensino Fundamental',
+                'vagas_totais' => (int) $v->vagas_totais,
+                'vagas_preenchidas' => (int) $v->vagas_preenchidas,
+                'inicio_imediato' => (bool) $v->inicio_imediato,
+                'data_inicio' => $v->data_inicio?->format('Y-m-d'),
+                'data_inicio_formatada' => $v->inicio_imediato
+                    ? 'Imediato'
+                    : ($v->data_inicio ? $v->data_inicio->format('d/m/Y') : null),
+                'fim_permanente' => (bool) $v->fim_permanente,
+                'data_fim' => $v->data_fim?->format('Y-m-d'),
+                'data_fim_formatada' => $v->fim_permanente
+                    ? 'Permanente'
+                    : ($v->data_fim ? $v->data_fim->format('d/m/Y') : null),
+                'status' => $v->status,
+                'beneficios' => is_array($v->beneficios) ? $v->beneficios : [],
+                'conhecimentos' => $v->conhecimentos->map(fn($c) => [
+                    'id' => $c->id,
+                    'nome' => $c->nome,
+                    'categoria' => $c->categoria,
+                ])->values()->all(),
+            ];
+        })->values()->all();
+
+        $cursos = CursoCapacitacao::with('municipio:id,nome,codigo_ibge,macrorregiao')
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function (CursoCapacitacao $c) {
+                return [
+                    'id' => $c->id,
+                    'instituicao' => $c->instituicao,
+                    'titulo' => $c->titulo,
+                    'descricao' => $c->descricao,
+                    'modalidade' => $c->modalidade,
+                    'carga_horaria' => (int) $c->carga_horaria,
+                    'municipio' => $c->municipio ? ['id' => $c->municipio->id, 'nome' => $c->municipio->nome] : null,
+                    'bolsa_auxilio' => $c->bolsa_auxilio !== null ? (float) $c->bolsa_auxilio : 0.0,
+                    'certificado_reconhecido' => (bool) $c->certificado_reconhecido,
+                    'vagas_disponiveis' => (int) $c->vagas_disponiveis,
+                ];
+            })->values()->all();
+
+        $municipios = MunicipioEs::orderBy('nome', 'asc')
+            ->get(['id', 'nome', 'codigo_ibge', 'macrorregiao'])
+            ->values()
+            ->all();
+
+        $catalogoConhecimentos = Conhecimento::query()
+            ->where('ativo', true)
+            ->orderBy('nome', 'asc')
+            ->get(['id', 'nome', 'categoria', 'descricao'])
+            ->values()
+            ->all();
+
+        $initialTab = 'vagas';
+        if (
+            $request->routeIs('oportunidades.inserir_vaga') ||
+            $request->input('tab') === 'inserir-vaga' ||
+            ($user && $user->isEmpregador())
+        ) {
+            $initialTab = 'inserir-vaga';
+        }
+
+        // Fetch User's Applications and Course Enrollments from Prontuário Timeline
+        $minhasCandidaturas = [];
+        $meusCursos = [];
+        if ($user && ($user->isEgresso() || $user->egresso)) {
+            $egressoId = $user->egresso?->id;
+            $prontuario = Prontuario::where('egresso_id', $egressoId)->first();
+            if ($prontuario) {
+                $timelineEvents = ProntuarioTimeline::where('prontuario_id', $prontuario->id)
+                    ->whereIn('tipo_evento', ['encaminhamento_vaga', 'inscricao_curso', 'matricula_curso'])
+                    ->orderBy('data_evento', 'desc')
+                    ->get();
+
+                foreach ($timelineEvents as $evt) {
+                    if ($evt->tipo_evento === 'encaminhamento_vaga') {
+                        $minhasCandidaturas[] = [
+                            'id' => $evt->id,
+                            'vaga_id' => $evt->metadata['vaga_id'] ?? null,
+                            'titulo' => $evt->metadata['titulo'] ?? $evt->titulo,
+                            'empresa' => $evt->metadata['empresa'] ?? 'Empresa Parceira',
+                            'municipio_nome' => $evt->metadata['municipio_nome'] ?? 'Espírito Santo',
+                            'salario' => $evt->metadata['salario'] ?? null,
+                            'data_evento' => $evt->data_evento?->format('d/m/Y H:i'),
+                            'status' => 'Encaminhado ao Empregador',
+                        ];
+                    } else {
+                        $meusCursos[] = [
+                            'id' => $evt->id,
+                            'curso_id' => $evt->metadata['curso_id'] ?? null,
+                            'titulo' => $evt->metadata['titulo'] ?? $evt->titulo,
+                            'instituicao' => $evt->metadata['instituicao'] ?? 'Instituição Conveniada',
+                            'carga_horaria' => $evt->metadata['carga_horaria'] ?? null,
+                            'modalidade' => $evt->metadata['modalidade'] ?? 'Presencial',
+                            'bolsa_auxilio' => $evt->metadata['bolsa_auxilio'] ?? null,
+                            'data_evento' => $evt->data_evento?->format('d/m/Y H:i'),
+                            'status' => 'Matrícula Confirmada',
+                        ];
+                    }
+                }
+            }
+        }
+
+        return Inertia::render('Oportunidades', [
+            'vagas' => $vagas,
+            'cursos' => $cursos,
+            'municipios' => $municipios,
+            'catalogoConhecimentos' => $catalogoConhecimentos,
+            'initialTab' => $initialTab,
+            'minhasCandidaturas' => $minhasCandidaturas,
+            'meusCursos' => $meusCursos,
+        ]);
+    }
 
     /**
      * List job vacancies with municipality, category, affirmative action filters and accent-insensitive search.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = VagaEmprego::with('municipio:id,nome,codigo_ibge,macrorregiao');
+        $query = VagaEmprego::with([
+            'municipio:id,nome,codigo_ibge,macrorregiao',
+            'conhecimentos:id,nome,categoria',
+        ]);
 
         // Status filter (defaults to 'aberta' if not specified)
         if ($request->filled('status')) {
@@ -33,8 +191,14 @@ class VagaEmpregoController extends Controller
             $query->where('status', 'aberta');
         }
 
-        // Municipio filter by ID or name/IBGE code
-        if ($request->filled('municipio_id')) {
+        // CEP Resolution filter (Resolves ES CEP to Municipio)
+        if ($request->filled('cep')) {
+            $cepService = app(\App\Services\CepMunicipioService::class);
+            $munByCep = $cepService->resolveByCep($request->input('cep'));
+            if ($munByCep) {
+                $query->where('municipio_id', $munByCep->id);
+            }
+        } elseif ($request->filled('municipio_id')) {
             $query->where('municipio_id', (int) $request->input('municipio_id'));
         } elseif ($request->filled('municipio')) {
             $munSearch = trim($request->input('municipio'));
@@ -44,7 +208,7 @@ class VagaEmpregoController extends Controller
                 if (strlen($cleanIbge) === 7 && str_starts_with($cleanIbge, '32')) {
                     $mq->where('codigo_ibge', $cleanIbge);
                 } else {
-                    $mq->where('nome', 'ILIKE', "%{$munSearch}%");
+                    $mq->whereRaw('LOWER(nome) LIKE ?', ['%' . mb_strtolower($munSearch, 'UTF-8') . '%']);
                 }
             });
         }
@@ -84,10 +248,11 @@ class VagaEmpregoController extends Controller
         // Search string q (title, company, description)
         if ($request->filled('q')) {
             $q = trim($request->input('q'));
-            $query->where(function ($sub) use ($q) {
-                $sub->where('titulo', 'ILIKE', "%{$q}%")
-                    ->orWhere('empresa', 'ILIKE', "%{$q}%")
-                    ->orWhere('descricao', 'ILIKE', "%{$q}%");
+            $qLower = '%' . mb_strtolower($q, 'UTF-8') . '%';
+            $query->where(function ($sub) use ($qLower) {
+                $sub->whereRaw('LOWER(titulo) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(empresa) LIKE ?', [$qLower])
+                    ->orWhereRaw('LOWER(descricao) LIKE ?', [$qLower]);
             });
         }
 
@@ -151,8 +316,14 @@ class VagaEmpregoController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $vaga = VagaEmprego::with('municipio:id,nome,codigo_ibge,macrorregiao,latitude,longitude')
-            ->find($id);
+        if (!is_numeric($id)) {
+            return response()->json(['error' => 'Vaga de emprego não encontrada.'], 404);
+        }
+
+        $vaga = VagaEmprego::with([
+            'municipio:id,nome,codigo_ibge,macrorregiao,latitude,longitude',
+            'conhecimentos:id,nome,categoria',
+        ])->find((int) $id);
 
         if (!$vaga) {
             return response()->json(['error' => 'Vaga de emprego não encontrada.'], 404);
@@ -162,17 +333,41 @@ class VagaEmpregoController extends Controller
     }
 
     /**
-     * Create a new job vacancy (Gestor / Técnico).
+     * Create a new job vacancy (Empregador / Gestor / Técnico / Suporte).
      */
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
-            return response()->json(['error' => 'Acesso não autorizado.'], 403);
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
         }
 
-        $validated = $request->validate([
+        if (!$user->isEmpregador() && !$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json(['error' => 'Acesso não autorizado para cadastro de vagas.', 'code' => 'FORBIDDEN'], 403);
+        }
+
+        // Normalize aliases for manual form submissions (nome_vaga -> titulo, quantidade_vaga -> vagas_totais)
+        $payload = $request->all();
+        if (empty($payload['titulo']) && !empty($payload['nome_vaga'])) {
+            $payload['titulo'] = $payload['nome_vaga'];
+        }
+        if (!isset($payload['vagas_totais']) && isset($payload['quantidade_vaga'])) {
+            $payload['vagas_totais'] = $payload['quantidade_vaga'];
+        }
+        if (empty($payload['empresa'])) {
+            $payload['empresa'] = $user->name;
+        }
+        if (empty($payload['categoria'])) {
+            $payload['categoria'] = 'geral';
+        }
+        if (empty($payload['municipio_id'])) {
+            $payload['municipio_id'] = $user->municipio_id
+                ?? MunicipioEs::where('codigo_ibge', 3205309)->value('id')
+                ?? MunicipioEs::orderBy('id', 'asc')->value('id');
+        }
+
+        $validated = validator($payload, [
             'empresa' => 'required|string|max:150',
             'titulo' => 'required|string|max:150',
             'descricao' => 'required|string',
@@ -184,21 +379,52 @@ class VagaEmpregoController extends Controller
             'empresa_amiga_reintegracao' => 'nullable|boolean',
             'escolaridade_minima' => 'nullable|string|max:100',
             'vagas_totais' => 'required|integer|min:1',
+            'inicio_imediato' => 'nullable|boolean',
+            'data_inicio' => 'nullable|date',
+            'fim_permanente' => 'nullable|boolean',
+            'data_fim' => 'nullable|date',
             'beneficios' => 'nullable|array',
+            'conhecimentos' => 'nullable|array',
+            'conhecimentos.*' => 'integer|exists:conhecimentos,id',
             'status' => 'nullable|string|in:aberta,preenchida,pausada,cancelada',
-        ]);
+        ])->validate();
+
+        $inicioImediato = (bool) ($validated['inicio_imediato'] ?? false);
+        $fimPermanente = (bool) ($validated['fim_permanente'] ?? false);
+        $dataInicio = $inicioImediato ? null : ($validated['data_inicio'] ?? null);
+        $dataFim = $fimPermanente ? null : ($validated['data_fim'] ?? null);
+
+        if ($dataInicio && $dataFim && Carbon::parse($dataFim)->lt(Carbon::parse($dataInicio))) {
+            return response()->json([
+                'error' => 'A data de fim não pode ser anterior à data de início.',
+                'errors' => ['data_fim' => ['A data de fim não pode ser anterior à data de início.']],
+            ], 422);
+        }
+
+        $conhecimentoIds = $validated['conhecimentos'] ?? [];
+        unset($validated['conhecimentos']);
 
         $vaga = VagaEmprego::create(array_merge($validated, [
+            'user_id' => $user->id,
+            'inicio_imediato' => $inicioImediato,
+            'data_inicio' => $dataInicio,
+            'fim_permanente' => $fimPermanente,
+            'data_fim' => $dataFim,
             'status' => $validated['status'] ?? 'aberta',
             'vagas_preenchidas' => 0,
+            'regime_contratacao' => $validated['regime_contratacao'] ?? 'CLT',
             'afirmativa_egresso' => $validated['afirmativa_egresso'] ?? true,
             'empresa_amiga_reintegracao' => $validated['empresa_amiga_reintegracao'] ?? true,
         ]));
 
+        if (!empty($conhecimentoIds)) {
+            $vaga->conhecimentos()->sync($conhecimentoIds);
+        }
+
         return response()->json([
             'status' => 'created',
             'message' => 'Vaga de emprego cadastrada com sucesso.',
-            'data' => $vaga->load('municipio'),
+            'data' => $vaga->load(['municipio', 'conhecimentos:id,nome,categoria']),
         ], 201);
     }
 
@@ -209,13 +435,21 @@ class VagaEmpregoController extends Controller
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.'], 401);
+        }
+
+        if (!$user->isEmpregador() && !$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
             return response()->json(['error' => 'Acesso não autorizado.'], 403);
         }
 
         $vaga = VagaEmprego::find($id);
         if (!$vaga) {
             return response()->json(['error' => 'Vaga não encontrada.'], 404);
+        }
+
+        if ($user->isEmpregador() && (int) $vaga->user_id !== (int) $user->id) {
+            return response()->json(['error' => 'Acesso negado: você só pode editar vagas publicadas pela sua empresa.'], 403);
         }
 
         $validated = $request->validate([
@@ -231,15 +465,28 @@ class VagaEmpregoController extends Controller
             'escolaridade_minima' => 'nullable|string|max:100',
             'vagas_totais' => 'nullable|integer|min:1',
             'vagas_preenchidas' => 'nullable|integer|min:0',
+            'inicio_imediato' => 'nullable|boolean',
+            'data_inicio' => 'nullable|date',
+            'fim_permanente' => 'nullable|boolean',
+            'data_fim' => 'nullable|date',
             'beneficios' => 'nullable|array',
+            'conhecimentos' => 'nullable|array',
+            'conhecimentos.*' => 'integer|exists:conhecimentos,id',
             'status' => 'nullable|string|in:aberta,preenchida,pausada,cancelada',
         ]);
 
+        $conhecimentoIds = $validated['conhecimentos'] ?? null;
+        unset($validated['conhecimentos']);
+
         $vaga->update($validated);
+
+        if (is_array($conhecimentoIds)) {
+            $vaga->conhecimentos()->sync($conhecimentoIds);
+        }
 
         return response()->json([
             'status' => 'updated',
-            'data' => $vaga->load('municipio'),
+            'data' => $vaga->load(['municipio', 'conhecimentos:id,nome,categoria']),
         ]);
     }
 
@@ -250,7 +497,11 @@ class VagaEmpregoController extends Controller
     {
         $user = Auth::user();
 
-        if ($user && $user->isEgresso()) {
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.'], 401);
+        }
+
+        if (!$user->isEmpregador() && !$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
             return response()->json(['error' => 'Acesso não autorizado.'], 403);
         }
 
@@ -259,9 +510,138 @@ class VagaEmpregoController extends Controller
             return response()->json(['error' => 'Vaga não encontrada.'], 404);
         }
 
+        if ($user->isEmpregador() && (int) $vaga->user_id !== (int) $user->id) {
+            return response()->json(['error' => 'Acesso negado: você só pode encerrar vagas publicadas pela sua empresa.'], 403);
+        }
+
         $vaga->update(['status' => 'cancelada']);
 
         return response()->json(['status' => 'deleted', 'message' => 'Vaga encerrada com sucesso.']);
+    }
+
+    /**
+     * Download CSV template for job vacancy import.
+     *
+     * GET /api/vagas/modelo-csv
+     * GET /vagas/modelo-csv
+     */
+    public function downloadModeloCsv(Request $request): Response|JsonResponse
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'error' => 'Não autenticado.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        if (!$user->isEmpregador() && !$user->isGestor() && !$user->isSuporte() && !$user->isTecnico()) {
+            return response()->json([
+                'error' => 'Acesso negado: apenas empregadores e gestores podem baixar o modelo de importação de vagas.',
+                'code' => 'FORBIDDEN',
+            ], 403);
+        }
+
+        $csvContent = $this->csvImporter->generateTemplateCsv();
+
+        $this->audit->log(
+            null,
+            'EXPORT',
+            ['action' => 'download_modelo_csv_vagas'],
+            $user->id,
+            $request->ip(),
+            $request->userAgent()
+        );
+
+        return response($csvContent, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="modelo_importacao_vagas.csv"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
+    }
+
+    /**
+     * Import job vacancies from uploaded CSV file.
+     *
+     * POST /api/vagas/importar-csv
+     * POST /vagas/importar-csv
+     */
+    public function importarCsv(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'error' => 'Não autenticado.',
+                'code' => 'UNAUTHENTICATED',
+            ], 401);
+        }
+
+        if (!$user->isEmpregador() && !$user->isGestor() && !$user->isSuporte() && !$user->isTecnico()) {
+            return response()->json([
+                'error' => 'Acesso negado: apenas empregadores e gestores podem importar vagas via CSV.',
+                'code' => 'FORBIDDEN',
+            ], 403);
+        }
+
+        $uploadedFile = $request->file('arquivo') ?? $request->file('file') ?? $request->file('csv');
+
+        if (!$uploadedFile || !$uploadedFile->isValid()) {
+            return response()->json([
+                'status' => 'validation_error',
+                'error' => 'Envie um arquivo CSV válido no campo "arquivo".',
+                'message' => 'Envie um arquivo CSV válido no campo "arquivo".',
+                'erros' => [
+                    ['linha' => 1, 'campo' => 'arquivo', 'erro' => 'Nenhum arquivo CSV válido foi enviado.'],
+                ],
+            ], 422);
+        }
+
+        // Max 5 MB
+        if ($uploadedFile->getSize() > 5 * 1024 * 1024) {
+            return response()->json([
+                'status' => 'validation_error',
+                'error' => 'O arquivo CSV excede o tamanho máximo permitido de 5 MB.',
+                'message' => 'O arquivo CSV excede o tamanho máximo permitido de 5 MB.',
+                'erros' => [
+                    ['linha' => 1, 'campo' => 'arquivo', 'erro' => 'Arquivo superior ao limite de 5 MB.'],
+                ],
+            ], 422);
+        }
+
+        $extension = strtolower((string) $uploadedFile->getClientOriginalExtension());
+        if (!in_array($extension, ['csv', 'txt'], true)) {
+            return response()->json([
+                'status' => 'validation_error',
+                'error' => 'Formato de arquivo inválido. Envie um arquivo com extensão .csv.',
+                'message' => 'Formato de arquivo inválido. Envie um arquivo com extensão .csv.',
+                'erros' => [
+                    ['linha' => 1, 'campo' => 'arquivo', 'erro' => 'Formato inválido. Utilize arquivo .csv.'],
+                ],
+            ], 422);
+        }
+
+        $rawContent = (string) file_get_contents($uploadedFile->getRealPath());
+        $requestedMunicipioId = $request->filled('municipio_id') ? (int) $request->input('municipio_id') : null;
+
+        $result = $this->csvImporter->importFromCsvContent($rawContent, $user, $requestedMunicipioId);
+
+        if ($result['ok']) {
+            $this->audit->log(
+                null,
+                'CREATE',
+                [
+                    'action' => 'import_csv_vagas',
+                    'sucesso_count' => $result['payload']['sucesso_count'],
+                ],
+                $user->id,
+                $request->ip(),
+                $request->userAgent()
+            );
+        }
+
+        return response()->json($result['payload'], $result['http_status']);
     }
 
     /**
@@ -270,6 +650,15 @@ class VagaEmpregoController extends Controller
     public function candidatar(Request $request, string $id): JsonResponse
     {
         $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.', 'code' => 'UNAUTHENTICATED'], 401);
+        }
+
+        if (!$user->isEgresso() && !$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            return response()->json(['error' => 'Acesso não autorizado para candidatura a vagas.', 'code' => 'FORBIDDEN'], 403);
+        }
+
         $vaga = VagaEmprego::with('municipio')->find($id);
 
         if (!$vaga) {
@@ -291,12 +680,9 @@ class VagaEmpregoController extends Controller
         }
 
         // Determine target egresso
-        $egressoId = null;
-        if ($user && $user->isEgresso()) {
-            $egressoId = $user->egresso?->id;
-        } else {
-            $egressoId = $request->input('egresso_id');
-        }
+        $egressoId = $user->isEgresso()
+            ? $user->egresso?->id
+            : $request->input('egresso_id');
 
         if (!$egressoId) {
             return response()->json(['error' => 'Egresso não identificado para a candidatura.'], 422);

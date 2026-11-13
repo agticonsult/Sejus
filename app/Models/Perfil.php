@@ -59,6 +59,14 @@ class Perfil extends Model
     }
 
     /**
+     * Scope for empregadores.
+     */
+    public function scopeEmpregadores(Builder $query): Builder
+    {
+        return $query->where('slug', 'empregador');
+    }
+
+    /**
      * Scope for ativos.
      */
     public function scopeAtivos(Builder $query): Builder

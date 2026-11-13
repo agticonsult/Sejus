@@ -20,6 +20,8 @@ class UserSeeder extends Seeder
         $tecnicoPerfil = Perfil::where('slug', 'tecnico')->first();
         $egressoPerfil = Perfil::where('slug', 'egresso')->first();
         $suportePerfil = Perfil::where('slug', 'suporte')->first();
+        $empregadorPerfil = Perfil::where('slug', 'empregador')->first();
+        $vitoriaId = \App\Models\MunicipioEs::where('codigo_ibge', 3205309)->value('id');
 
         $users = [
             [
@@ -82,12 +84,28 @@ class UserSeeder extends Seeder
                 'foto_url' => 'https://ui-avatars.com/api/?name=Suporte+Agile&background=4f46e5&color=fff',
                 'ativo' => true,
             ],
+            [
+                'id' => 6,
+                'perfil_id' => $empregadorPerfil ? $empregadorPerfil->id : 6,
+                'municipio_id' => $vitoriaId,
+                'name' => 'Construtora Capixaba Parceira LTDA',
+                'email' => 'rh@parceirosejus.com.br',
+                'password' => Hash::make('secret123'),
+                'govbr_id' => 'govbr-empregador-006',
+                'cpf' => '39053344705',
+                'telefone' => '(27) 3322-4455',
+                'foto_url' => 'https://ui-avatars.com/api/?name=Construtora+Capixaba&background=d97706&color=fff',
+                'ativo' => true,
+            ],
         ];
 
         foreach ($users as $u) {
             $user = User::firstOrNew(['email' => $u['email']]);
-            $user->id = $u['id'];
+            if (!$user->exists && !User::where('id', $u['id'])->exists()) {
+                $user->id = $u['id'];
+            }
             $user->perfil_id = $u['perfil_id'];
+            $user->municipio_id = $u['municipio_id'] ?? $user->municipio_id;
             $user->name = $u['name'];
             $user->password = $u['password'];
             $user->govbr_id = $u['govbr_id'];

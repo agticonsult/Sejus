@@ -1,51 +1,67 @@
 <template>
   <nav
-    class="accessibility-toolbar flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-lg border border-slate-200/80 shadow-sm"
+    class="accessibility-toolbar flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/70 shadow-2xs backdrop-blur-xs"
     role="region"
     aria-label="Barra de Ferramentas de Acessibilidade"
   >
+    <!-- Dark Mode Toggle Button -->
+    <button
+      id="darkModeBtn"
+      type="button"
+      class="a11y-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer"
+      :class="isDarkMode && !highContrast ? 'bg-slate-800 text-sky-300 ring-1 ring-sky-500/40 font-bold' : 'text-slate-600 hover:bg-white hover:text-slate-900'"
+      :aria-pressed="isDarkMode"
+      aria-label="Alternar Modo Escuro"
+      title="Ativar ou desativar Modo Escuro Institucional"
+      @click="handleToggleDarkMode"
+    >
+      <Moon v-if="!isDarkMode" class="w-3.5 h-3.5 stroke-[1.75]" />
+      <Sun v-else class="w-3.5 h-3.5 stroke-[1.75] text-amber-300" />
+      <span v-if="showLabels" class="hidden sm:inline">{{ isDarkMode ? 'Modo Claro' : 'Modo Escuro' }}</span>
+    </button>
+
     <!-- High Contrast Toggle Button -->
     <button
       id="contrastBtn"
       type="button"
-      class="a11y-btn flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer"
-      :class="highContrast ? 'bg-black text-yellow-300 ring-2 ring-yellow-400' : 'text-slate-700 hover:bg-white hover:text-slate-900'"
+      class="a11y-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer"
+      :class="highContrast ? 'bg-black text-yellow-300 ring-2 ring-yellow-400 font-bold' : 'text-slate-600 hover:bg-white hover:text-slate-900'"
       :aria-pressed="highContrast"
       aria-label="Alternar Modo Alto Contraste"
       title="Ativar ou desativar modo de Alto Contraste (WCAG AAA)"
       @click="handleToggleContrast"
     >
-      <span aria-hidden="true" class="text-sm">👁️</span>
+      <Contrast class="w-3.5 h-3.5 stroke-[1.75]" />
       <span v-if="showLabels" class="hidden sm:inline">Alto Contraste</span>
     </button>
 
     <!-- Font Zoom Controls (A-, A+, Reset) -->
-    <div class="flex items-center gap-0.5" role="group" aria-label="Controle de tamanho do texto">
+    <div class="flex items-center gap-0.5 border-l border-slate-200/80 pl-1" role="group" aria-label="Controle de tamanho do texto">
       <!-- Zoom Out (A-) -->
       <button
         id="fontZoomOutBtn"
         type="button"
-        class="a11y-btn px-2 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer text-slate-700 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
+        class="a11y-btn p-1.5 rounded-lg text-xs font-medium transition cursor-pointer text-slate-600 hover:bg-white hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed"
         :disabled="fontZoom <= MIN_ZOOM"
         aria-label="Diminuir tamanho da fonte"
         title="Diminuir tamanho da fonte (-18%)"
         @click="handleZoomOut"
       >
-        <span aria-hidden="true">A-</span>
+        <ZoomOut class="w-3.5 h-3.5 stroke-[1.75]" />
       </button>
 
       <!-- Zoom In (A+) -->
       <button
         id="fontSizeBtn"
         type="button"
-        class="a11y-btn flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-bold transition cursor-pointer"
-        :class="fontZoom > 1.00 ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'"
+        class="a11y-btn flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
+        :class="fontZoom > 1.00 ? 'bg-sky-600 text-white shadow-2xs font-bold' : 'text-slate-600 hover:bg-white hover:text-slate-900'"
         aria-label="Aumentar Tamanho da Fonte (+18%)"
         :title="`Aumentar tamanho da fonte (+18%). Atual: ${Math.round(fontZoom * 100)}%`"
         @click="handleZoomIn"
       >
-        <span aria-hidden="true">A+</span>
-        <span v-if="fontZoom > 1.00" class="text-[10px] opacity-90">+{{ Math.round((fontZoom - 1) * 100) }}%</span>
+        <ZoomIn class="w-3.5 h-3.5 stroke-[1.75]" />
+        <span v-if="fontZoom > 1.00" class="text-[10px] font-mono opacity-90">+{{ Math.round((fontZoom - 1) * 100) }}%</span>
       </button>
 
       <!-- Reset Zoom (100%) -->
@@ -53,35 +69,39 @@
         v-if="fontZoom > 1.00"
         id="fontResetBtn"
         type="button"
-        class="a11y-btn px-1.5 py-1.5 rounded-md text-[11px] font-bold text-slate-500 hover:text-slate-800 hover:bg-white transition cursor-pointer"
+        class="a11y-btn p-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-900 hover:bg-white transition cursor-pointer"
         aria-label="Redefinir tamanho da fonte para o padrão (100%)"
         title="Redefinir tamanho da fonte para 100%"
         @click="handleResetZoom"
       >
-        100%
+        <RotateCcw class="w-3 h-3 stroke-[2]" />
       </button>
     </div>
 
     <!-- Simplified Language Toggle Button -->
-    <button
-      id="simplifiedTextBtn"
-      type="button"
-      class="a11y-btn flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer"
-      :class="simplifiedLanguage ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400/50' : 'text-slate-700 hover:bg-white hover:text-slate-900'"
-      :aria-pressed="simplifiedLanguage"
-      aria-label="Ativar Modo Linguagem Simplificada"
-      title="Ativar modo de Linguagem Fácil (vocabulário acessível para baixo letramento)"
-      @click="handleToggleSimplified"
-    >
-      <span aria-hidden="true" class="text-sm">💬</span>
-      <span v-if="showLabels" class="hidden sm:inline">Linguagem Fácil</span>
-    </button>
+    <div class="border-l border-slate-200/80 pl-1">
+      <button
+        id="simplifiedTextBtn"
+        type="button"
+        class="a11y-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer"
+        :class="simplifiedLanguage ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'text-slate-600 hover:bg-white hover:text-slate-900'"
+        :aria-pressed="simplifiedLanguage"
+        aria-label="Ativar Modo Linguagem Simplificada"
+        title="Ativar modo de Linguagem Fácil (vocabulário acessível para baixo letramento)"
+        @click="handleToggleSimplified"
+      >
+        <MessageSquare class="w-3.5 h-3.5 stroke-[1.75]" />
+        <span v-if="showLabels" class="hidden sm:inline">Linguagem Fácil</span>
+      </button>
+    </div>
   </nav>
 </template>
 
 <script setup>
 import { onMounted } from 'vue';
+import { Contrast, ZoomIn, ZoomOut, RotateCcw, MessageSquare, Moon, Sun } from 'lucide-vue-next';
 import { useAccessibility, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from '../Composables/useAccessibility';
+import { useTheme } from '../Composables/useTheme';
 
 const props = defineProps({
   showLabels: {
@@ -94,7 +114,9 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['contrast-change', 'zoom-change', 'simplified-change']);
+const emit = defineEmits(['contrast-change', 'zoom-change', 'simplified-change', 'theme-change']);
+
+const { isDarkMode, toggleDarkMode, applyTheme, currentTheme } = useTheme();
 
 const {
   highContrast,
@@ -115,6 +137,11 @@ onMounted(() => {
 const handleToggleContrast = () => {
   const active = toggleHighContrast();
   emit('contrast-change', active);
+};
+
+const handleToggleDarkMode = () => {
+  const active = toggleDarkMode();
+  emit('theme-change', active);
 };
 
 const handleZoomIn = () => {
