@@ -18,9 +18,18 @@
             <h2 id="videoModalTitle" class="text-base font-extrabold text-white leading-tight">
               Atendimento Remoto Seguro — Sala #{{ roomId || 'SEJUS-ES-2026' }}
             </h2>
-            <p class="text-xs text-slate-400">
-              Criptografia de Ponta a Ponta WebRTC • Protocolo de Gravação de Auditoria SEJUS
-            </p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-xs text-slate-400">WebRTC Seguro</span>
+              <span class="text-slate-600">•</span>
+              <button
+                type="button"
+                @click="copyInviteLink"
+                class="text-[11px] bg-sky-600 hover:bg-sky-500 text-white font-bold px-2 py-0.5 rounded flex items-center gap-1 transition cursor-pointer"
+                title="Copiar link para enviar ao egresso ou familiar"
+              >
+                <span>🔗 {{ inviteCopied ? 'Link Copiado!' : 'Copiar Link para Convidar' }}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -288,7 +297,20 @@ const chatMessages = ref([
 ]);
 
 const callDurationSeconds = ref(0);
+const inviteCopied = ref(false);
 let durationTimer = null;
+
+const copyInviteLink = () => {
+  const url = `${window.location.origin}/atendimento?room=${props.roomId}`;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => {
+      inviteCopied.value = true;
+      setTimeout(() => { inviteCopied.value = false; }, 3000);
+    });
+  } else {
+    prompt('Copie o link abaixo para enviar ao cidadão:', url);
+  }
+};
 
 const formattedDuration = computed(() => {
   const m = Math.floor(callDurationSeconds.value / 60).toString().padStart(2, '0');

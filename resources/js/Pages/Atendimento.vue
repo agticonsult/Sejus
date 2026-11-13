@@ -31,7 +31,53 @@
             class="px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
             @click="startDirectCall"
           >
-            <span>📹 Iniciar Chamada Imediata</span>
+            <span>📹 Iniciar Chamada WebRTC</span>
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
+            :disabled="isCreatingMeet"
+            @click="createGoogleMeetRoom"
+          >
+            <span>{{ isCreatingMeet ? '⏳ Criando Meet...' : '📅 Criar Google Meet' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Google Meet Active Banner if created -->
+      <div v-if="activeMeetRoom" class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg">
+            🎥
+          </div>
+          <div>
+            <span class="text-xs font-bold text-indigo-900 block">Sala Google Meet Criada com Sucesso!</span>
+            <span class="text-[11px] text-indigo-700 font-mono select-all">{{ activeMeetRoom.meeting_uri }}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="copyMeetLink"
+            class="px-3.5 py-2 bg-white hover:bg-indigo-50 border border-indigo-300 text-indigo-800 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+          >
+            <span>📋 {{ meetCopied ? 'Link Copiado!' : 'Copiar Link para o Cidadão' }}</span>
+          </button>
+          <a
+            :href="activeMeetRoom.meeting_uri"
+            target="_blank"
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>Entrar na Sala ↗</span>
+          </a>
+          <button
+            type="button"
+            @click="activeMeetRoom = null"
+            class="p-2 text-indigo-400 hover:text-indigo-700 transition"
+            title="Fechar aviso"
+          >
+            ✕
           </button>
         </div>
       </div>
@@ -293,6 +339,49 @@ const lastCallDuration = ref('00:00');
 const isLocalAudioMuted = ref(false);
 const isLocalVideoMuted = ref(false);
 const isScreenSharing = ref(false);
+
+const isCreatingMeet = ref(false);
+const activeMeetRoom = ref(null);
+const meetCopied = ref(false);
+
+const createGoogleMeetRoom = async () => {
+  isCreatingMeet.value = true;
+  try {
+    const res = await fetch('/api/meet/rooms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        displayName: `Atendimento SEJUS - ${localUserName.value}`,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && data.meeting_uri) {
+      activeMeetRoom.value = data;
+      toast.success('Sala do Google Meet Criada', 'O link da reunião foi gerado e está pronto para envio.');
+    } else {
+      toast.error('Google Meet', data.message || 'Não foi possível gerar a sala no Google Meet.');
+    }
+  } catch (err) {
+    toast.error('Erro na Conexão', 'Falha ao conectar com o microsserviço Google Meet.');
+  } finally {
+    isCreatingMeet.value = false;
+  }
+};
+
+const copyMeetLink = () => {
+  if (!activeMeetRoom.value?.meeting_uri) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(activeMeetRoom.value.meeting_uri).then(() => {
+      meetCopied.value = true;
+      setTimeout(() => { meetCopied.value = false; }, 3000);
+    });
+  } else {
+    prompt('Copie o link abaixo para enviar ao cidadão:', activeMeetRoom.value.meeting_uri);
+  }
+};
 
 const currentTelemetry = ref({
   mos: 4.3,
