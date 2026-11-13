@@ -36,13 +36,69 @@
         </div>
       </div>
 
-      <!-- Empty State when no Egresso record is available -->
+      <!-- Barra de Busca e Seleção Operacional (Exibida para Gestor / Suporte / Técnico) -->
+      <div v-if="isStaff" class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span>🔍 Consulta & Emissão de Carteira Digital</span>
+            </h3>
+            <p class="text-xs text-slate-500">Busque o cidadão egresso por CPF ou Nome completo para visualizar, validar ou emitir a 2ª via oficial.</p>
+          </div>
+          <form @submit.prevent="handleSearch" class="flex items-center gap-2 max-w-md w-full sm:w-auto">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Digite o CPF ou Nome do egresso..."
+              class="w-full sm:w-72 px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+            <button
+              type="submit"
+              class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+            >
+              Buscar
+            </button>
+            <button
+              v-if="egressoData"
+              type="button"
+              @click="clearSelection"
+              class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium rounded-xl transition cursor-pointer"
+              title="Limpar seleção"
+            >
+              ✕
+            </button>
+          </form>
+        </div>
+
+        <!-- Sugestões de Egressos Cadastrados no Banco -->
+        <div v-if="recentEgressos && recentEgressos.length" class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
+          <span class="text-[11px] font-semibold text-slate-400">Atendimentos Recentes:</span>
+          <button
+            v-for="e in recentEgressos"
+            :key="e.id"
+            type="button"
+            @click="selectEgresso(e.id)"
+            class="text-[11px] px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1.5"
+            :class="egressoData && egressoData.id === e.id ? 'bg-sky-50 border-sky-300 text-sky-800 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+          >
+            <span>👤 {{ e.nome_completo }}</span>
+            <span class="text-slate-400 font-mono">({{ e.cpf_masked }})</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty State when no Egresso record is selected or available -->
       <div
         v-if="!egressoData"
-        class="bg-white rounded-2xl border border-slate-200/80 p-10 text-center space-y-2 shadow-xs"
+        class="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3 shadow-xs"
       >
-        <p class="text-sm font-bold text-slate-800">Nenhuma Carteira Digital vinculada</p>
-        <p class="text-xs text-slate-500">Cadastre ou vincule um perfil de egresso para emitir a credencial oficial com assinatura criptográfica SEJUS/ES.</p>
+        <div class="w-14 h-14 bg-sky-50 text-sky-600 rounded-2xl mx-auto flex items-center justify-center text-2xl font-bold">
+          🪪
+        </div>
+        <p class="text-base font-bold text-slate-800">Nenhum Egresso Selecionado para Emissão</p>
+        <p class="text-xs text-slate-500 max-w-md mx-auto">
+          {{ isStaff ? 'Utilize a barra de pesquisa acima para selecionar o cidadão atendido e emitir a respectiva Carteira Digital Oficial com validação criptográfica.' : 'Cadastre ou vincule um perfil de egresso para emitir a credencial oficial com assinatura criptográfica SEJUS/ES.' }}
+        </p>
       </div>
 
       <!-- Credential Card Container -->
@@ -221,14 +277,22 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import QrCodeDisplay from '../Components/QrCodeDisplay.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
 import { useToast } from '../Composables/useToast';
 
 const props = defineProps({
+  isStaff: {
+    type: Boolean,
+    default: false,
+  },
+  recentEgressos: {
+    type: Array,
+    default: () => [],
+  },
   egresso: {
     type: Object,
     default: null,
@@ -246,8 +310,30 @@ const props = defineProps({
 const { t } = useAccessibility();
 const toast = useToast();
 
+const searchQuery = ref('');
 const egressoData = computed(() => props.egresso);
 const carteiraToken = computed(() => props.token || '');
+
+const handleSearch = () => {
+  if (!searchQuery.value.trim()) {
+    router.visit('/carteira');
+    return;
+  }
+  router.visit(`/carteira?q=${encodeURIComponent(searchQuery.value.trim())}`, {
+    preserveState: true,
+  });
+};
+
+const selectEgresso = (id) => {
+  router.visit(`/carteira?egresso_id=${id}`, {
+    preserveState: true,
+  });
+};
+
+const clearSelection = () => {
+  searchQuery.value = '';
+  router.visit('/carteira');
+};
 
 const handlePrint = () => {
   if (typeof window !== 'undefined') {

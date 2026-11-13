@@ -34,20 +34,51 @@ class CarteiraController extends Controller
             abort(403, 'Acesso negado à Carteira Digital.');
         }
 
+        $isStaff = $user->isGestor() || $user->isTecnico() || $user->isSuporte();
+
         if ($user->isEgresso()) {
             $egresso = $user->egresso;
         } else {
             $requestedId = $request->input('egresso_id');
-            $egresso = $requestedId && is_numeric($requestedId)
-                ? Egresso::find((int) $requestedId)
-                : Egresso::orderBy('id', 'asc')->first();
+            $searchQuery = trim((string) $request->input('q', ''));
+
+            if ($requestedId && is_numeric($requestedId)) {
+                $egresso = Egresso::find((int) $requestedId);
+            } elseif (!empty($searchQuery)) {
+                // Busca por CPF ou nome
+                $cleanCpf = preg_replace('/\D/', '', $searchQuery);
+                if (strlen($cleanCpf) === 11) {
+                    $hash = $this->lgpdService->generateBlindIndex($cleanCpf);
+                    $egresso = Egresso::where('hash_cpf', $hash)->first();
+                } else {
+                    $egresso = Egresso::where('nome_completo', 'ilike', "%{$searchQuery}%")->first();
+                }
+            } else {
+                $egresso = null;
+            }
+        }
+
+        // Lista de egressos recentes para seleção rápida pelo Gestor/Técnico
+        $recentEgressos = [];
+        if ($isStaff) {
+            $recentEgressos = Egresso::select(['id', 'nome_completo', 'cpf_encrypted', 'hash_cpf'])
+                ->orderBy('id', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(fn($e) => [
+                    'id' => $e->id,
+                    'nome_completo' => $e->nome_completo,
+                    'cpf_masked' => $this->lgpdService->maskCpf($e->cpf ?? '00000000000'),
+                ]);
         }
 
         if (!$egresso) {
             return Inertia::render('Carteira', [
+                'isStaff' => $isStaff,
+                'recentEgressos' => $recentEgressos,
                 'egresso' => null,
                 'token' => '',
-                'pdfDownloadUrl' => '/carteira/pdf',
+                'pdfDownloadUrl' => '',
             ]);
         }
 
@@ -65,6 +96,8 @@ class CarteiraController extends Controller
         }
 
         return Inertia::render('Carteira', [
+            'isStaff' => $isStaff,
+            'recentEgressos' => $recentEgressos,
             'egresso' => [
                 'id' => $egresso->id,
                 'nome_completo' => $egresso->nome_completo,
@@ -76,7 +109,7 @@ class CarteiraController extends Controller
                 'data_validade' => now()->addYear()->format('d/m/Y'),
             ],
             'token' => $token,
-            'pdfDownloadUrl' => '/carteira/pdf' . ($user->isEgresso() ? '' : '?egresso_id=' . $egresso->id),
+            'pdfDownloadUrl' => '/carteira/pdf?egresso_id=' . $egresso->id,
         ]);
     }
 
