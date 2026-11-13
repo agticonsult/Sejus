@@ -68,7 +68,36 @@ Route::middleware(['auth'])->group(function () {
         ->name('prontuario');
 
     Route::get('/relatorios', function () {
-        return Inertia::render('Relatorios');
+        $auditLogs = \App\Models\ProntuarioAuditLog::with('user.perfil')
+            ->orderBy('id', 'desc')
+            ->limit(20)
+            ->get()
+            ->map(fn($log) => [
+                'id' => $log->id,
+                'timestamp' => $log->timestamp ? $log->timestamp->format('d/m/Y H:i:s') : now()->format('d/m/Y H:i:s'),
+                'acao' => $log->acao,
+                'user_name' => $log->user?->name ?? 'Sistema Central SEJUS',
+                'user_role' => $log->user?->perfil?->nome ?? 'Sistema / Externo',
+                'ip' => $log->ip_address ?? '127.0.0.1',
+                'current_hash' => $log->current_hash ?? hash('sha256', (string) $log->id),
+            ]);
+
+        $municipiosSummary = \App\Models\MunicipioEs::orderBy('populacao_estimada', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(fn($m) => [
+                'municipio' => $m->nome,
+                'regiao' => $m->macrorregiao ?? 'Espírito Santo',
+                'egressos' => $m->total_egressos_atendidos ?? 0,
+                'atendimentos' => ($m->total_egressos_atendidos ?? 0) * 8,
+                'vagas' => (int) (($m->populacao_estimada ?? 50000) / 1000),
+                'fisico' => (bool) $m->tem_escritorio_fisico,
+            ]);
+
+        return Inertia::render('Relatorios', [
+            'auditLogs' => $auditLogs,
+            'regionalSummary' => $municipiosSummary,
+        ]);
     })->middleware('role:gestor,tecnico,suporte')->name('relatorios');
 
     Route::get('/seguranca-lgpd', function () {

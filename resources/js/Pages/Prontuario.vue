@@ -28,8 +28,73 @@
         </div>
       </div>
 
+      <!-- Barra de Busca de Prontuário Operacional (Para Gestor / Suporte / Técnico) -->
+      <div v-if="isStaff" class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span>🔍 Consulta de Prontuário Único</span>
+            </h3>
+            <p class="text-xs text-slate-500">Localize o histórico do egresso por Nº do Prontuário, CPF ou Nome completo.</p>
+          </div>
+          <form @submit.prevent="handleSearch" class="flex items-center gap-2 max-w-md w-full sm:w-auto">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Nº Prontuário, CPF ou Nome..."
+              class="w-full sm:w-72 px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+            <button
+              type="submit"
+              class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+            >
+              Buscar
+            </button>
+            <button
+              v-if="prontuarioData || egressoData"
+              type="button"
+              @click="clearSelection"
+              class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium rounded-xl transition cursor-pointer"
+              title="Limpar seleção"
+            >
+              ✕
+            </button>
+          </form>
+        </div>
+
+        <!-- Prontuários Recentes -->
+        <div v-if="recentProntuarios && recentProntuarios.length" class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2">
+          <span class="text-[11px] font-semibold text-slate-400">Prontuários Ativos:</span>
+          <button
+            v-for="p in recentProntuarios"
+            :key="p.id"
+            type="button"
+            @click="selectProntuario(p.id)"
+            class="text-[11px] px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1.5"
+            :class="prontuarioData && prontuarioData.id === p.id ? 'bg-sky-50 border-sky-300 text-sky-800 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+          >
+            <span class="font-mono font-bold">{{ p.numero_prontuario }}</span>
+            <span>- {{ p.egresso_nome }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty State quando nenhum prontuário está selecionado -->
+      <div
+        v-if="!prontuarioData"
+        class="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3 shadow-xs"
+      >
+        <div class="w-14 h-14 bg-sky-50 text-sky-600 rounded-2xl mx-auto flex items-center justify-center text-2xl font-bold">
+          📁
+        </div>
+        <p class="text-base font-bold text-slate-800">Nenhum Prontuário Selecionado</p>
+        <p class="text-xs text-slate-500 max-w-md mx-auto">
+          Utilize a barra de busca acima ou selecione um prontuário ativo para consultar o dossiê, plano individual de reintegração e evoluções técnicas.
+        </p>
+      </div>
+
       <!-- Egresso Profile Header Dossier -->
-      <div v-if="egressoData" class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+      <div v-else class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-900 text-white font-extrabold text-lg flex items-center justify-center border-2 border-white shadow-md flex-shrink-0">
@@ -94,11 +159,6 @@
             </p>
           </div>
         </div>
-      </div>
-
-      <div v-else class="bg-white rounded-2xl border border-slate-200/80 p-8 text-center shadow-xs">
-        <p class="text-sm font-bold text-slate-700">Nenhum prontuário de egresso encontrado.</p>
-        <p class="text-xs text-slate-500 mt-1">Cadastre ou vincule um cidadão egresso para visualizar e gerenciar o Prontuário Único.</p>
       </div>
 
       <!-- Ficha do Egresso: Conhecimentos e Qualificações Profissionais (R1) -->
@@ -482,12 +542,20 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, usePage, router } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
 import { useToast } from '../Composables/useToast';
 
 const props = defineProps({
+  isStaff: {
+    type: Boolean,
+    default: false,
+  },
+  recentProntuarios: {
+    type: Array,
+    default: () => [],
+  },
   egresso: {
     type: Object,
     default: null,
@@ -509,6 +577,29 @@ const props = defineProps({
     default: () => [],
   },
 });
+
+const searchQuery = ref('');
+
+const handleSearch = () => {
+  if (!searchQuery.value.trim()) {
+    router.visit('/prontuario');
+    return;
+  }
+  router.visit(`/prontuario?q=${encodeURIComponent(searchQuery.value.trim())}`, {
+    preserveState: true,
+  });
+};
+
+const selectProntuario = (id) => {
+  router.visit(`/prontuario/${id}`, {
+    preserveState: true,
+  });
+};
+
+const clearSelection = () => {
+  searchQuery.value = '';
+  router.visit('/prontuario');
+};
 
 const page = usePage();
 const { t } = useAccessibility();

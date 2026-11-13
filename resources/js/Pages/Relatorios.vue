@@ -206,11 +206,22 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
 import { useToast } from '../Composables/useToast';
+
+const props = defineProps({
+  auditLogs: {
+    type: Array,
+    default: () => [],
+  },
+  regionalSummary: {
+    type: Array,
+    default: () => [],
+  },
+});
 
 const { t } = useAccessibility();
 const toast = useToast();
@@ -219,23 +230,8 @@ const filterPeriod = ref('ano_2026');
 const filterRegion = ref('todas');
 const filterAxis = ref('todos');
 
-const regionalSummary = ref([
-  { municipio: 'Vitória', regiao: 'Metropolitana', egressos: 3420, atendimentos: 28400, vagas: 580, fisico: true },
-  { municipio: 'Serra', regiao: 'Metropolitana', egressos: 2910, atendimentos: 24100, vagas: 490, fisico: true },
-  { municipio: 'Vila Velha', regiao: 'Metropolitana', egressos: 2450, atendimentos: 19800, vagas: 380, fisico: true },
-  { municipio: 'Cariacica', regiao: 'Metropolitana', egressos: 2100, atendimentos: 16500, vagas: 290, fisico: true },
-  { municipio: 'Linhares', regiao: 'Rio Doce / Norte', egressos: 1150, atendimentos: 7800, vagas: 140, fisico: true },
-  { municipio: 'Cachoeiro de Itapemirim', regiao: 'Sul / Caparaó', egressos: 980, atendimentos: 6200, vagas: 110, fisico: true },
-  { municipio: 'Colatina', regiao: 'Centro-Oeste', egressos: 740, atendimentos: 4900, vagas: 95, fisico: true },
-  { municipio: 'São Mateus', regiao: 'Nordeste / Norte', egressos: 610, atendimentos: 4100, vagas: 85, fisico: true },
-]);
-
-const auditLogs = ref([
-  { id: 48912, timestamp: '17/08/2026 14:32:10', acao: 'ATENDIMENTO_VIDEO_LOG', user_name: 'Dra. Márcia Oliveira', user_role: 'Técnico Social', ip: '187.111.45.20', current_hash: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08' },
-  { id: 48911, timestamp: '17/08/2026 14:20:05', acao: 'VALIDATE_QR', user_name: 'Público Externo / Empregador', user_role: 'Validador Público', ip: '201.86.120.4', current_hash: '8f4c2e6b9a1d0f5c8e3b7a2d4f6c1e9a8b7c5d3e1f0a2b4c6d8e0f1a3b5c7d9e' },
-  { id: 48910, timestamp: '17/08/2026 13:45:00', acao: 'CARTEIRA_PDF_ISSUE', user_name: 'Lucas Santos de Oliveira', user_role: 'Egresso', ip: '177.92.14.88', current_hash: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8' },
-  { id: 48909, timestamp: '17/08/2026 11:15:22', acao: 'PRONTUARIO_EVOLUCAO', user_name: 'Carlos Eduardo Silva', user_role: 'Gestor SEJUS', ip: '10.150.4.12', current_hash: '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a' },
-]);
+const regionalSummary = computed(() => props.regionalSummary && props.regionalSummary.length ? props.regionalSummary : []);
+const auditLogs = computed(() => props.auditLogs && props.auditLogs.length ? props.auditLogs : []);
 
 const getAuditBadgeClass = (acao) => {
   if (acao.includes('VIDEO')) return 'bg-sky-100 text-sky-800';

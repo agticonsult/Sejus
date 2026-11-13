@@ -41,6 +41,8 @@ class ProntuarioController extends Controller
         $prontuario = null;
         $egresso = null;
 
+        $isStaff = $user->isGestor() || $user->isTecnico() || $user->isSuporte();
+
         if ($user->isEgresso()) {
             $egresso = $user->egresso?->load(['municipio', 'conhecimentos', 'prontuario.tecnicoResponsavel', 'prontuario.timeline.responsavel']);
             $prontuario = $egresso?->prontuario;
@@ -53,6 +55,8 @@ class ProntuarioController extends Controller
                 }
             }
         } else {
+            $searchQuery = trim((string) $request->input('q', ''));
+
             if ($id !== null) {
                 $prontuario = Prontuario::with([
                     'egresso.municipio',
@@ -76,21 +80,48 @@ class ProntuarioController extends Controller
                 } else {
                     $egresso = $prontuario?->egresso;
                 }
-            } else {
-                $prontuario = Prontuario::with([
-                    'egresso.municipio',
-                    'egresso.conhecimentos',
-                    'tecnicoResponsavel:id,name,email',
-                    'timeline' => fn($q) => $q->orderBy('data_evento', 'desc'),
-                    'timeline.responsavel:id,name',
-                ])->orderBy('id', 'asc')->first();
-
-                if ($prontuario) {
-                    $egresso = $prontuario->egresso;
+            } elseif (!empty($searchQuery)) {
+                $cleanCpf = preg_replace('/\D/', '', $searchQuery);
+                if (strlen($cleanCpf) === 11) {
+                    $hash = $this->lgpd->generateBlindIndex($cleanCpf);
+                    $egresso = Egresso::with(['municipio', 'conhecimentos', 'prontuario.tecnicoResponsavel', 'prontuario.timeline.responsavel'])
+                        ->where('hash_cpf', $hash)->first();
+                    $prontuario = $egresso?->prontuario;
                 } else {
-                    $egresso = Egresso::with(['municipio', 'conhecimentos'])->orderBy('id', 'asc')->first();
+                    $prontuario = Prontuario::with([
+                        'egresso.municipio',
+                        'egresso.conhecimentos',
+                        'tecnicoResponsavel:id,name,email',
+                        'timeline' => fn($q) => $q->orderBy('data_evento', 'desc'),
+                        'timeline.responsavel:id,name',
+                    ])
+                    ->where('numero_prontuario', 'ilike', "%{$searchQuery}%")
+                    ->orWhereHas('egresso', function ($q) use ($searchQuery) {
+                        $q->where('nome_completo', 'ilike', "%{$searchQuery}%");
+                    })
+                    ->first();
+                    $egresso = $prontuario?->egresso;
                 }
+            } else {
+                // Modo Produção: Sem fallback cego!
+                $prontuario = null;
+                $egresso = null;
             }
+        }
+
+        $recentProntuarios = [];
+        if ($isStaff) {
+            $recentProntuarios = Prontuario::with('egresso:id,nome_completo,cpf_encrypted')
+                ->orderBy('id', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(fn($p) => [
+                    'id' => $p->id,
+                    'numero_prontuario' => $p->numero_prontuario,
+                    'situacao' => $p->situacao,
+                    'egresso_nome' => $p->egresso?->nome_completo ?? 'Não vinculado',
+                    'cpf_masked' => $p->egresso?->cpf ? $this->lgpd->maskCpf($p->egresso->cpf) : '',
+                ]);
         }
 
         $conhecimentos = $egresso
@@ -166,6 +197,8 @@ class ProntuarioController extends Controller
             : [];
 
         return Inertia::render('Prontuario', [
+            'isStaff' => $isStaff,
+            'recentProntuarios' => $recentProntuarios,
             'egresso' => $egressoPayload,
             'prontuario' => $prontuarioPayload,
             'timeline' => $timelinePayload,
