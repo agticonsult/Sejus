@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('nome', 150)->index();
             $table->string('tipo', 30)->index(); // CRAS, CREAS, SINE, CAPS, CASA_CIDADAO, DEFENSORIA
-            $table->foreignId('municipio_id')->constrained('municipios_es', 'id', 'fk_rede_apoio_municipio_id')->cascadeOnDelete()->index();
+            $table->unsignedBigInteger('municipio_id')->index();
             $table->string('endereco', 255);
             $table->string('telefone', 50)->nullable();
             $table->string('email', 150)->nullable();
@@ -25,6 +25,9 @@ return new class extends Migration
             $table->decimal('longitude', 10, 7)->nullable();
             $table->boolean('ativo')->default(true)->index();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('municipio_id', 'fk_rede_apoio_municipio_id')->references('id')->on('municipios_es')->onDelete('cascade');
         });
     }
 

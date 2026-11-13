@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('conference_records', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('meeting_room_id')->nullable()->constrained('meeting_rooms', 'id', 'fk_conference_records_meeting_')->nullOnDelete()->index();
+            $table->unsignedBigInteger('meeting_room_id')->nullable()->index();
             $table->string('conference_record_name', 191)->unique()->index();
             $table->string('space_name', 191)->index();
             $table->string('status', 30)->default('ended')->index();
@@ -24,6 +24,9 @@ return new class extends Migration
             $table->json('raw_metadata')->nullable();
             $table->json('raw_data')->nullable();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('meeting_room_id', 'fk_conference_rec_meeting_room')->references('id')->on('meeting_rooms')->onDelete('set null');
         });
     }
 

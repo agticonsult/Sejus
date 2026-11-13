@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('titulo', 150)->index();
             $table->text('descricao');
             $table->string('categoria', 50)->index(); // logistica, construcao_civil, agropecuaria, servicos, industria, comercio
-            $table->foreignId('municipio_id')->constrained('municipios_es', 'id', 'fk_vagas_emprego_municipio_id')->restrictOnDelete()->index();
+            $table->unsignedBigInteger('municipio_id')->index();
             $table->decimal('salario', 10, 2)->nullable();
             $table->string('regime_contratacao', 30)->default('CLT'); // CLT, PJ, Temporario, Estagio
             $table->boolean('afirmativa_egresso')->default(true)->index();
@@ -28,6 +28,9 @@ return new class extends Migration
             $table->string('status', 30)->default('aberta')->index(); // aberta, preenchida, pausada, cancelada
             $table->json('beneficios')->nullable();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('municipio_id', 'fk_vagas_emprego_municipio_id')->references('id')->on('municipios_es')->onDelete('restrict');
         });
     }
 

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('conference_transcripts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('conference_record_id')->constrained('conference_records', 'id', 'fk_conference_transcr_conferen')->cascadeOnDelete()->index();
+            $table->unsignedBigInteger('conference_record_id')->index();
             $table->string('transcript_name', 191)->unique()->index();
             $table->string('state', 50)->default('FILE_GENERATED')->index();
             $table->string('docs_document_id', 191)->nullable()->index();
@@ -27,6 +27,9 @@ return new class extends Migration
             $table->json('raw_metadata')->nullable();
             $table->json('raw_data')->nullable();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('conference_record_id', 'fk_conference_tra_conference_r')->references('id')->on('conference_records')->onDelete('cascade');
         });
     }
 

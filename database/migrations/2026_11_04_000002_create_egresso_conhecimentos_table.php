@@ -13,14 +13,18 @@ return new class extends Migration
     {
         Schema::create('egresso_conhecimentos', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('egresso_id')->constrained('egressos', 'id', 'fk_egresso_conhecimen_egresso_')->cascadeOnDelete()->index();
-            $table->foreignId('conhecimento_id')->constrained('conhecimentos', 'id', 'fk_egresso_conhecimen_conhecim')->cascadeOnDelete()->index();
+            $table->unsignedBigInteger('egresso_id')->index();
+            $table->unsignedBigInteger('conhecimento_id')->index();
             $table->string('nivel', 20)->default('basico')->index(); // basico, intermediario, avancado
             $table->boolean('necessita_treinamento')->default(false)->index();
             $table->text('observacoes')->nullable();
             $table->timestamps();
 
             $table->unique(['egresso_id', 'conhecimento_id'], 'egresso_conhecimento_unique');
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('egresso_id', 'fk_egresso_conhec_egresso_id')->references('id')->on('egressos')->onDelete('cascade');
+            $table->foreign('conhecimento_id', 'fk_egresso_conhec_conhecimento')->references('id')->on('conhecimentos')->onDelete('cascade');
         });
     }
 

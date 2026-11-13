@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('video_attendees', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('video_room_id')->constrained('video_rooms', 'id', 'fk_video_attendees_video_room_')->cascadeOnDelete()->index();
-            $table->foreignId('user_id')->nullable()->constrained('users', 'id', 'fk_video_attendees_user_id')->nullOnDelete()->index();
+            $table->unsignedBigInteger('video_room_id')->index();
+            $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->string('peer_id', 64)->nullable();
             $table->string('role', 30); // tecnico, egresso, familiar, observador
             $table->timestamp('joined_at')->useCurrent();
@@ -26,6 +26,10 @@ return new class extends Migration
             $table->decimal('rtt_ms', 6, 2)->nullable(); // ms
             $table->json('telemetry_data')->nullable();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('video_room_id', 'fk_video_attendee_video_room_i')->references('id')->on('video_rooms')->onDelete('cascade');
+            $table->foreign('user_id', 'fk_video_attendee_user_id')->references('id')->on('users')->onDelete('set null');
         });
     }
 

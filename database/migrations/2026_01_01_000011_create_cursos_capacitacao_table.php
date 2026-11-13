@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('titulo', 150)->index();
             $table->text('descricao');
             $table->string('categoria', 50)->index(); // industrial, tecnologia, gestao, servicos, artesanato
-            $table->foreignId('municipio_id')->nullable()->constrained('municipios_es', 'id', 'fk_cursos_capacitacao_municipi')->nullOnDelete()->index();
+            $table->unsignedBigInteger('municipio_id')->nullable()->index();
             $table->integer('carga_horaria');
             $table->string('modalidade', 30)->default('presencial'); // presencial, ead, hibrido
             $table->decimal('bolsa_auxilio', 10, 2)->nullable();
@@ -25,6 +25,9 @@ return new class extends Migration
             $table->string('status', 30)->default('aberto')->index(); // aberto, em_andamento, encerrado, cancelado
             $table->string('link_inscricao', 255)->nullable();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('municipio_id', 'fk_cursos_capacit_municipio_id')->references('id')->on('municipios_es')->onDelete('set null');
         });
     }
 

@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('perfil_id')->constrained('perfis', 'id', 'fk_users_perfil_id')->onDelete('restrict');
-            $table->foreignId('municipio_id')->nullable()->constrained('municipios_es', 'id', 'fk_users_municipio_id')->nullOnDelete();
+            $table->unsignedBigInteger('perfil_id');
+            $table->unsignedBigInteger('municipio_id')->nullable();
             $table->string('name', 150);
             $table->string('email', 191)->unique()->index();
             $table->string('password', 255)->nullable();
@@ -27,6 +27,10 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('perfil_id', 'fk_users_perfil_id')->references('id')->on('perfis')->onDelete('restrict');
+            $table->foreign('municipio_id', 'fk_users_municipio_id')->references('id')->on('municipios_es')->onDelete('set null');
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

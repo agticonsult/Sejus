@@ -14,8 +14,8 @@ return new class extends Migration
     {
         Schema::create('prontuario_audit_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('prontuario_id')->nullable()->constrained('prontuarios', 'id', 'fk_prontuario_audit_l_prontuar')->cascadeOnDelete()->index();
-            $table->foreignId('user_id')->nullable()->constrained('users', 'id', 'fk_prontuario_audit_l_user_id')->nullOnDelete()->index();
+            $table->unsignedBigInteger('prontuario_id')->nullable()->index();
+            $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->string('acao', 50)->index(); // VIEW, CREATE, UPDATE, EXPORT_PDF, VALIDATE_QR, ANONYMIZE, UNAUTHORIZED_ACCESS
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
@@ -23,6 +23,10 @@ return new class extends Migration
             $table->string('current_hash', 64)->index();
             $table->json('details')->nullable();
             $table->timestamp('timestamp')->useCurrent()->index();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('prontuario_id', 'fk_prontuario_aud_prontuario_i')->references('id')->on('prontuarios')->onDelete('cascade');
+            $table->foreign('user_id', 'fk_prontuario_aud_user_id')->references('id')->on('users')->onDelete('set null');
         });
 
         // PostgreSQL Immutability Rules: Bloqueio estrito de UPDATE e DELETE a nivel de banco

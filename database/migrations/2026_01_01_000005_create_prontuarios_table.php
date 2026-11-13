@@ -14,13 +14,17 @@ return new class extends Migration
         Schema::create('prontuarios', function (Blueprint $table) {
             $table->id();
             $table->string('numero_prontuario', 30)->unique()->index();
-            $table->foreignId('egresso_id')->unique()->constrained('egressos')->cascadeOnDelete();
-            $table->foreignId('tecnico_responsavel_id')->nullable()->constrained('users', 'id', 'fk_prontuarios_tecnico_respons')->nullOnDelete();
+            $table->unsignedBigInteger('egresso_id');
+            $table->unsignedBigInteger('tecnico_responsavel_id')->nullable();
             $table->string('situacao', 30)->default('ativo')->index(); // ativo, em_acompanhamento, arquivado, desligado
             $table->text('resumo_diagnostico')->nullable();
             $table->text('meta_plano_individual')->nullable();
             $table->timestamp('data_abertura')->useCurrent();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('egresso_id', 'fk_prontuarios_egresso_id')->references('id')->on('egressos')->onDelete('cascade');
+            $table->foreign('tecnico_responsavel_id', 'fk_prontuarios_tecnico_respons')->references('id')->on('users')->onDelete('set null');
         });
     }
 

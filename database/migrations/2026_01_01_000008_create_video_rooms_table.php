@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::create('video_rooms', function (Blueprint $table) {
             $table->id();
             $table->string('room_code', 64)->unique()->index();
-            $table->foreignId('prontuario_id')->nullable()->constrained('prontuarios', 'id', 'fk_video_rooms_prontuario_id')->nullOnDelete();
-            $table->foreignId('tecnico_id')->nullable()->constrained('users', 'id', 'fk_video_rooms_tecnico_id')->nullOnDelete()->index();
-            $table->foreignId('egresso_id')->nullable()->constrained('egressos', 'id', 'fk_video_rooms_egresso_id')->nullOnDelete()->index();
-            $table->foreignId('municipio_id')->nullable()->constrained('municipios_es', 'id', 'fk_video_rooms_municipio_id')->nullOnDelete();
+            $table->unsignedBigInteger('prontuario_id')->nullable();
+            $table->unsignedBigInteger('tecnico_id')->nullable()->index();
+            $table->unsignedBigInteger('egresso_id')->nullable()->index();
+            $table->unsignedBigInteger('municipio_id')->nullable();
             $table->string('status', 30)->default('aguardando')->index(); // aguardando, em_andamento, encerrada, cancelada
             $table->string('prioridade', 20)->default('normal'); // normal, preferencial, urgente
             $table->string('motivo_atendimento', 150)->nullable();
@@ -26,6 +26,12 @@ return new class extends Migration
             $table->timestamp('ended_at')->nullable();
             $table->text('token_sala')->nullable();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('prontuario_id', 'fk_video_rooms_prontuario_id')->references('id')->on('prontuarios')->onDelete('set null');
+            $table->foreign('tecnico_id', 'fk_video_rooms_tecnico_id')->references('id')->on('users')->onDelete('set null');
+            $table->foreign('egresso_id', 'fk_video_rooms_egresso_id')->references('id')->on('egressos')->onDelete('set null');
+            $table->foreign('municipio_id', 'fk_video_rooms_municipio_id')->references('id')->on('municipios_es')->onDelete('set null');
         });
     }
 

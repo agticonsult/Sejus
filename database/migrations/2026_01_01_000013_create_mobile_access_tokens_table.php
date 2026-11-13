@@ -13,13 +13,16 @@ return new class extends Migration
     {
         Schema::create('mobile_access_tokens', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users', 'id', 'fk_mobile_access_toke_user_id')->cascadeOnDelete()->index();
+            $table->unsignedBigInteger('user_id')->index();
             $table->string('name', 100);
             $table->string('token', 64)->unique()->index();
             $table->json('abilities')->nullable();
             $table->timestamp('last_used_at')->nullable();
             $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
+
+            // Foreign Keys com nomenclatura explícita para PostgreSQL
+            $table->foreign('user_id', 'fk_mobile_access__user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
