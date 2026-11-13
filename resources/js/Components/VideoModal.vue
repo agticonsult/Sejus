@@ -20,15 +20,17 @@
             </h2>
             <div class="flex items-center gap-2 mt-0.5">
               <span class="text-xs text-slate-400">WebRTC Seguro</span>
-              <span class="text-slate-600">•</span>
-              <button
-                type="button"
-                @click="copyInviteLink"
-                class="text-[11px] bg-sky-600 hover:bg-sky-500 text-white font-bold px-2 py-0.5 rounded flex items-center gap-1 transition cursor-pointer"
-                title="Copiar link para enviar ao egresso ou familiar"
-              >
-                <span>🔗 {{ inviteCopied ? 'Link Copiado!' : 'Copiar Link para Convidar' }}</span>
-              </button>
+              <template v-if="isStaff">
+                <span class="text-slate-600">•</span>
+                <button
+                  type="button"
+                  @click="copyInviteLink"
+                  class="text-[11px] bg-sky-600 hover:bg-sky-500 text-white font-bold px-2 py-0.5 rounded flex items-center gap-1 transition cursor-pointer"
+                  title="Copiar link para enviar ao egresso ou familiar"
+                >
+                  <span>🔗 {{ inviteCopied ? 'Link Copiado!' : 'Copiar Link para Convidar' }}</span>
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -298,6 +300,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isStaff: {
+    type: Boolean,
+    default: true,
+  },
   telemetry: {
     type: Object,
     default: () => ({
@@ -325,8 +331,13 @@ const remoteVideoRef = ref(null);
 const hasRemoteStream = ref(false);
 const showChat = ref(false);
 const chatInput = ref('');
+const formatNowTime = () => {
+  const now = new Date();
+  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+};
+
 const chatMessages = ref([
-  { sender: 'Sistema', time: '14:20', text: 'Sessão criptografada iniciada com sucesso.', isSelf: false },
+  { sender: 'Sistema', time: formatNowTime(), text: 'Sessão criptografada iniciada com sucesso.', isSelf: false },
 ]);
 
 const callDurationSeconds = ref(0);
@@ -397,9 +408,19 @@ const handleSendMessage = () => {
   chatInput.value = '';
 };
 
+const appendChatMessage = (msg) => {
+  chatMessages.value.push({
+    sender: msg.sender || 'Participante',
+    time: msg.time || formatNowTime(),
+    text: msg.text || '',
+    isSelf: Boolean(msg.isSelf),
+  });
+};
+
 defineExpose({
   localVideoRef,
   remoteVideoRef,
   hasRemoteStream,
+  appendChatMessage,
 });
 </script>

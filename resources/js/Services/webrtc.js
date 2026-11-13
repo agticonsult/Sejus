@@ -23,7 +23,7 @@ export class WebRTCClient {
     this.remoteStream = null;
     this.screenStream = null;
 
-    this.isPolite = ['attendee', 'egresso'].includes(this.role.toLowerCase());
+    this.isPolite = ['attendee', 'egresso', 'familiar'].includes(this.role.toLowerCase());
     this.makingOffer = false;
     this.ignoreOffer = false;
     this.isSettingRemoteAnswerPending = false;
@@ -40,6 +40,7 @@ export class WebRTCClient {
     this.onRemoteStream = config.onRemoteStream || (() => {});
     this.onTelemetryUpdate = config.onTelemetryUpdate || (() => {});
     this.onQualityAlert = config.onQualityAlert || (() => {});
+    this.onChatMessage = config.onChatMessage || (() => {});
     this.onError = config.onError || (() => {});
     this.onCallEnded = config.onCallEnded || (() => {});
   }
@@ -100,10 +101,31 @@ export class WebRTCClient {
 
       case 'peer_joined':
         this.onPeerJoined(data);
+        if (!this.isPolite && this.peerConnection) {
+          this.makingOffer = true;
+          try {
+            const offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+              this.ws.send(JSON.stringify({
+                type: 'offer',
+                sdp: this.peerConnection.localDescription.sdp,
+              }));
+            }
+          } catch (err) {
+            this.onError(err);
+          } finally {
+            this.makingOffer = false;
+          }
+        }
         break;
 
       case 'peer_left':
         this.onPeerLeft(data);
+        break;
+
+      case 'chat_message':
+        this.onChatMessage(data);
         break;
 
       case 'offer':
@@ -425,6 +447,16 @@ export class WebRTCClient {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
+    }
+  }
+
+  sendChatMessage(text) {
+    if (!text || !text.trim()) return;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'chat_message',
+        text: text.trim(),
+      }));
     }
   }
 

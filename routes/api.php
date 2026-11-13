@@ -15,6 +15,7 @@ use App\Http\Controllers\RedeApoioController;
 use App\Http\Controllers\KpiDashboardController;
 use App\Http\Controllers\WebRtcTokenController;
 use App\Http\Controllers\WebRtcWebhookController;
+use App\Http\Controllers\AtendimentoController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EgressoConhecimentoController;
 
@@ -59,9 +60,46 @@ Route::middleware(['web', 'auth.mobile:optional'])->group(function () {
     // Carteira Digital do Egresso (Mobile & Web)
     Route::get('/carteira', [CarteiraController::class, 'show'])->middleware('auth.mobile')->name('api.carteira');
     Route::get('/carteira/digital', [CarteiraController::class, 'show'])->middleware('auth.mobile')->name('api.carteira.digital');
+    Route::post('/carteira/segunda-via', [CarteiraController::class, 'solicitarSegundaVia'])->name('api.carteira.segunda_via');
 
-    // WebRTC Signaling Room Token Generation
+    // Canal DPO LGPD (Solicitações do Titular persistidas na trilha de auditoria)
+    Route::post('/lgpd/solicitacao', function (\Illuminate\Http\Request $request) {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.'], 401);
+        }
+        $validated = $request->validate([
+            'tipo' => 'required|string|in:confirmacao,acesso,retificacao,revogacao',
+            'detalhes' => 'required|string|max:2000',
+        ]);
+        $log = app(\App\Services\AuditService::class)->log(
+            $user->egresso?->prontuario?->id,
+            'DPO_SOLICITACAO_TITULAR',
+            [
+                'tipo_direito' => $validated['tipo'],
+                'detalhes' => trim($validated['detalhes']),
+                'titular_nome' => $user->name,
+            ],
+            $user->id,
+            $request->ip(),
+            $request->userAgent()
+        );
+        $protocolo = 'DPO-' . now()->format('Y') . '-' . str_pad((string) $log->id, 6, '0', STR_PAD_LEFT);
+        return response()->json([
+            'status' => 'created',
+            'protocolo' => $protocolo,
+            'message' => "Solicitação protocolada com sucesso junto ao DPO da SEJUS/ES.\nProtocolo: {$protocolo}",
+        ], 201);
+    })->name('api.lgpd.solicitacao');
+
+    // WebRTC Signaling Room Token Generation & Real Virtual Queue
     Route::post('/webrtc/token', [WebRtcTokenController::class, 'generateToken'])->name('api.webrtc.token');
+    Route::prefix('atendimento')->group(function () {
+        Route::get('/fila', [AtendimentoController::class, 'fila'])->name('api.atendimento.fila');
+        Route::post('/fila/entrar', [AtendimentoController::class, 'entrarFila'])->name('api.atendimento.entrar');
+        Route::post('/fila/{id}/chamar', [AtendimentoController::class, 'chamar'])->middleware('role:gestor,tecnico,suporte')->name('api.atendimento.chamar');
+        Route::post('/fila/{id}/encerrar', [AtendimentoController::class, 'encerrar'])->name('api.atendimento.encerrar');
+    });
 
     // Catálogo de Conhecimentos e Qualificações Profissionais (Milestone 1)
     Route::get('conhecimentos', [EgressoConhecimentoController::class, 'indexCatalog'])
@@ -97,13 +135,16 @@ Route::middleware(['web', 'auth.mobile:optional'])->group(function () {
     // Territorial Mapping & Rede de Apoio
     Route::get('territorios', [TerritorioController::class, 'index'])->name('api.territorios.index');
     Route::get('territorios/regioes', [TerritorioController::class, 'regioes'])->name('api.territorios.regioes');
+    Route::post('territorios/checkin-gps', [TerritorioController::class, 'checkinGps'])->name('api.territorios.checkin_gps');
     Route::get('territorios/{codigo_ibge_or_id}', [TerritorioController::class, 'show'])->name('api.territorios.show');
     Route::get('municipios', [TerritorioController::class, 'index'])->name('api.municipios.index');
     Route::apiResource('rede-apoio', RedeApoioController::class);
 
-    // User Management API Resource
-    Route::apiResource('users', UserController::class);
-    Route::apiResource('usuarios', UserController::class)->names('api.usuarios');
+    // User Management API Resource (Strict Gestor / Suporte RBAC)
+    Route::middleware(['role:gestor,suporte'])->group(function () {
+        Route::apiResource('users', UserController::class);
+        Route::apiResource('usuarios', UserController::class)->names('api.usuarios');
+    });
 
     // Management KPIs & Analytics (Protected for Staff)
     Route::prefix('kpis')->middleware(['role:gestor,tecnico,suporte'])->group(function () {

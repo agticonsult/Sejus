@@ -8,6 +8,11 @@ use App\Models\MunicipioEs;
 use App\Models\VagaEmprego;
 use App\Models\CursoCapacitacao;
 use App\Models\RedeApoio;
+use App\Models\Prontuario;
+use App\Models\ProntuarioTimeline;
+use App\Services\AuditService;
+use App\Services\CepMunicipioService;
+use Illuminate\Support\Facades\Auth;
 
 class TerritorioController extends Controller
 {
@@ -183,6 +188,119 @@ class TerritorioController extends Controller
         return response()->json([
             'macrorregioes' => $macroStats,
             'microrregioes' => $microStats,
+        ]);
+    }
+
+    /**
+     * Save explicit LGPD geolocation consent, find closest municipality & support units via Haversine,
+     * and record location check-in in AuditService & ProntuarioTimeline.
+     */
+    public function checkinGps(Request $request, CepMunicipioService $geoService, AuditService $audit): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.'], 401);
+        }
+
+        $validated = $request->validate([
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'consentimento_lgpd' => 'required|accepted',
+        ]);
+
+        $lat = (float) $validated['latitude'];
+        $lon = (float) $validated['longitude'];
+
+        $municipios = MunicipioEs::all();
+        $nearest = null;
+        $minDistKm = PHP_FLOAT_MAX;
+
+        foreach ($municipios as $m) {
+            if ($m->latitude === null || $m->longitude === null) {
+                continue;
+            }
+            $dist = $geoService->calculateDistanceKm($lat, $lon, (float) $m->latitude, (float) $m->longitude);
+            if ($dist < $minDistKm) {
+                $minDistKm = $dist;
+                $nearest = $m;
+            }
+        }
+
+        if (!$nearest) {
+            return response()->json(['error' => 'Não há municípios com coordenadas cadastradas.'], 422);
+        }
+
+        $prontuarioId = null;
+        if ($user->egresso) {
+            $user->egresso->update([
+                'consentimento_geolocalizacao' => true,
+                'termo_aceito_em' => $user->egresso->termo_aceito_em ?? now(),
+                'municipio_residencia_id' => $nearest->id,
+            ]);
+            $prontuario = Prontuario::firstOrCreate(
+                ['egresso_id' => $user->egresso->id],
+                [
+                    'numero_prontuario' => sprintf('PRT-%s-%06d', now()->format('Y'), (Prontuario::max('id') ?? 0) + 1),
+                    'situacao' => 'ativo',
+                    'resumo_diagnostico' => 'Prontuário inicializado após check-in territorial.',
+                    'data_abertura' => now(),
+                ]
+            );
+            $prontuarioId = $prontuario->id;
+
+            ProntuarioTimeline::create([
+                'prontuario_id' => $prontuarioId,
+                'tipo_evento' => 'parecer_tecnico',
+                'titulo' => 'Check-in Territorial GPS (Consentimento LGPD)',
+                'descricao' => "Localização territorial registrada via GPS em {$nearest->nome}/ES (~" . round($minDistKm, 1) . ' km do centro do polo).',
+                'metadata' => [
+                    'municipio' => $nearest->nome,
+                    'codigo_ibge' => $nearest->codigo_ibge,
+                    'latitude' => round($lat, 5),
+                    'longitude' => round($lon, 5),
+                    'distancia_km' => round($minDistKm, 2),
+                ],
+                'responsavel_id' => $user->id,
+                'data_evento' => now(),
+            ]);
+        }
+
+        $audit->log($prontuarioId, 'TERRITORIO_GPS_CHECKIN', [
+            'municipio_id' => $nearest->id,
+            'municipio_nome' => $nearest->nome,
+            'distancia_km' => round($minDistKm, 2),
+            'consentimento_lgpd' => true,
+        ], $user->id, $request->ip(), $request->userAgent());
+
+        $unidades = RedeApoio::where('municipio_id', $nearest->id)
+            ->where('ativo', true)
+            ->get()
+            ->map(function ($u) use ($lat, $lon, $nearest, $geoService) {
+                $uLat = (float) ($u->latitude ?? $nearest->latitude);
+                $uLon = (float) ($u->longitude ?? $nearest->longitude);
+                return [
+                    'id' => $u->id,
+                    'nome' => $u->nome,
+                    'tipo' => $u->tipo,
+                    'endereco' => $u->endereco,
+                    'telefone' => $u->telefone,
+                    'horario' => $u->horario_funcionamento,
+                    'distancia_km' => round($geoService->calculateDistanceKm($lat, $lon, $uLat, $uLon), 1),
+                ];
+            })
+            ->sortBy('distancia_km')
+            ->values();
+
+        return response()->json([
+            'status' => 'success',
+            'municipio' => [
+                'id' => $nearest->id,
+                'codigo_ibge' => (string) $nearest->codigo_ibge,
+                'nome' => $nearest->nome,
+                'distancia_km' => round($minDistKm, 1),
+            ],
+            'unidades_proximas' => $unidades,
+            'message' => "Localização confirmada em {$nearest->nome}/ES ({$unidades->count()} unidades de apoio próximas).",
         ]);
     }
 }

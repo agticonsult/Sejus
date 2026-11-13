@@ -40,17 +40,17 @@
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label class="block text-[11px] font-extrabold uppercase text-slate-500 mb-1">Período de Análise</label>
-            <select v-model="filterPeriod" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none">
-              <option value="ano_2026">Ano Corrente (2026)</option>
-              <option value="mes_atual">Mês Atual (Agosto/2026)</option>
-              <option value="trimestre">3º Trimestre / 2026</option>
-              <option value="historico">Histórico Completo (108 mil atendimentos)</option>
+            <select v-model="filterPeriod" @change="applyFilters" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none">
+              <option value="ano_2026">Ano Corrente ({{ new Date().getFullYear() }})</option>
+              <option value="mes_atual">Mês Atual</option>
+              <option value="trimestre">Últimos 90 dias</option>
+              <option value="historico">Histórico Completo</option>
             </select>
           </div>
 
           <div>
             <label class="block text-[11px] font-extrabold uppercase text-slate-500 mb-1">Macrorregião do ES</label>
-            <select v-model="filterRegion" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none">
+            <select v-model="filterRegion" @change="applyFilters" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none">
               <option value="todas">Todas as Regiões (78 Cidades)</option>
               <option value="metropolitana">Região Metropolitana</option>
               <option value="norte">Norte & Rio Doce</option>
@@ -61,7 +61,7 @@
 
           <div>
             <label class="block text-[11px] font-extrabold uppercase text-slate-500 mb-1">Eixo de Atuação</label>
-            <select v-model="filterAxis" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none">
+            <select v-model="filterAxis" @change="applyFilters" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none">
               <option value="todos">Todos os Eixos</option>
               <option value="trabalho">Emprego & Renda</option>
               <option value="cursos">Cursos & Capacitação</option>
@@ -76,38 +76,38 @@
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div class="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
           <span class="text-[10px] uppercase font-bold text-slate-400 block">Total Atendimentos</span>
-          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">108.000</strong>
-          <span class="text-[10px] text-emerald-600 font-bold">+18.2% anual</span>
+          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">{{ (kpis.total_atendimentos || 0).toLocaleString('pt-BR') }}</strong>
+          <span class="text-[10px] text-emerald-600 font-bold">Dados em Tempo Real</span>
         </div>
 
         <div class="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
           <span class="text-[10px] uppercase font-bold text-slate-400 block">Atendimentos Vídeo</span>
-          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">72.4%</strong>
+          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">{{ kpis.taxa_video_pct ?? 0 }}%</strong>
           <span class="text-[10px] text-sky-600 font-bold">Via WebRTC Remoto</span>
         </div>
 
         <div class="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
           <span class="text-[10px] uppercase font-bold text-slate-400 block">Duração Média</span>
-          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">26 min</strong>
+          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">{{ kpis.duracao_media_min ?? 0 }} min</strong>
           <span class="text-[10px] text-slate-400 font-medium">Por atendimento</span>
         </div>
 
         <div class="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
           <span class="text-[10px] uppercase font-bold text-slate-400 block">Vagas Preenchidas</span>
-          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">1.820</strong>
+          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">{{ (kpis.vagas_preenchidas || 0).toLocaleString('pt-BR') }}</strong>
           <span class="text-[10px] text-purple-600 font-bold">Cotas Afirmativas</span>
         </div>
 
         <div class="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
-          <span class="text-[10px] uppercase font-bold text-slate-400 block">Reincidência Zero</span>
-          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">84.6%</strong>
+          <span class="text-[10px] uppercase font-bold text-slate-400 block">Prontuários Ativos</span>
+          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">{{ kpis.taxa_reincidencia_zero ?? 0 }}%</strong>
           <span class="text-[10px] text-emerald-600 font-bold">Efetividade</span>
         </div>
 
         <div class="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
           <span class="text-[10px] uppercase font-bold text-slate-400 block">Cidades Atendidas</span>
-          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">78 / 78</strong>
-          <span class="text-[10px] text-blue-600 font-bold">100% Cobertura</span>
+          <strong class="text-xl font-extrabold text-slate-900 block mt-1 font-heading">{{ kpis.cidades_atendidas ?? 0 }} / 78</strong>
+          <span class="text-[10px] text-blue-600 font-bold">Cobertura Estadual</span>
         </div>
       </div>
 
@@ -161,8 +161,13 @@
               Registros encadeados com hash SHA-256 e integridade inviolável
             </p>
           </div>
-          <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-            Encadeamento 100% Válido
+          <span
+            class="text-xs font-bold px-2.5 py-1 rounded-full border"
+            :class="chainIntegrity.valid !== false
+              ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+              : 'text-rose-700 bg-rose-50 border-rose-200'"
+          >
+            {{ chainIntegrity.valid !== false ? 'Encadeamento SHA-256 Válido' : 'Divergência Detectada na Cadeia' }}
           </span>
         </div>
 
@@ -178,6 +183,11 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 text-[11px]">
+              <tr v-if="auditLogs.length === 0">
+                <td colspan="5" class="py-6 text-center text-xs font-sans text-slate-400">
+                  Nenhum registro de auditoria encontrado para o período selecionado.
+                </td>
+              </tr>
               <tr v-for="log in auditLogs" :key="log.id" class="hover:bg-slate-50 transition">
                 <td class="py-2.5 px-3 font-sans">
                   <span class="font-bold text-slate-800">#{{ log.id }}</span>
@@ -207,7 +217,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
 import { useToast } from '../Composables/useToast';
@@ -221,17 +231,51 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  kpis: {
+    type: Object,
+    default: () => ({
+      total_atendimentos: 0,
+      taxa_video_pct: 0,
+      duracao_media_min: 0,
+      vagas_preenchidas: 0,
+      taxa_reincidencia_zero: 0,
+      cidades_atendidas: 0,
+    }),
+  },
+  chainIntegrity: {
+    type: Object,
+    default: () => ({ valid: true }),
+  },
+  filters: {
+    type: Object,
+    default: () => ({
+      period: 'ano_2026',
+      region: 'todas',
+      axis: 'todos',
+    }),
+  },
 });
 
 const { t } = useAccessibility();
 const toast = useToast();
 
-const filterPeriod = ref('ano_2026');
-const filterRegion = ref('todas');
-const filterAxis = ref('todos');
+const filterPeriod = ref(props.filters?.period || 'ano_2026');
+const filterRegion = ref(props.filters?.region || 'todas');
+const filterAxis = ref(props.filters?.axis || 'todos');
 
 const regionalSummary = computed(() => props.regionalSummary && props.regionalSummary.length ? props.regionalSummary : []);
 const auditLogs = computed(() => props.auditLogs && props.auditLogs.length ? props.auditLogs : []);
+
+const applyFilters = () => {
+  router.get('/relatorios', {
+    period: filterPeriod.value,
+    region: filterRegion.value,
+    axis: filterAxis.value,
+  }, {
+    preserveState: true,
+    preserveScroll: true,
+  });
+};
 
 const getAuditBadgeClass = (acao) => {
   if (acao.includes('VIDEO')) return 'bg-sky-100 text-sky-800';
@@ -240,10 +284,59 @@ const getAuditBadgeClass = (acao) => {
   return 'bg-slate-200 text-slate-800';
 };
 
+const escapeCsv = (val) => {
+  const s = String(val ?? '').replace(/"/g, '""');
+  return `"${s}"`;
+};
+
 const exportData = (format) => {
-  toast.success(
-    'Relatório Exportado com Sucesso',
-    `Relatório consolidado exportado com sucesso no formato .${format.toUpperCase()}! O download foi iniciado.`
-  );
+  if (format === 'pdf') {
+    if (typeof window !== 'undefined') {
+      toast.info('Preparando Impressão / PDF', 'Selecione "Salvar como PDF" na janela de impressão do navegador.');
+      setTimeout(() => window.print(), 250);
+    }
+    return;
+  }
+
+  const lines = [];
+  lines.push(['Relatório SEJUS/ES Conecta Egresso', `Período: ${filterPeriod.value}`, `Região: ${filterRegion.value}`, `Eixo: ${filterAxis.value}`].map(escapeCsv).join(';'));
+  lines.push('');
+  lines.push(['Município Polo', 'Macrorregião', 'Egressos Cadastrados', 'Atendimentos Registrados', 'Vagas Preenchidas', 'Tipo de Polo'].map(escapeCsv).join(';'));
+  regionalSummary.value.forEach((row) => {
+    lines.push([
+      row.municipio,
+      row.regiao,
+      row.egressos,
+      row.atendimentos,
+      row.vagas,
+      row.fisico ? 'Físico + Virtual' : '100% Virtual',
+    ].map(escapeCsv).join(';'));
+  });
+  lines.push('');
+  lines.push(['ID Auditoria', 'Data/Hora', 'Ação', 'Usuário', 'Perfil', 'IP', 'Hash SHA-256'].map(escapeCsv).join(';'));
+  auditLogs.value.forEach((log) => {
+    lines.push([
+      log.id,
+      log.timestamp,
+      log.acao,
+      log.user_name,
+      log.user_role,
+      log.ip,
+      log.current_hash,
+    ].map(escapeCsv).join(';'));
+  });
+
+  const csvContent = '\uFEFF' + lines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `relatorio-sejus-${filterPeriod.value}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  toast.success('CSV Exportado', 'Planilha consolidada baixada com codificação UTF-8.');
 };
 </script>

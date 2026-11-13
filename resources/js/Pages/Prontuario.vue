@@ -17,8 +17,25 @@
           </p>
         </div>
 
-        <div class="flex items-center gap-2.5">
+        <div class="flex flex-wrap items-center gap-2.5">
           <button
+            v-if="isStaff"
+            type="button"
+            class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
+            @click="openCreateEgressoModal"
+          >
+            <span>➕ Cadastrar Egresso / Abrir Prontuário</span>
+          </button>
+          <button
+            v-if="isStaff && egressoData"
+            type="button"
+            class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
+            @click="openEditDossieModal"
+          >
+            <span>✏️ Editar Dossiê & PIA</span>
+          </button>
+          <button
+            v-if="egressoData"
             type="button"
             class="px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
             @click="isNewEntryModalOpen = true"
@@ -162,7 +179,7 @@
       </div>
 
       <!-- Ficha do Egresso: Conhecimentos e Qualificações Profissionais (R1) -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4" id="section-conhecimentos">
+      <div v-if="egressoData" class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4" id="section-conhecimentos">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
           <div>
             <div class="flex items-center gap-2">
@@ -256,7 +273,7 @@
       </div>
 
       <!-- Chronological Timeline Stream -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
+      <div v-if="egressoData" class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
             <span>⏱️ Linha do Tempo e Histórico de Evolução</span>
@@ -349,6 +366,119 @@
             <div class="flex justify-end gap-2 pt-2">
               <button type="button" @click="isNewEntryModalOpen = false" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition">Cancelar</button>
               <button type="submit" class="px-4 py-2 bg-sky-600 text-white text-xs font-bold rounded-lg hover:bg-sky-700 transition">Gravar Evolução</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Create Egresso / Open Prontuário Modal -->
+      <div v-if="isCreateEgressoModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-extrabold text-slate-900">Cadastrar Novo Egresso & Abrir Prontuário Único</h3>
+            <button type="button" @click="isCreateEgressoModalOpen = false" class="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+          </div>
+          <form @submit.prevent="handleCreateEgresso" class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Nome Completo *</label>
+                <input v-model="createEgressoForm.nome_completo" type="text" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">CPF *</label>
+                <input v-model="createEgressoForm.cpf" type="text" required placeholder="000.000.000-00" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Município de Residência *</label>
+                <select v-model="createEgressoForm.municipio_residencia_id" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
+                  <option v-for="m in municipios" :key="m.id" :value="m.id">{{ m.nome }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Data de Nascimento</label>
+                <input v-model="createEgressoForm.data_nascimento" type="date" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Escolaridade</label>
+                <input v-model="createEgressoForm.escolaridade" type="text" placeholder="Ex: Ensino Médio Completo" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Nº Processo / Execução Penal</label>
+                <input v-model="createEgressoForm.numero_processo_execucao" type="text" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Resumo Diagnóstico Inicial</label>
+              <textarea v-model="createEgressoForm.resumo_diagnostico" rows="2" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Meta do Plano Individual (PIA)</label>
+              <textarea v-model="createEgressoForm.meta_plano_individual" rows="2" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" @click="isCreateEgressoModalOpen = false" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+              <button type="submit" :disabled="isSavingDossie" class="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                {{ isSavingDossie ? 'Cadastrando...' : 'Criar Egresso & Prontuário' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Edit Dossiê & PIA Modal -->
+      <div v-if="isEditDossieModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-extrabold text-slate-900">Editar Dossiê do Egresso & Plano Individual (PIA)</h3>
+            <button type="button" @click="isEditDossieModalOpen = false" class="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+          </div>
+          <form @submit.prevent="handleUpdateDossie" class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Nome Completo *</label>
+                <input v-model="editDossieForm.nome_completo" type="text" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Situação do Prontuário</label>
+                <select v-model="editDossieForm.situacao" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
+                  <option value="ativo">Ativo</option>
+                  <option value="em_acompanhamento">Em Acompanhamento</option>
+                  <option value="arquivado">Arquivado</option>
+                  <option value="desligado">Desligado</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Município de Residência</label>
+                <select v-model="editDossieForm.municipio_residencia_id" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
+                  <option v-for="m in municipios" :key="m.id" :value="m.id">{{ m.nome }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Data de Nascimento</label>
+                <input v-model="editDossieForm.data_nascimento" type="date" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Escolaridade</label>
+                <input v-model="editDossieForm.escolaridade" type="text" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Nº Processo / Execução</label>
+                <input v-model="editDossieForm.numero_processo_execucao" type="text" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Resumo Diagnóstico</label>
+              <textarea v-model="editDossieForm.resumo_diagnostico" rows="2" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Meta do Plano Individual de Reintegração (PIA)</label>
+              <textarea v-model="editDossieForm.meta_plano_individual" rows="2" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" @click="isEditDossieModalOpen = false" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+              <button type="submit" :disabled="isSavingDossie" class="px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 disabled:opacity-50">
+                {{ isSavingDossie ? 'Salvando...' : 'Salvar Alterações' }}
+              </button>
             </div>
           </form>
         </div>
@@ -576,6 +706,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  municipios: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const searchQuery = ref('');
@@ -657,58 +791,174 @@ const getEventIcon = (tipo) => {
   }
 };
 
+const isCreateEgressoModalOpen = ref(false);
+const isEditDossieModalOpen = ref(false);
+const isSavingDossie = ref(false);
+
+const createEgressoForm = ref({
+  nome_completo: '',
+  cpf: '',
+  municipio_residencia_id: props.municipios?.[0]?.id || '',
+  data_nascimento: '',
+  escolaridade: '',
+  numero_processo_execucao: '',
+  resumo_diagnostico: '',
+  meta_plano_individual: '',
+});
+
+const editDossieForm = ref({
+  nome_completo: '',
+  situacao: 'ativo',
+  municipio_residencia_id: '',
+  data_nascimento: '',
+  escolaridade: '',
+  numero_processo_execucao: '',
+  resumo_diagnostico: '',
+  meta_plano_individual: '',
+});
+
+const openCreateEgressoModal = () => {
+  const vitoria = props.municipios?.find(m => m.nome === 'Vitória') || props.municipios?.[0];
+  createEgressoForm.value = {
+    nome_completo: '',
+    cpf: '',
+    municipio_residencia_id: vitoria?.id || '',
+    data_nascimento: '',
+    escolaridade: '',
+    numero_processo_execucao: '',
+    resumo_diagnostico: '',
+    meta_plano_individual: '',
+  };
+  isCreateEgressoModalOpen.value = true;
+};
+
+const handleCreateEgresso = async () => {
+  isSavingDossie.value = true;
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const res = await fetch('/api/prontuarios', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: JSON.stringify(createEgressoForm.value),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.data?.id) {
+      isCreateEgressoModalOpen.value = false;
+      toast.success('Egresso Cadastrado', `Prontuário ${data.data.numero_prontuario || ''} aberto com sucesso.`);
+      router.visit(`/prontuario/${data.data.id}`);
+    } else {
+      toast.error('Erro no Cadastro', data.error || data.message || 'Verifique os dados e tente novamente.');
+    }
+  } catch {
+    toast.error('Erro de Rede', 'Falha de comunicação ao cadastrar egresso.');
+  } finally {
+    isSavingDossie.value = false;
+  }
+};
+
+const openEditDossieModal = () => {
+  if (!egressoData.value) return;
+  editDossieForm.value = {
+    nome_completo: egressoData.value.nome_completo || '',
+    situacao: prontuarioData.value.situacao_raw || 'ativo',
+    municipio_residencia_id: egressoData.value.municipio?.id || props.municipios?.[0]?.id || '',
+    data_nascimento: egressoData.value.data_nascimento_iso || '',
+    escolaridade: egressoData.value.escolaridade !== 'Não informada' ? egressoData.value.escolaridade : '',
+    numero_processo_execucao: egressoData.value.numero_processo_execucao !== 'Sob sigilo legal' ? egressoData.value.numero_processo_execucao : '',
+    resumo_diagnostico: prontuarioData.value.resumo_diagnostico || '',
+    meta_plano_individual: prontuarioData.value.meta_plano_individual || '',
+  };
+  isEditDossieModalOpen.value = true;
+};
+
+const handleUpdateDossie = async () => {
+  if (!prontuarioData.value?.id) return;
+  isSavingDossie.value = true;
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const res = await fetch(`/api/prontuarios/${prontuarioData.value.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: JSON.stringify(editDossieForm.value),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      isEditDossieModalOpen.value = false;
+      toast.success('Dossiê Atualizado', 'Dados do egresso e Plano Individual atualizados.');
+      router.reload();
+    } else {
+      toast.error('Erro ao Atualizar', data.error || data.message || 'Verifique os dados informados.');
+    }
+  } catch {
+    toast.error('Erro de Rede', 'Falha de comunicação ao atualizar dossiê.');
+  } finally {
+    isSavingDossie.value = false;
+  }
+};
+
 const handleCreateEntry = async () => {
   const responsavelName = page.props.auth?.user?.name || 'Equipe Técnica Escritório Social';
   const prontuarioId = prontuarioData.value?.id;
 
-  if (prontuarioId) {
-    try {
-      const csrfToken = typeof document !== 'undefined'
-        ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-        : null;
-
-      const res = await fetch(`/api/prontuarios/${prontuarioId}/timeline`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
-        },
-        body: JSON.stringify({
-          tipo_evento: newEntryForm.value.tipo_evento,
-          titulo: newEntryForm.value.titulo,
-          descricao: newEntryForm.value.descricao,
-        }),
-      });
-
-      if (!res.ok) {
-        const errPayload = await res.json().catch(() => ({}));
-        toast.error('Erro ao Registrar', errPayload.error || 'Não foi possível gravar a evolução no prontuário.');
-        return;
-      }
-    } catch {
-      toast.error('Erro de Conexão', 'Falha de comunicação ao gravar a evolução técnica.');
-      return;
-    }
+  if (!prontuarioId) {
+    toast.error('Prontuário não selecionado', 'Selecione ou cadastre um egresso antes de lançar uma evolução técnica.');
+    return;
   }
 
-  timeline.value.unshift({
-    id: Date.now(),
-    tipo_evento: newEntryForm.value.tipo_evento,
-    titulo: newEntryForm.value.titulo,
-    descricao: newEntryForm.value.descricao,
-    responsavel: { name: responsavelName },
-    data_evento: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    metadata: { 'Origem': 'Painel Web Escritório Social', 'Integridade': 'Assinado Digitalmente' },
-  });
+  try {
+    const csrfToken = typeof document !== 'undefined'
+      ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+      : null;
 
-  isNewEntryModalOpen.value = false;
-  newEntryForm.value = { tipo_evento: 'parecer_tecnico', titulo: '', descricao: '' };
+    const res = await fetch(`/api/prontuarios/${prontuarioId}/timeline`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+      },
+      body: JSON.stringify({
+        tipo_evento: newEntryForm.value.tipo_evento,
+        titulo: newEntryForm.value.titulo,
+        descricao: newEntryForm.value.descricao,
+      }),
+    });
 
-  toast.success(
-    'Evolução Registrada no Prontuário',
-    'Novo registro técnico inserido com sucesso no Prontuário Único do Egresso.'
-  );
+    if (!res.ok) {
+      const errPayload = await res.json().catch(() => ({}));
+      toast.error('Erro ao Registrar', errPayload.error || 'Não foi possível gravar a evolução no prontuário.');
+      return;
+    }
+
+    const resJson = await res.json().catch(() => ({}));
+    timeline.value.unshift({
+      id: resJson.data?.id || Date.now(),
+      tipo_evento: newEntryForm.value.tipo_evento,
+      titulo: newEntryForm.value.titulo,
+      descricao: newEntryForm.value.descricao,
+      responsavel: { name: responsavelName },
+      data_evento: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      metadata: resJson.data?.metadata || { 'Origem': 'Painel Web Escritório Social', 'Integridade': 'Assinado Digitalmente' },
+    });
+
+    isNewEntryModalOpen.value = false;
+    newEntryForm.value = { tipo_evento: 'parecer_tecnico', titulo: '', descricao: '' };
+
+    toast.success(
+      'Evolução Registrada no Prontuário',
+      'Novo registro técnico inserido com sucesso no Prontuário Único do Egresso.'
+    );
+  } catch {
+    toast.error('Erro de Conexão', 'Falha de comunicação ao gravar a evolução técnica.');
+  }
 };
 
 // -------------------------------------------------------------

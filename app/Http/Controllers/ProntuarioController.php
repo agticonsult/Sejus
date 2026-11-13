@@ -10,6 +10,8 @@ use Inertia\Response as InertiaResponse;
 use App\Models\Prontuario;
 use App\Models\Egresso;
 use App\Models\Conhecimento;
+use App\Models\MunicipioEs;
+use App\Models\ProntuarioTimeline;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\LgpdSecurityService;
@@ -109,6 +111,25 @@ class ProntuarioController extends Controller
             }
         }
 
+        // Auto-garante que todo Egresso localizado tenha Prontuário Único inicializado
+        if ($egresso && !$prontuario) {
+            $prontuario = Prontuario::firstOrCreate(
+                ['egresso_id' => $egresso->id],
+                [
+                    'numero_prontuario' => sprintf('PRT-%s-%06d', now()->format('Y'), (Prontuario::max('id') ?? 0) + 1),
+                    'situacao' => 'ativo',
+                    'resumo_diagnostico' => 'Prontuário inicializado automaticamente na abertura.',
+                    'meta_plano_individual' => 'Plano Individual em elaboração pela equipe multiprofissional.',
+                    'data_abertura' => now(),
+                ]
+            );
+            $prontuario->load([
+                'tecnicoResponsavel:id,name,email',
+                'timeline' => fn($q) => $q->orderBy('data_evento', 'desc'),
+                'timeline.responsavel:id,name',
+            ]);
+        }
+
         $recentProntuarios = [];
         if ($isStaff) {
             $recentProntuarios = Prontuario::with('egresso:id,nome_completo,cpf_encrypted')
@@ -157,7 +178,12 @@ class ProntuarioController extends Controller
             'nome_social' => $egresso->nome_social,
             'cpf_masked' => $egresso->cpf ? $this->lgpd->maskCpf($egresso->cpf) : 'Não informado',
             'data_nascimento' => $egresso->data_nascimento ? $egresso->data_nascimento->format('d/m/Y') : 'Não informada',
+            'data_nascimento_iso' => $egresso->data_nascimento ? $egresso->data_nascimento->format('Y-m-d') : '',
             'escolaridade' => $egresso->escolaridade ?? 'Não informada',
+            'status_penal' => $egresso->status_penal ?? 'egresso',
+            'unidade_prisional_origem' => $egresso->unidade_prisional_origem ?? '',
+            'telefone' => $egresso->telefone ?? '',
+            'endereco' => $egresso->endereco ?? '',
             'municipio' => [
                 'id' => $egresso->municipio?->id,
                 'nome' => $egresso->municipio?->nome ?? 'Vitória',
@@ -170,6 +196,7 @@ class ProntuarioController extends Controller
         $prontuarioPayload = $prontuario ? [
             'id' => $prontuario->id,
             'numero_prontuario' => $prontuario->numero_prontuario,
+            'situacao_raw' => (string) $prontuario->situacao,
             'situacao' => mb_strtoupper(str_replace('_', ' ', (string) $prontuario->situacao)),
             'data_abertura' => $prontuario->data_abertura ? $prontuario->data_abertura->format('d/m/Y') : '—',
             'tecnico_responsavel' => [
@@ -196,6 +223,10 @@ class ProntuarioController extends Controller
             })->values()->all()
             : [];
 
+        $municipios = $isStaff
+            ? MunicipioEs::orderBy('nome')->get(['id', 'nome'])
+            : [];
+
         return Inertia::render('Prontuario', [
             'isStaff' => $isStaff,
             'recentProntuarios' => $recentProntuarios,
@@ -204,6 +235,7 @@ class ProntuarioController extends Controller
             'timeline' => $timelinePayload,
             'conhecimentos' => $conhecimentos,
             'catalogoConhecimentos' => $catalogoConhecimentos,
+            'municipios' => $municipios,
         ]);
     }
 
@@ -427,13 +459,69 @@ class ProntuarioController extends Controller
             ], 403);
         }
 
-        $validated = $request->validate([
-            'egresso_id' => 'required|integer|exists:egressos,id|unique:prontuarios,egresso_id',
-            'tecnico_responsavel_id' => 'nullable|integer|exists:users,id',
-            'situacao' => 'required|string|in:ativo,em_acompanhamento,arquivado,desligado',
-            'resumo_diagnostico' => 'nullable|string|max:65536',
-            'meta_plano_individual' => 'nullable|string|max:65536',
-        ]);
+        if ($request->filled('egresso_id')) {
+            $validated = $request->validate([
+                'egresso_id' => 'required|integer|exists:egressos,id|unique:prontuarios,egresso_id',
+                'tecnico_responsavel_id' => 'nullable|integer|exists:users,id',
+                'situacao' => 'required|string|in:ativo,em_acompanhamento,arquivado,desligado',
+                'resumo_diagnostico' => 'nullable|string|max:65536',
+                'meta_plano_individual' => 'nullable|string|max:65536',
+            ]);
+            $egressoId = (int) $validated['egresso_id'];
+        } else {
+            $validated = $request->validate([
+                'nome_completo' => 'required|string|max:255',
+                'cpf' => 'required|string|max:18',
+                'nome_social' => 'nullable|string|max:255',
+                'data_nascimento' => 'nullable|date',
+                'escolaridade' => 'nullable|string|max:120',
+                'status_penal' => 'nullable|string|max:80',
+                'unidade_prisional_origem' => 'nullable|string|max:255',
+                'numero_processo_execucao' => 'nullable|string|max:120',
+                'municipio_residencia_id' => 'required|integer|exists:municipios_es,id',
+                'telefone' => 'nullable|string|max:30',
+                'endereco' => 'nullable|string|max:500',
+                'vulnerabilidades' => 'nullable|array',
+                'tecnico_responsavel_id' => 'nullable|integer|exists:users,id',
+                'situacao' => 'nullable|string|in:ativo,em_acompanhamento,arquivado,desligado',
+                'resumo_diagnostico' => 'nullable|string|max:65536',
+                'meta_plano_individual' => 'nullable|string|max:65536',
+            ]);
+
+            $cleanCpf = preg_replace('/\D/', '', $validated['cpf']);
+            if (!$this->lgpd->validateCpf($cleanCpf)) {
+                return response()->json([
+                    'error' => 'CPF inválido segundo algoritmo oficial.',
+                    'code' => 'INVALID_CPF',
+                ], 422);
+            }
+
+            $hashCpf = $this->lgpd->generateBlindIndex($cleanCpf);
+            if (Egresso::where('hash_cpf', $hashCpf)->exists()) {
+                return response()->json([
+                    'error' => 'Já existe um egresso cadastrado com este CPF.',
+                    'code' => 'DUPLICATE_EGRESSO_CPF',
+                ], 422);
+            }
+
+            $egresso = Egresso::create([
+                'nome_completo' => $validated['nome_completo'],
+                'nome_social' => $validated['nome_social'] ?? null,
+                'cpf' => $cleanCpf,
+                'data_nascimento' => $validated['data_nascimento'] ?? null,
+                'escolaridade' => $validated['escolaridade'] ?? null,
+                'status_penal' => $validated['status_penal'] ?? 'egresso',
+                'unidade_prisional_origem' => $validated['unidade_prisional_origem'] ?? null,
+                'numero_processo_execucao' => $validated['numero_processo_execucao'] ?? null,
+                'municipio_residencia_id' => (int) $validated['municipio_residencia_id'],
+                'telefone' => $validated['telefone'] ?? null,
+                'endereco' => $validated['endereco'] ?? null,
+                'vulnerabilidades' => $validated['vulnerabilidades'] ?? [],
+                'consentimento_compartilhamento' => true,
+                'termo_aceito_em' => now(),
+            ]);
+            $egressoId = $egresso->id;
+        }
 
         // Sequential PRT-2026-XXXXXX generation
         $nextNum = (Prontuario::max('id') ?? 0) + 1;
@@ -443,21 +531,33 @@ class ProntuarioController extends Controller
 
         $prontuario = Prontuario::create([
             'numero_prontuario' => $numeroProntuario,
-            'egresso_id' => $validated['egresso_id'],
+            'egresso_id' => $egressoId,
             'tecnico_responsavel_id' => $tecnicoId,
-            'situacao' => $validated['situacao'],
+            'situacao' => $validated['situacao'] ?? 'ativo',
             'resumo_diagnostico' => $validated['resumo_diagnostico'] ?? null,
             'meta_plano_individual' => $validated['meta_plano_individual'] ?? null,
             'data_abertura' => now(),
         ]);
+
+        if (!$request->filled('egresso_id')) {
+            ProntuarioTimeline::create([
+                'prontuario_id' => $prontuario->id,
+                'tipo_evento' => 'acolhimento_video',
+                'titulo' => 'Abertura do Prontuário Único do Egresso',
+                'descricao' => 'Cadastro inicial do cidadão egresso e abertura formal do Plano Individual de Reintegração (PIA).',
+                'metadata' => ['numero_prontuario' => $numeroProntuario],
+                'responsavel_id' => $user->id,
+                'data_evento' => now(),
+            ]);
+        }
 
         $this->audit->log(
             $prontuario->id,
             'CREATE',
             [
                 'numero_prontuario' => $numeroProntuario,
-                'egresso_id' => $validated['egresso_id'],
-                'situacao' => $validated['situacao'],
+                'egresso_id' => $egressoId,
+                'situacao' => $prontuario->situacao,
             ],
             $user?->id,
             $request->ip(),
@@ -573,9 +673,33 @@ class ProntuarioController extends Controller
             'resumo_diagnostico' => 'nullable|string|max:65536',
             'meta_plano_individual' => 'nullable|string|max:65536',
             'tecnico_responsavel_id' => 'nullable|integer|exists:users,id',
+            'nome_completo' => 'nullable|string|max:255',
+            'nome_social' => 'nullable|string|max:255',
+            'data_nascimento' => 'nullable|date',
+            'escolaridade' => 'nullable|string|max:120',
+            'status_penal' => 'nullable|string|max:80',
+            'unidade_prisional_origem' => 'nullable|string|max:255',
+            'numero_processo_execucao' => 'nullable|string|max:120',
+            'municipio_residencia_id' => 'nullable|integer|exists:municipios_es,id',
+            'telefone' => 'nullable|string|max:30',
+            'endereco' => 'nullable|string|max:500',
+            'vulnerabilidades' => 'nullable|array',
         ]);
 
-        $prontuario->update(array_filter($validated, fn($val) => $val !== null));
+        $prontuarioFields = array_intersect_key($validated, array_flip([
+            'situacao', 'resumo_diagnostico', 'meta_plano_individual', 'tecnico_responsavel_id',
+        ]));
+        $prontuario->update(array_filter($prontuarioFields, fn($val) => $val !== null));
+
+        $egressoFields = array_intersect_key($validated, array_flip([
+            'nome_completo', 'nome_social', 'data_nascimento', 'escolaridade',
+            'status_penal', 'unidade_prisional_origem', 'numero_processo_execucao',
+            'municipio_residencia_id', 'telefone', 'endereco', 'vulnerabilidades',
+        ]));
+        if ($prontuario->egresso && !empty($egressoFields)) {
+            $prontuario->egresso->fill(array_filter($egressoFields, fn($val) => $val !== null));
+            $prontuario->egresso->save();
+        }
 
         $this->audit->log(
             $prontuario->id,

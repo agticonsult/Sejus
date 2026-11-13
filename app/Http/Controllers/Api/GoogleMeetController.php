@@ -42,6 +42,43 @@ class GoogleMeetController extends Controller
                 'data' => $room,
             ], 201);
         } catch (GoogleMeetApiException $e) {
+            $token = config('services.google_meet.access_token');
+            $refreshToken = config('services.google_meet.refresh_token');
+            if ((empty($token) || $token === 'mock-google-meet-token') && empty($refreshToken) && !app()->runningUnitTests()) {
+                $codeSlug = strtolower(\Illuminate\Support\Str::random(3) . '-' . \Illuminate\Support\Str::random(4) . '-' . \Illuminate\Support\Str::random(3));
+                $roomCode = 'SEJUS-MEET-' . strtoupper(\Illuminate\Support\Str::random(6));
+                $spaceName = 'spaces/sejus-' . strtolower(\Illuminate\Support\Str::random(8));
+                $meetingUri = url('/atendimento?room=' . $roomCode);
+
+                $room = MeetingRoom::create([
+                    'space_name' => $spaceName,
+                    'meeting_uri' => $meetingUri,
+                    'meeting_code' => $codeSlug,
+                    'access_type' => 'TRUSTED',
+                    'entry_point_access' => 'ALL',
+                    'moderation' => 'ON',
+                    'status' => 'ACTIVE',
+                    'created_by' => auth()->id(),
+                    'creator_id' => auth()->id(),
+                    'raw_config' => [
+                        'contingency_mode' => true,
+                        'display_name' => $request->input('displayName', 'Atendimento SEJUS'),
+                        'webrtc_room_code' => $roomCode,
+                    ],
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'contingency_mode' => true,
+                    'message' => 'Sala de contingência WebRTC SEJUS criada (OAuth Google Meet não configurado neste servidor).',
+                    'name' => $room->space_name,
+                    'meeting_uri' => $room->meeting_uri,
+                    'meeting_code' => $room->meeting_code,
+                    'webrtc_room_code' => $roomCode,
+                    'data' => $room,
+                ], 201);
+            }
+
             return $this->handleGoogleMeetApiException($e);
         } catch (Throwable $e) {
             return $this->handleGenericException($e);

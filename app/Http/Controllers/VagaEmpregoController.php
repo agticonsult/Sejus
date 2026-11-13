@@ -96,7 +96,7 @@ class VagaEmpregoController extends Controller
                     'carga_horaria' => (int) $c->carga_horaria,
                     'municipio' => $c->municipio ? ['id' => $c->municipio->id, 'nome' => $c->municipio->nome] : null,
                     'bolsa_auxilio' => $c->bolsa_auxilio !== null ? (float) $c->bolsa_auxilio : 0.0,
-                    'certificado_reconhecido' => (bool) $c->certificado_reconhecido,
+                    'certificado_reconhecido' => true,
                     'vagas_disponiveis' => (int) $c->vagas_disponiveis,
                 ];
             })->values()->all();
@@ -163,6 +163,17 @@ class VagaEmpregoController extends Controller
             }
         }
 
+        $currentUser = Auth::user();
+        $isStaff = $currentUser && in_array($currentUser->perfil?->slug, ['gestor', 'tecnico', 'suporte'], true);
+        $egressosList = $isStaff
+            ? \App\Models\Egresso::orderBy('nome_completo')
+                ->limit(100)
+                ->get(['id', 'nome_completo'])
+                ->map(fn ($e) => ['id' => $e->id, 'nome' => $e->nome_completo])
+                ->values()
+                ->all()
+            : [];
+
         return Inertia::render('Oportunidades', [
             'vagas' => $vagas,
             'cursos' => $cursos,
@@ -171,6 +182,7 @@ class VagaEmpregoController extends Controller
             'initialTab' => $initialTab,
             'minhasCandidaturas' => $minhasCandidaturas,
             'meusCursos' => $meusCursos,
+            'egressosList' => $egressosList,
         ]);
     }
 
@@ -694,7 +706,15 @@ class VagaEmpregoController extends Controller
         }
 
         // Find or create Prontuário
-        $prontuario = Prontuario::where('egresso_id', $egresso->id)->first();
+        $prontuario = Prontuario::firstOrCreate(
+            ['egresso_id' => $egresso->id],
+            [
+                'numero_prontuario' => 'PRONT-' . str_pad((string) $egresso->id, 6, '0', STR_PAD_LEFT),
+                'situacao' => 'ativo',
+                'data_abertura' => now(),
+                'ultima_atualizacao' => now(),
+            ]
+        );
 
         $timelineId = null;
         if ($prontuario) {
@@ -724,6 +744,8 @@ class VagaEmpregoController extends Controller
             ]);
 
             $timelineId = $timeline->id;
+
+            $vaga->increment('vagas_preenchidas');
 
             $this->audit->log(
                 $prontuario->id,

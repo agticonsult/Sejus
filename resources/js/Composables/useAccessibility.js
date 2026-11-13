@@ -54,9 +54,10 @@ const dictionary = {
     seguranca_title: 'Proteção dos Seus Dados (LGPD)',
     prontuario_evolution: 'Anotações do seu Atendimento',
     affirmative_vacancy: 'Vaga de Trabalho Reservada para Você',
+    audiencia_custodia: 'Audiência e Acompanhamento Judicial',
     validation_status_valid: 'Documento Verdadeiro e Válido',
-    
-    // Direct terms
+
+    // Direct terms (Atendimento, Prontuário, Oportunidades, Geolocalização, Carteira, Relatórios, Segurança)
     'Evolução Psicossocial': 'Anotações e Histórico de Ajuda',
     'Trilha de Auditoria Imutável': 'Histórico Seguro que Ninguém Pode Mudar',
     'Telemetria WebRTC': 'Qualidade da Conexão da Chamada',
@@ -66,6 +67,13 @@ const dictionary = {
     'Livramento Condicional': 'Período de Acompanhamento em Liberdade',
     'Escritório Social': 'Lugar de Apoio e Atendimento ao Cidadão',
     'Sinalização SDP/ICE': 'Conexão Automática do Vídeo',
+    'Fila de Espera Virtual': 'Lista de Pessoas Aguardando Atendimento',
+    'Encaminhamento Profissional': 'Indicação para Vaga de Emprego ou Curso',
+    'Plano Individual de Atendimento': 'Seu Plano de Apoio e Metas',
+    'Consentimento LGPD': 'Autorização para Uso Seguro dos Seus Dados',
+    'Segunda Via Digital': 'Pedir Novo Documento Digital Atualizado',
+    'Rede de Apoio': 'Locais Gratuitos de Ajuda Perto de Você',
+    'Controle de Acesso RBAC': 'Permissões de Quem Pode Ver Cada Informação',
   }
 };
 

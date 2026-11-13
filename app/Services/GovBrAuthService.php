@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Perfil;
 use App\Models\Egresso;
+use App\Models\Prontuario;
 use App\Services\LgpdSecurityService;
 use App\Services\AuditService;
 use Illuminate\Support\Facades\Auth;
@@ -98,7 +99,7 @@ class GovBrAuthService
                 ]);
             }
 
-            Egresso::firstOrCreate(
+            $egresso = Egresso::firstOrCreate(
                 ['hash_cpf' => $hashCpf],
                 [
                     'user_id' => $user->id,
@@ -106,6 +107,16 @@ class GovBrAuthService
                     'cpf' => $cleanCpf,
                     'status_penal' => 'egresso',
                     'municipio_residencia_id' => $municipio->id,
+                ]
+            );
+            Prontuario::firstOrCreate(
+                ['egresso_id' => $egresso->id],
+                [
+                    'numero_prontuario' => sprintf('PRT-%s-%06d', now()->format('Y'), (Prontuario::max('id') ?? 0) + 1),
+                    'situacao' => 'ativo',
+                    'resumo_diagnostico' => 'Prontuário inicializado automaticamente via autenticação Gov.br.',
+                    'meta_plano_individual' => 'Plano Individual em elaboração pela equipe multiprofissional.',
+                    'data_abertura' => now(),
                 ]
             );
         }
@@ -203,10 +214,10 @@ class GovBrAuthService
         if (!$user) {
             $demoCpf = match ($roleSlug) {
                 'gestor' => '52998224725',
-                'tecnico' => '70312384798',
-                'familiar' => '42873194012',
+                'tecnico' => '11144477735',
+                'familiar' => '12345678909',
                 'empregador' => '39053344705',
-                default => '84123569804',
+                default => '98765432100',
             };
 
             $user = new User();
@@ -234,7 +245,7 @@ class GovBrAuthService
                 }
                 $demoHashCpf = $this->lgpd->generateBlindIndex($demoCpf);
 
-                Egresso::firstOrCreate(
+                $egresso = Egresso::firstOrCreate(
                     ['hash_cpf' => $demoHashCpf],
                     [
                         'user_id' => $user->id,
@@ -242,6 +253,16 @@ class GovBrAuthService
                         'cpf' => $demoCpf,
                         'status_penal' => 'egresso',
                         'municipio_residencia_id' => $municipio->id,
+                    ]
+                );
+                Prontuario::firstOrCreate(
+                    ['egresso_id' => $egresso->id],
+                    [
+                        'numero_prontuario' => sprintf('PRT-%s-%06d', now()->format('Y'), (Prontuario::max('id') ?? 0) + 1),
+                        'situacao' => 'ativo',
+                        'resumo_diagnostico' => 'Prontuário inicializado automaticamente na simulação de perfil.',
+                        'meta_plano_individual' => 'Plano Individual em elaboração pela equipe multiprofissional.',
+                        'data_abertura' => now(),
                     ]
                 );
             }

@@ -312,7 +312,19 @@ class CursoCapacitacaoController extends Controller
         }
 
         // Find or create Prontuário
-        $prontuario = Prontuario::where('egresso_id', $egresso->id)->first();
+        $prontuario = Prontuario::firstOrCreate(
+            ['egresso_id' => $egresso->id],
+            [
+                'numero_prontuario' => sprintf('PRT-%s-%06d', now()->format('Y'), (Prontuario::max('id') ?? 0) + 1),
+                'situacao' => 'ativo',
+                'resumo_diagnostico' => 'Prontuário inicializado automaticamente na inscrição de curso.',
+                'data_abertura' => now(),
+            ]
+        );
+
+        if ($curso->vagas_disponiveis > 0) {
+            $curso->decrement('vagas_disponiveis');
+        }
 
         $timelineId = null;
         if ($prontuario) {

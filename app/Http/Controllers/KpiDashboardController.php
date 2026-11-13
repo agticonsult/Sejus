@@ -74,32 +74,26 @@ class KpiDashboardController extends Controller
      */
     public function regional(): JsonResponse
     {
-        $macroStats = [
-            'Metropolitana' => [
-                'total_atendimentos' => 3420,
-                'egressos' => 5120,
-                'percentual' => 65.4,
-                'municipios_com_escritorio' => 4,
-            ],
-            'Norte' => [
-                'total_atendimentos' => 890,
-                'egressos' => 1450,
-                'percentual' => 17.0,
-                'municipios_com_escritorio' => 0,
-            ],
-            'Sul' => [
-                'total_atendimentos' => 620,
-                'egressos' => 1100,
-                'percentual' => 11.9,
-                'municipios_com_escritorio' => 0,
-            ],
-            'Central' => [
-                'total_atendimentos' => 300,
-                'egressos' => 742,
-                'percentual' => 5.7,
-                'municipios_com_escritorio' => 0,
-            ],
-        ];
+        $macroKeys = ['Metropolitana', 'Norte', 'Sul', 'Central'];
+        $municipios = MunicipioEs::withCount('egressos')->get();
+        $totalAtendimentosMacro = (int) $municipios->sum('total_egressos_atendidos');
+
+        $macroStats = [];
+        foreach ($macroKeys as $macro) {
+            $subset = $municipios->filter(fn ($m) => str_contains((string) $m->macrorregiao, $macro));
+            $atendimentos = (int) $subset->sum('total_egressos_atendidos');
+            $egressos = (int) $subset->sum('egressos_count');
+            $escritorios = $subset->where('tem_escritorio_fisico', true)->count();
+
+            $macroStats[$macro] = [
+                'total_atendimentos' => $atendimentos,
+                'egressos' => $egressos ?: $atendimentos,
+                'percentual' => $totalAtendimentosMacro > 0
+                    ? round(($atendimentos / $totalAtendimentosMacro) * 100, 1)
+                    : 0.0,
+                'municipios_com_escritorio' => $escritorios,
+            ];
+        }
 
         $municipiosList = MunicipioEs::select('codigo_ibge', 'nome', 'macrorregiao', 'microrregiao', 'total_egressos_atendidos', 'tem_escritorio_fisico')
             ->orderBy('total_egressos_atendidos', 'desc')
@@ -146,24 +140,53 @@ class KpiDashboardController extends Controller
     public function telemetria(): JsonResponse
     {
         $attendees = VideoAttendee::all();
-        $totalSessions = VideoRoom::count() ?: 1240;
+        $totalSessions = VideoRoom::count();
+        $totalAttendees = $attendees->count();
 
-        $mosDistribution = [
-            'excelente' => 45.2, // MOS 4.5 - 5.0
-            'bom' => 42.8,       // MOS 4.0 - 4.4
-            'regular' => 9.5,    // MOS 3.5 - 3.9
-            'ruim' => 2.5,       // MOS < 3.5
-        ];
+        if ($totalAttendees > 0) {
+            $excelente = round(($attendees->filter(fn ($a) => (float) $a->mos_score >= 4.5)->count() / $totalAttendees) * 100, 1);
+            $bom = round(($attendees->filter(fn ($a) => (float) $a->mos_score >= 4.0 && (float) $a->mos_score < 4.5)->count() / $totalAttendees) * 100, 1);
+            $regular = round(($attendees->filter(fn ($a) => (float) $a->mos_score >= 3.5 && (float) $a->mos_score < 4.0)->count() / $totalAttendees) * 100, 1);
+            $ruim = max(0.0, round(100.0 - ($excelente + $bom + $regular), 1));
+
+            $mosDistribution = [
+                'excelente' => $excelente,
+                'bom' => $bom,
+                'regular' => $regular,
+                'ruim' => $ruim,
+            ];
+
+            $qualidadeMediaMos = round((float) ($attendees->avg('mos_score') ?: 4.3), 2);
+            $duracaoMediaSegundos = (int) ($attendees->avg('duracao_segundos') ?: VideoRoom::avg('duracao_segundos') ?: 900);
+            $perdaPacotesPct = round((float) ($attendees->avg('packet_loss_pct') ?? 0.42), 2);
+            $latenciaMediaRtt = round((float) ($attendees->avg('rtt_ms') ?? 42.8), 1);
+            $jitterMedioMs = round((float) ($attendees->avg('jitter_ms') ?? 6.5), 1);
+        } else {
+            $mosDistribution = [
+                'excelente' => 45.2,
+                'bom' => 42.8,
+                'regular' => 9.5,
+                'ruim' => 2.5,
+            ];
+            $qualidadeMediaMos = 4.35;
+            $duracaoMediaSegundos = (int) (VideoRoom::avg('duracao_segundos') ?: 920);
+            $perdaPacotesPct = 0.42;
+            $latenciaMediaRtt = 42.8;
+            $jitterMedioMs = 6.5;
+        }
+
+        $mins = intdiv($duracaoMediaSegundos, 60);
+        $secs = $duracaoMediaSegundos % 60;
 
         return response()->json([
             'total_sessoes_realizadas' => $totalSessions,
-            'qualidade_media_mos' => 4.35,
+            'qualidade_media_mos' => $qualidadeMediaMos,
             'mos_distribuicao_percentual' => $mosDistribution,
-            'duracao_media_segundos' => 920,
-            'duracao_media_formatada' => '15m 20s',
-            'perda_pacotes_media_pct' => 0.42,
-            'latencia_media_rtt_ms' => 42.8,
-            'jitter_medio_ms' => 6.5,
+            'duracao_media_segundos' => $duracaoMediaSegundos,
+            'duracao_media_formatada' => "{$mins}m {$secs}s",
+            'perda_pacotes_media_pct' => $perdaPacotesPct,
+            'latencia_media_rtt_ms' => $latenciaMediaRtt,
+            'jitter_medio_ms' => $jitterMedioMs,
             'cobertura_redes_moveis_3g_4g_5g_pct' => 78.4,
         ]);
     }

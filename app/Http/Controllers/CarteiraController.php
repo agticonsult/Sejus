@@ -78,6 +78,7 @@ class CarteiraController extends Controller
                 'recentEgressos' => $recentEgressos,
                 'egresso' => null,
                 'token' => '',
+                'validationUrl' => '',
                 'pdfDownloadUrl' => '',
             ]);
         }
@@ -86,6 +87,7 @@ class CarteiraController extends Controller
 
         $payload = $this->qrService->generatePayload($egresso);
         $token = $this->qrService->generateToken($payload);
+        $validationUrl = $this->qrService->getValidationUrl($token);
         $registroSejus = $egresso->registro_sejus ?? ('ES-2026-' . str_pad((string) $egresso->id, 6, '0', STR_PAD_LEFT));
 
         $dataNascimento = 'Não informada';
@@ -109,8 +111,71 @@ class CarteiraController extends Controller
                 'data_validade' => now()->addYear()->format('d/m/Y'),
             ],
             'token' => $token,
+            'validationUrl' => $validationUrl,
             'pdfDownloadUrl' => '/carteira/pdf?egresso_id=' . $egresso->id,
         ]);
+    }
+
+    /**
+     * Persist 2ª via or Declaração de Vínculo request in Prontuário & AuditService.
+     */
+    public function solicitarSegundaVia(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Não autenticado.'], 401);
+        }
+
+        $validated = $request->validate([
+            'egresso_id' => 'nullable|integer|exists:egressos,id',
+            'tipo_documento' => 'required|string|max:120',
+        ]);
+
+        $isStaff = $user->isGestor() || $user->isTecnico() || $user->isSuporte();
+        $egresso = $isStaff && !empty($validated['egresso_id'])
+            ? Egresso::find($validated['egresso_id'])
+            : $user->egresso;
+
+        if (!$egresso) {
+            return response()->json(['error' => 'Nenhum egresso selecionado para emissão do documento.'], 422);
+        }
+
+        $prontuario = \App\Models\Prontuario::firstOrCreate(
+            ['egresso_id' => $egresso->id],
+            [
+                'numero_prontuario' => sprintf('PRT-%s-%06d', now()->format('Y'), (\App\Models\Prontuario::max('id') ?? 0) + 1),
+                'situacao' => 'ativo',
+                'resumo_diagnostico' => 'Prontuário inicializado na solicitação de credencial.',
+                'data_abertura' => now(),
+            ]
+        );
+
+        $timelineEntry = \App\Models\ProntuarioTimeline::create([
+            'prontuario_id' => $prontuario->id,
+            'tipo_evento' => 'emissao_carteira',
+            'titulo' => 'Solicitação de ' . $validated['tipo_documento'],
+            'descricao' => 'Reemissão / declaração digital solicitada via plataforma Web.',
+            'metadata' => [
+                'tipo_documento' => $validated['tipo_documento'],
+                'solicitante_id' => $user->id,
+            ],
+            'responsavel_id' => $user->id,
+            'data_evento' => now(),
+        ]);
+
+        $protocolo = 'DOC-' . now()->format('Y') . '-' . str_pad((string) $timelineEntry->id, 6, '0', STR_PAD_LEFT);
+
+        $this->auditService->log($prontuario->id, 'CARTEIRA_SEGUNDA_VIA_SOLICITADA', [
+            'egresso_id' => $egresso->id,
+            'tipo_documento' => $validated['tipo_documento'],
+            'protocolo' => $protocolo,
+        ], $user->id, $request->ip(), $request->userAgent());
+
+        return response()->json([
+            'status' => 'created',
+            'protocolo' => $protocolo,
+            'message' => "Requisição {$protocolo} registrada no Prontuário Único.",
+        ], 201);
     }
 
     /**

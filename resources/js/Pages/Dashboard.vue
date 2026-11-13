@@ -21,6 +21,7 @@
         <!-- Action CTAs -->
         <div class="flex flex-wrap items-center gap-2.5 flex-shrink-0">
           <Link
+            v-if="userRole !== 'empregador'"
             href="/atendimento"
             class="px-4 py-2 bg-sky-600 hover:bg-sky-700 dark:bg-sky-700 dark:hover:bg-sky-800 text-white font-semibold text-xs rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer"
           >
@@ -32,9 +33,10 @@
             class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200/70 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl border border-slate-200/80 dark:border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
           >
             <Briefcase class="w-4 h-4 text-slate-500 dark:text-slate-400 stroke-[1.75]" />
-            <span>Vagas Afirmativas (42)</span>
+            <span>Vagas Afirmativas ({{ kpis.vagas_abertas }})</span>
           </Link>
           <Link
+            v-if="canViewRelatorios"
             href="/relatorios"
             class="px-3.5 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl border border-slate-200/80 dark:border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
           >
@@ -74,11 +76,11 @@
             </div>
           </div>
           <div class="kpi-value text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100 font-mono tabular-nums mt-3">
-            108 mil
+            {{ kpis.atendimentos_total.toLocaleString('pt-BR') }}
           </div>
           <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
             <span class="text-sky-600 dark:text-sky-400 font-semibold">{{ kpis.atendimentos_hoje }} hoje</span>
-            <span class="text-slate-400 dark:text-slate-400 text-[11px]">108.000 acumulados</span>
+            <span class="text-slate-400 dark:text-slate-400 text-[11px]">{{ kpis.atendimentos_total.toLocaleString('pt-BR') }} acumulados</span>
           </div>
         </div>
 
@@ -111,8 +113,8 @@
             {{ kpis.taxa_reincidencia_zero }}%
           </div>
           <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-            <span class="text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50 dark:bg-emerald-950/70 border border-transparent dark:border-emerald-800/50 px-2 py-0.5 rounded-full text-[10px]">Reincidência Zero</span>
-            <span class="text-slate-400 dark:text-slate-400 text-[11px]">programas ativos</span>
+            <span class="text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50 dark:bg-emerald-950/70 border border-transparent dark:border-emerald-800/50 px-2 py-0.5 rounded-full text-[10px]">Prontuários Ativos</span>
+            <span class="text-slate-400 dark:text-slate-400 text-[11px]">acompanhamento contínuo</span>
           </div>
         </div>
       </div>
@@ -135,7 +137,7 @@
             </span>
           </div>
 
-          <ChartBar id="chartMunicipios" :height="240" />
+          <ChartBar id="chartMunicipios" :height="240" :data="chartMunicipios.length ? chartMunicipios : undefined" />
         </div>
 
         <!-- Reintegration Donut Chart (1 col) -->
@@ -149,7 +151,7 @@
             </p>
           </div>
 
-          <ChartDonut id="chartReintegracao" :height="240" />
+          <ChartDonut id="chartReintegracao" :height="240" :data="chartEixos.length ? chartEixos : undefined" :center-text="`${kpis.taxa_reincidencia_zero}%`" />
         </div>
       </div>
 
@@ -168,6 +170,12 @@
           </div>
 
           <div class="space-y-3">
+            <div
+              v-if="recentActivities.length === 0"
+              class="p-6 rounded-xl bg-slate-50/70 dark:bg-slate-800/60 border border-dashed border-slate-200 dark:border-slate-700 text-center text-xs text-slate-500 dark:text-slate-400"
+            >
+              Nenhuma atividade registrada recentemente na base de dados.
+            </div>
             <div
               v-for="activity in recentActivities"
               :key="activity.id"
@@ -219,22 +227,22 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
               <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                 <span class="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 block">Metropolitana</span>
-                <strong class="text-slate-800 dark:text-slate-100 text-sm block mt-0.5">7 Cidades</strong>
+                <strong class="text-slate-800 dark:text-slate-100 text-sm block mt-0.5">{{ macroCounts.metropolitana || 7 }} Cidades</strong>
                 <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">100% Coberta</span>
               </div>
               <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                 <span class="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 block">Norte & Noroeste</span>
-                <strong class="text-slate-800 dark:text-slate-100 text-sm block mt-0.5">28 Cidades</strong>
+                <strong class="text-slate-800 dark:text-slate-100 text-sm block mt-0.5">{{ macroCounts.norte || 28 }} Cidades</strong>
                 <span class="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">Polos Virtuais</span>
               </div>
               <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                 <span class="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 block">Sul & Caparaó</span>
-                <strong class="text-slate-800 dark:text-slate-100 text-sm block mt-0.5">27 Cidades</strong>
+                <strong class="text-slate-800 dark:text-slate-100 text-sm block mt-0.5">{{ macroCounts.sul || 27 }} Cidades</strong>
                 <span class="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">Polos Virtuais</span>
               </div>
               <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                 <span class="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-400 block">Central & Serrana</span>
-                <strong class="text-slate-800 dark:text-slate-100 text-sm block mt-0.5">16 Cidades</strong>
+                <strong class="text-slate-800 dark:text-slate-100 text-sm block mt-0.5">{{ macroCounts.central || 16 }} Cidades</strong>
                 <span class="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">Polos Virtuais</span>
               </div>
               <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 col-span-2 sm:col-span-2">
@@ -245,7 +253,7 @@
             </div>
           </div>
 
-          <div class="mt-5 p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900/60 text-xs text-sky-900 dark:text-sky-200 flex items-center justify-between">
+          <div v-if="canViewRelatorios" class="mt-5 p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900/60 text-xs text-sky-900 dark:text-sky-200 flex items-center justify-between">
             <span class="font-medium">Deseja exportar relatórios executivos em PDF/CSV?</span>
             <Link href="/relatorios" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 dark:bg-sky-700 dark:hover:bg-sky-800 text-white rounded-lg font-semibold text-xs transition shadow-2xs">
               Acessar BI
@@ -259,7 +267,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import {
   Users,
   Video,
@@ -281,25 +289,41 @@ const props = defineProps({
   kpis: {
     type: Object,
     default: () => ({
-      total_egressos: 14850,
-      atendimentos_hoje: 142,
-      atendimentos_total: 108000,
-      vagas_preenchidas: 1820,
-      taxa_reincidencia_zero: 84.6,
-      vagas_abertas: 42,
-      cursos_ativos: 18,
+      total_egressos: 0,
+      atendimentos_hoje: 0,
+      atendimentos_total: 0,
+      vagas_preenchidas: 0,
+      taxa_reincidencia_zero: 0,
+      vagas_abertas: 0,
+      cursos_ativos: 0,
+    }),
+  },
+  chartMunicipios: {
+    type: Array,
+    default: () => [],
+  },
+  chartEixos: {
+    type: Array,
+    default: () => [],
+  },
+  macroCounts: {
+    type: Object,
+    default: () => ({
+      metropolitana: 7,
+      norte: 28,
+      sul: 27,
+      central: 16,
     }),
   },
   recentActivities: {
     type: Array,
-    default: () => [
-      { id: 1, iconType: 'video', descricao: 'Atendimento psicossocial remoto concluído via WebRTC', municipio: 'São Mateus', autor: 'Dra. Márcia Oliveira', tempo: 'Há 5 min' },
-      { id: 2, iconType: 'vaga', descricao: 'Candidatura aprovada em vaga afirmativa de Almoxarife', municipio: 'Linhares', autor: 'SENAI / Empresa Amiga', tempo: 'Há 22 min' },
-      { id: 3, iconType: 'carteira', descricao: 'Carteira Digital emitida e homologada com selo HMAC-SHA256', municipio: 'Cariacica', autor: 'Sistema Central', tempo: 'Há 45 min' },
-      { id: 4, iconType: 'prontuario', descricao: 'Nova evolução registrada no Prontuário Único', municipio: 'Vitória', autor: 'Téc. Roberto Costa', tempo: 'Há 1h' },
-    ],
+    default: () => [],
   },
 });
+
+const page = usePage();
+const userRole = computed(() => page.props.auth?.user?.role || 'egresso');
+const canViewRelatorios = computed(() => ['gestor', 'tecnico', 'suporte'].includes(userRole.value));
 
 const { t } = useAccessibility();
 </script>

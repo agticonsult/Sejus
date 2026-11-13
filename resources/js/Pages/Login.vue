@@ -227,7 +227,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import {
   User,
@@ -242,6 +242,16 @@ import ToastContainer from '../Components/ToastContainer.vue';
 import CookieConsentBanner from '../Components/CookieConsentBanner.vue';
 import PrivacyTermsModal from '../Components/PrivacyTermsModal.vue';
 import { useToast } from '../Composables/useToast';
+import { useTheme } from '../Composables/useTheme';
+import { useAccessibility } from '../Composables/useAccessibility';
+
+const { initTheme } = useTheme();
+const { initAccessibility } = useAccessibility();
+
+onMounted(() => {
+  initTheme();
+  initAccessibility();
+});
 
 const isPrivacyModalOpen = ref(false);
 

@@ -43,7 +43,7 @@ class WebRtcTokenController extends Controller
             'room_code' => 'nullable|string|max:64',
             'prontuario_id' => 'nullable|integer|exists:prontuarios,id',
             'unit_id' => 'nullable|integer',
-            'role' => 'nullable|string|in:tecnico,egresso,gestor,observador',
+            'role' => 'nullable|string|in:tecnico,egresso,gestor,observador,suporte,familiar',
         ]);
 
         $roomId = $validated['room_id'];
@@ -55,13 +55,20 @@ class WebRtcTokenController extends Controller
         $userRole = $user->perfil?->slug ?? 'egresso';
         $desiredRole = $validated['role'] ?? $userRole;
 
+        // Normalize platform roles to Python signaling ClientRole values
+        if ($desiredRole === 'suporte') {
+            $desiredRole = 'gestor';
+        } elseif ($desiredRole === 'familiar') {
+            $desiredRole = 'egresso';
+        }
+
         // Prevent unauthorized role escalation:
-        // - Non-gestores cannot claim 'gestor'
+        // - Non-gestores/suporte cannot claim 'gestor'
         // - Non-staff (egresso, familiar, etc.) cannot claim 'tecnico'
-        if ($desiredRole === 'gestor' && !$user->isGestor()) {
-            $desiredRole = $userRole;
-        } elseif ($desiredRole === 'tecnico' && !$user->isGestor() && !$user->isTecnico()) {
-            $desiredRole = $userRole;
+        if ($desiredRole === 'gestor' && !$user->isGestor() && !$user->isSuporte()) {
+            $desiredRole = 'egresso';
+        } elseif ($desiredRole === 'tecnico' && !$user->isGestor() && !$user->isTecnico() && !$user->isSuporte()) {
+            $desiredRole = 'egresso';
         }
 
         // Check if room exists
@@ -90,16 +97,17 @@ class WebRtcTokenController extends Controller
             if (!$prontuarioId && $room->prontuario_id) {
                 $prontuarioId = $room->prontuario_id;
             }
-        } elseif ($user->isTecnico() || $user->isGestor()) {
+        } elseif ($user->isTecnico() || $user->isGestor() || $user->isSuporte()) {
             // Automatically initialize room if host technician starts a new session
             $room = VideoRoom::create([
                 'room_code' => $roomCode,
                 'prontuario_id' => $prontuarioId,
-                'tecnico_id' => $user->isTecnico() ? $user->id : null,
+                'tecnico_id' => $user->id,
                 'municipio_id' => $unitId,
-                'status' => 'aguardando',
+                'status' => 'em_andamento',
                 'prioridade' => 'normal',
                 'scheduled_at' => now(),
+                'started_at' => now(),
             ]);
         }
 
@@ -125,6 +133,9 @@ class WebRtcTokenController extends Controller
             $request->userAgent()
         );
 
-        return response()->json(array_merge(['status' => 'success'], $tokenPayload));
+        return response()->json(array_merge([
+            'status' => 'success',
+            'video_room_id' => $room?->id,
+        ], $tokenPayload));
     }
 }

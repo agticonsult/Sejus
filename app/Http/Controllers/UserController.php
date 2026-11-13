@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Perfil;
 use App\Models\MunicipioEs;
 use App\Models\Egresso;
+use App\Models\Prontuario;
 use App\Services\LgpdSecurityService;
 use App\Services\AuditService;
 
@@ -330,9 +331,9 @@ class UserController extends Controller
         $user->ativo = $request->boolean('ativo', true);
         $user->save();
 
-        // 5. If role is Egresso, link or create Egresso record
+        // 5. If role is Egresso, link or create Egresso + Prontuario record
         if ($user->perfil?->slug === 'egresso') {
-            Egresso::firstOrCreate(
+            $egresso = Egresso::firstOrCreate(
                 ['hash_cpf' => $hashCpf],
                 [
                     'user_id' => $user->id,
@@ -340,6 +341,16 @@ class UserController extends Controller
                     'cpf' => $cleanCpf,
                     'status_penal' => 'egresso',
                     'municipio_residencia_id' => $municipioId ?? MunicipioEs::first()?->id ?? 1,
+                ]
+            );
+            Prontuario::firstOrCreate(
+                ['egresso_id' => $egresso->id],
+                [
+                    'numero_prontuario' => sprintf('PRT-%s-%06d', now()->format('Y'), (Prontuario::max('id') ?? 0) + 1),
+                    'situacao' => 'ativo',
+                    'resumo_diagnostico' => 'Prontuário inicializado automaticamente no cadastro do usuário.',
+                    'meta_plano_individual' => 'Plano Individual em elaboração pela equipe multiprofissional.',
+                    'data_abertura' => now(),
                 ]
             );
         }
@@ -480,6 +491,30 @@ class UserController extends Controller
         }
 
         $user->save();
+
+        if ($user->perfil?->slug === 'egresso' && $user->cpf) {
+            $egHash = $this->lgpd->generateBlindIndex(preg_replace('/\D/', '', $user->cpf));
+            $egresso = Egresso::firstOrCreate(
+                ['hash_cpf' => $egHash],
+                [
+                    'user_id' => $user->id,
+                    'nome_completo' => $user->name,
+                    'cpf' => preg_replace('/\D/', '', $user->cpf),
+                    'status_penal' => 'egresso',
+                    'municipio_residencia_id' => $user->municipio_id ?? MunicipioEs::first()?->id ?? 1,
+                ]
+            );
+            Prontuario::firstOrCreate(
+                ['egresso_id' => $egresso->id],
+                [
+                    'numero_prontuario' => sprintf('PRT-%s-%06d', now()->format('Y'), (Prontuario::max('id') ?? 0) + 1),
+                    'situacao' => 'ativo',
+                    'resumo_diagnostico' => 'Prontuário inicializado automaticamente na atualização do usuário.',
+                    'meta_plano_individual' => 'Plano Individual em elaboração pela equipe multiprofissional.',
+                    'data_abertura' => now(),
+                ]
+            );
+        }
 
         // Cryptographic Audit Log
         $this->audit->log(

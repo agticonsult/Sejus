@@ -134,6 +134,11 @@
                 class="w-full pl-8 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
               />
             </div>
+            <p v-if="isResolvingCep" class="text-[10px] text-purple-600 font-semibold mt-1">Buscando CEP no ES...</p>
+            <div v-else-if="cepResolvedLabel" class="flex items-center justify-between text-[10px] text-emerald-700 font-bold mt-1">
+              <span>{{ cepResolvedLabel }}</span>
+              <button type="button" @click="filters.cep = ''" class="text-rose-600 hover:underline cursor-pointer">Limpar</button>
+            </div>
           </div>
 
           <div class="flex items-end">
@@ -282,20 +287,30 @@
             </div>
           </div>
 
-          <!-- Right Column: Manual Job Insertion Form -->
+          <!-- Right Column: Manual Job Insertion / Edit Form -->
           <div class="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
-            <div class="border-b border-slate-100 pb-4">
-              <h2 class="text-base font-extrabold text-slate-900 font-heading flex items-center gap-2">
-                <span>✍️ Cadastrar Nova Vaga Manualmente</span>
-              </h2>
-              <p class="text-xs text-slate-500 mt-1">
-                Preencha os dados da oportunidade e selecione os conhecimentos requeridos da listagem do sistema.
-              </p>
+            <div class="border-b border-slate-100 pb-4 flex items-start justify-between gap-2">
+              <div>
+                <h2 class="text-base font-extrabold text-slate-900 font-heading flex items-center gap-2">
+                  <span>{{ editingVagaId ? '✏️ Editar Vaga de Emprego' : '✍️ Cadastrar Nova Vaga Manualmente' }}</span>
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">
+                  Preencha os dados da oportunidade e selecione os conhecimentos requeridos da listagem do sistema.
+                </p>
+              </div>
+              <button
+                v-if="editingVagaId"
+                type="button"
+                @click="cancelVagaEdit"
+                class="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
+              >
+                Cancelar Edição
+              </button>
             </div>
 
             <form @submit.prevent="handleManualSubmit" class="space-y-3.5" id="form-inserir-vaga-manual">
               <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                <div class="sm:col-span-8">
+                <div class="sm:col-span-6">
                   <label class="block text-xs font-bold text-slate-700 mb-1">
                     Nome da vaga <span class="text-rose-500">*</span>
                   </label>
@@ -311,7 +326,20 @@
 
                 <div class="sm:col-span-4">
                   <label class="block text-xs font-bold text-slate-700 mb-1">
-                    Quantidade de vagas <span class="text-rose-500">*</span>
+                    Empresa / Empregador
+                  </label>
+                  <input
+                    v-model="manualForm.empresa"
+                    type="text"
+                    maxlength="150"
+                    placeholder="Ex: Construtora Capixaba Ltda"
+                    class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-bold text-slate-700 mb-1">
+                    Qtd. <span class="text-rose-500">*</span>
                   </label>
                   <input
                     v-model.number="manualForm.quantidade_vaga"
@@ -323,6 +351,61 @@
                   />
                 </div>
               </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Salário Base (R$)</label>
+                  <input
+                    v-model="manualForm.salario"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Ex: 2100.00"
+                    class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Regime</label>
+                  <select
+                    v-model="manualForm.regime_contratacao"
+                    class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none"
+                  >
+                    <option value="CLT">CLT</option>
+                    <option value="Temporário">Temporário</option>
+                    <option value="Jovem Aprendiz">Estágio / Jovem Aprendiz</option>
+                    <option value="PJ / MEI">PJ / MEI</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Área / Categoria</label>
+                  <select
+                    v-model="manualForm.categoria"
+                    class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none"
+                  >
+                    <option value="geral">Geral</option>
+                    <option value="construcao_civil">Construção Civil</option>
+                    <option value="logistica">Logística & Estoque</option>
+                    <option value="servicos">Serviços Gerais</option>
+                    <option value="industria">Indústria & Manutenção</option>
+                    <option value="administrativo">Administrativo</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Escolaridade Mínima</label>
+                  <input
+                    v-model="manualForm.escolaridade_minima"
+                    type="text"
+                    maxlength="100"
+                    placeholder="Ex: Fundamental Completo"
+                    class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <label class="inline-flex items-center gap-2 text-xs font-bold text-purple-900 bg-purple-50 border border-purple-200 px-3 py-2 rounded-lg cursor-pointer">
+                <input v-model="manualForm.afirmativa_egresso" type="checkbox" class="w-4 h-4 rounded text-purple-600" />
+                <span>Cota Afirmativa SEJUS (Prioridade para Egressos e Reintegração Social)</span>
+              </label>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">
@@ -422,7 +505,7 @@
                 class="w-full py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <span v-if="isSavingManual" class="animate-spin">⏳</span>
-                <span>{{ isSavingManual ? 'Publicando Vaga...' : '✅ Publicar Vaga de Emprego' }}</span>
+                <span>{{ isSavingManual ? 'Salvando Vaga...' : (editingVagaId ? '💾 Salvar Alterações na Vaga' : '✅ Publicar Vaga de Emprego') }}</span>
               </button>
             </form>
           </div>
@@ -505,26 +588,44 @@
               </div>
             </div>
 
-            <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+            <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
               <span class="text-[11px] text-slate-500 font-semibold">
                 {{ Math.max(0, (vaga.vagas_totais || 1) - (vaga.vagas_preenchidas || 0)) }} vagas disponíveis
               </span>
-              <button
-                v-if="!isEmpregador && hasAppliedToVaga(vaga.id)"
-                type="button"
-                disabled
-                class="px-4 py-2 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 flex items-center gap-1 opacity-90 cursor-default"
-              >
-                <span>✓ Já Candidatado</span>
-              </button>
-              <button
-                v-else-if="!isEmpregador"
-                type="button"
-                class="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer"
-                @click="openApplicationModal(vaga)"
-              >
-                <span>Candidatar-se</span>
-              </button>
+              <div class="flex items-center gap-1.5">
+                <button
+                  v-if="canManageVagas"
+                  type="button"
+                  @click="openVagaEditor(vaga)"
+                  class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg transition cursor-pointer"
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  v-if="canManageVagas"
+                  type="button"
+                  @click="toggleVagaStatus(vaga)"
+                  class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-bold rounded-lg transition cursor-pointer"
+                >
+                  {{ vaga.status === 'aberta' ? '🔒 Encerrar' : '🔓 Reabrir' }}
+                </button>
+                <button
+                  v-if="!isEmpregador && hasAppliedToVaga(vaga.id)"
+                  type="button"
+                  disabled
+                  class="px-4 py-2 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 flex items-center gap-1 opacity-90 cursor-default"
+                >
+                  <span>✓ Já Candidatado</span>
+                </button>
+                <button
+                  v-else-if="!isEmpregador"
+                  type="button"
+                  class="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer"
+                  @click="openApplicationModal(vaga)"
+                >
+                  <span>Candidatar-se</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -532,11 +633,19 @@
 
       <!-- Cursos de Capacitação Grid -->
       <div v-if="!isEmpregador && (activeTab === 'todos' || activeTab === 'cursos')" class="space-y-4">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
             <span>🎓 Cursos Gratuitos de Qualificação (SENAI / IFES / SEJUS)</span>
             <span class="text-xs font-normal text-slate-500">({{ filteredCursos.length }} encontrados)</span>
           </h2>
+          <button
+            v-if="isStaff"
+            type="button"
+            @click="openCourseEditor()"
+            class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+          >
+            ➕ Cadastrar Curso
+          </button>
         </div>
 
         <div v-if="filteredCursos.length === 0" class="bg-white rounded-2xl border border-slate-200/80 p-8 text-center text-xs text-slate-500">
@@ -578,26 +687,36 @@
               </div>
             </div>
 
-            <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+            <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
               <span class="text-[11px] text-slate-400 font-medium">
                 {{ curso.vagas_disponiveis }} vagas abertas
               </span>
-              <button
-                v-if="hasEnrolledInCourse(curso.id)"
-                type="button"
-                disabled
-                class="px-4 py-2 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 flex items-center gap-1 opacity-90 cursor-default"
-              >
-                <span>✓ Já Inscrito</span>
-              </button>
-              <button
-                v-else
-                type="button"
-                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer"
-                @click="openCourseModal(curso)"
-              >
-                <span>Inscrever-se</span>
-              </button>
+              <div class="flex items-center gap-1.5">
+                <button
+                  v-if="isStaff"
+                  type="button"
+                  @click="openCourseEditor(curso)"
+                  class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg transition cursor-pointer"
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  v-if="hasEnrolledInCourse(curso.id)"
+                  type="button"
+                  disabled
+                  class="px-4 py-2 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 flex items-center gap-1 opacity-90 cursor-default"
+                >
+                  <span>✓ Já Inscrito</span>
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer"
+                  @click="openCourseModal(curso)"
+                >
+                  <span>Inscrever-se</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -706,6 +825,19 @@
             <span class="text-slate-500 text-xs block">Instituição / Empresa: {{ selectedOpportunity.empresa || selectedOpportunity.instituicao }} ({{ selectedOpportunity.municipioNome || 'ES' }})</span>
           </p>
 
+          <div v-if="isStaff" class="mb-4">
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Selecionar Egresso para Encaminhamento <span class="text-rose-500">*</span>
+            </label>
+            <select
+              v-model="selectedEgressoId"
+              class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="" disabled>Escolha um egresso cadastrado...</option>
+              <option v-for="eg in egressosList" :key="eg.id" :value="eg.id">{{ eg.nome }}</option>
+            </select>
+          </div>
+
           <div class="p-3 bg-purple-50 rounded-xl border border-purple-200 text-xs text-purple-900 mb-4 space-y-1">
             <p class="font-bold">Protocolo de Encaminhamento SEJUS:</p>
             <p>Seus dados cadastrais básicos e o comprovante da Carteira Digital serão compartilhados de forma segura conforme a LGPD.</p>
@@ -717,12 +849,93 @@
           </div>
         </div>
       </div>
+
+      <!-- Course Creation & Editing Modal (Staff) -->
+      <div v-if="isStaff && courseModal.open" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-base font-extrabold text-slate-900">
+              {{ courseModal.id ? '✏️ Editar Curso de Capacitação' : '🎓 Cadastrar Novo Curso / Qualificação' }}
+            </h3>
+            <button type="button" @click="courseModal.open = false" class="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+          </div>
+
+          <form @submit.prevent="handleCourseSubmit" class="space-y-3 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Instituição Parceira *</label>
+                <input v-model="courseModal.instituicao" type="text" required placeholder="Ex: SENAI / IFES" class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Categoria *</label>
+                <input v-model="courseModal.categoria" type="text" required placeholder="Ex: Construção Civil" class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Título do Curso *</label>
+              <input v-model="courseModal.titulo" type="text" required placeholder="Ex: Instalador Hidráulico e Elétrico" class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Ementa / Descrição *</label>
+              <textarea v-model="courseModal.descricao" rows="2" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Carga (h) *</label>
+                <input v-model.number="courseModal.carga_horaria" type="number" min="1" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Modalidade *</label>
+                <select v-model="courseModal.modalidade" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg bg-white outline-none">
+                  <option value="presencial">Presencial</option>
+                  <option value="ead">EAD</option>
+                  <option value="hibrido">Híbrido</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Vagas *</label>
+                <input v-model.number="courseModal.vagas_disponiveis" type="number" min="1" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Bolsa (R$)</label>
+                <input v-model="courseModal.bolsa_auxilio" type="number" step="0.01" min="0" placeholder="0.00" class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Município</label>
+                <select v-model="courseModal.municipio_id" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg bg-white outline-none">
+                  <option value="">Estadual / EAD</option>
+                  <option v-for="m in municipiosOptions" :key="m.id" :value="m.id">{{ m.nome }}</option>
+                </select>
+              </div>
+              <div class="flex items-end pb-1.5">
+                <label class="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
+                  <input v-model="courseModal.afirmativa_egresso" type="checkbox" class="w-4 h-4 rounded text-emerald-600" />
+                  <span>Reserva de Vagas Afirmativas</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <button type="button" @click="courseModal.open = false" class="px-4 py-2 font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+              <button type="submit" :disabled="isSavingCourse" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg disabled:opacity-50">
+                {{ isSavingCourse ? 'Salvando...' : (courseModal.id ? 'Salvar Alterações' : 'Publicar Curso') }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
@@ -757,6 +970,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  egressosList: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const page = usePage();
@@ -765,6 +982,7 @@ const toast = useToast();
 
 const userRole = computed(() => page.props.auth?.user?.role || 'egresso');
 const isEmpregador = computed(() => userRole.value === 'empregador');
+const isStaff = computed(() => ['gestor', 'tecnico', 'suporte'].includes(userRole.value));
 const canManageVagas = computed(() =>
   ['empregador', 'gestor', 'suporte', 'tecnico'].includes(userRole.value)
 );
@@ -818,11 +1036,18 @@ const csvMunicipioId = ref('');
 const isImportingCsv = ref(false);
 const importResult = ref(null);
 
-// Manual Creation Form State
+// Manual Creation & Editing Form State
 const isSavingManual = ref(false);
-const manualForm = ref({
+const editingVagaId = ref(null);
+const defaultManualForm = () => ({
+  empresa: '',
   nome_vaga: '',
   descricao: '',
+  categoria: 'geral',
+  salario: '',
+  regime_contratacao: 'CLT',
+  escolaridade_minima: '',
+  afirmativa_egresso: true,
   quantidade_vaga: 1,
   tipo_inicio: 'imediato',
   data_inicio: '',
@@ -830,6 +1055,33 @@ const manualForm = ref({
   data_fim: '',
   municipio_id: '',
   conhecimentos: [],
+});
+const manualForm = ref(defaultManualForm());
+
+// CEP Filter State
+const cepMatchedIds = ref(null);
+const cepResolvedLabel = ref('');
+const isResolvingCep = ref(false);
+
+// Staff Egresso Selector inside Application Confirmation Modal
+const selectedEgressoId = ref('');
+
+// Course Modal State (Staff CRUD)
+const isSavingCourse = ref(false);
+const courseModal = ref({
+  open: false,
+  id: null,
+  instituicao: '',
+  titulo: '',
+  descricao: '',
+  categoria: 'Qualificação Profissional',
+  carga_horaria: 40,
+  modalidade: 'presencial',
+  vagas_disponiveis: 20,
+  municipio_id: '',
+  bolsa_auxilio: '',
+  afirmativa_egresso: true,
+  status: 'aberto',
 });
 
 const toggleManualSkill = (skillId) => {
@@ -850,6 +1102,192 @@ const onCsvFileSelected = (event) => {
 const getCsrfToken = () => {
   if (typeof document === 'undefined') return null;
   return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null;
+};
+
+watch(() => filters.value.cep, async (val) => {
+  const digits = String(val || '').replace(/\D/g, '');
+  if (digits.length === 0) {
+    cepMatchedIds.value = null;
+    cepResolvedLabel.value = '';
+    return;
+  }
+  if (digits.length < 8) {
+    return;
+  }
+
+  isResolvingCep.value = true;
+  try {
+    const res = await fetch(`/api/vagas?cep=${digits}&per_page=100`, {
+      headers: { Accept: 'application/json' },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data.data)) {
+      cepMatchedIds.value = data.data.map(v => Number(v.id));
+      const firstCity = data.data[0]?.municipio?.nome;
+      cepResolvedLabel.value = firstCity
+        ? `Município: ${firstCity} (${cepMatchedIds.value.length} vagas)`
+        : `${cepMatchedIds.value.length} vaga(s) para o CEP`;
+    } else {
+      cepMatchedIds.value = null;
+      cepResolvedLabel.value = '';
+    }
+  } catch {
+    cepMatchedIds.value = null;
+    cepResolvedLabel.value = '';
+  } finally {
+    isResolvingCep.value = false;
+  }
+});
+
+const openVagaEditor = (vaga) => {
+  editingVagaId.value = vaga.id;
+  manualForm.value = {
+    empresa: vaga.empresa || '',
+    nome_vaga: vaga.titulo || '',
+    descricao: vaga.descricao || '',
+    categoria: vaga.categoria || 'geral',
+    salario: vaga.salario ?? '',
+    regime_contratacao: vaga.regime_contratacao || 'CLT',
+    escolaridade_minima: vaga.escolaridade_minima || '',
+    afirmativa_egresso: vaga.afirmativa_egresso !== false,
+    quantidade_vaga: vaga.vagas_totais || 1,
+    tipo_inicio: vaga.inicio_imediato ? 'imediato' : 'data',
+    data_inicio: vaga.data_inicio ? String(vaga.data_inicio).slice(0, 10) : '',
+    tipo_fim: vaga.fim_permanente !== false && !vaga.data_fim ? 'permanente' : 'data',
+    data_fim: vaga.data_fim ? String(vaga.data_fim).slice(0, 10) : '',
+    municipio_id: vaga.municipio_id || vaga.municipio?.id || '',
+    conhecimentos: Array.isArray(vaga.conhecimentos) ? vaga.conhecimentos.map(c => c.id) : [],
+  };
+  activeTab.value = 'inserir-vaga';
+};
+
+const cancelVagaEdit = () => {
+  editingVagaId.value = null;
+  manualForm.value = defaultManualForm();
+};
+
+const toggleVagaStatus = async (vaga) => {
+  const newStatus = vaga.status === 'aberta' ? 'pausada' : 'aberta';
+  const csrfToken = getCsrfToken();
+  try {
+    const res = await fetch(`/api/vagas/${vaga.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+      },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const idx = vagasList.value.findIndex(item => item.id === vaga.id);
+      if (idx >= 0) {
+        if (newStatus === 'pausada') {
+          vagasList.value.splice(idx, 1);
+        } else if (data.data) {
+          vagasList.value[idx] = normalizeVaga(data.data);
+        }
+      }
+      toast.success('Status Atualizado', `Vaga "${vaga.titulo}" marcada como ${newStatus}.`);
+    } else {
+      toast.error('Falha', data.error || 'Não foi possível atualizar o status da vaga.');
+    }
+  } catch {
+    toast.error('Erro de Conexão', 'Falha ao atualizar status da vaga.');
+  }
+};
+
+const openCourseEditor = (curso = null) => {
+  if (curso) {
+    courseModal.value = {
+      open: true,
+      id: curso.id,
+      instituicao: curso.instituicao || '',
+      titulo: curso.titulo || '',
+      descricao: curso.descricao || '',
+      categoria: curso.categoria || 'Qualificação Profissional',
+      carga_horaria: curso.carga_horaria || 40,
+      modalidade: String(curso.modalidade || 'presencial').toLowerCase(),
+      vagas_disponiveis: curso.vagas_disponiveis || 20,
+      municipio_id: curso.municipio_id || '',
+      bolsa_auxilio: curso.bolsa_auxilio || '',
+      afirmativa_egresso: curso.afirmativa_egresso !== false,
+      status: curso.status || 'aberto',
+    };
+  } else {
+    courseModal.value = {
+      open: true,
+      id: null,
+      instituicao: 'SENAI / ES',
+      titulo: '',
+      descricao: '',
+      categoria: 'Qualificação Profissional',
+      carga_horaria: 40,
+      modalidade: 'presencial',
+      vagas_disponiveis: 25,
+      municipio_id: '',
+      bolsa_auxilio: '',
+      afirmativa_egresso: true,
+      status: 'aberto',
+    };
+  }
+};
+
+const handleCourseSubmit = async () => {
+  isSavingCourse.value = true;
+  const csrfToken = getCsrfToken();
+  const isEdit = Boolean(courseModal.value.id);
+  const url = isEdit ? `/api/cursos/${courseModal.value.id}` : '/api/cursos';
+
+  try {
+    const payload = {
+      instituicao: courseModal.value.instituicao,
+      titulo: courseModal.value.titulo,
+      descricao: courseModal.value.descricao,
+      categoria: courseModal.value.categoria,
+      carga_horaria: Number(courseModal.value.carga_horaria),
+      modalidade: courseModal.value.modalidade,
+      vagas_disponiveis: Number(courseModal.value.vagas_disponiveis),
+      municipio_id: courseModal.value.municipio_id ? Number(courseModal.value.municipio_id) : null,
+      bolsa_auxilio: courseModal.value.bolsa_auxilio ? Number(courseModal.value.bolsa_auxilio) : 0,
+      afirmativa_egresso: Boolean(courseModal.value.afirmativa_egresso),
+      status: courseModal.value.status || 'aberto',
+    };
+
+    const res = await fetch(url, {
+      method: isEdit ? 'PUT' : 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.data) {
+      const munObj = municipiosOptions.value.find(m => Number(m.id) === Number(data.data.municipio_id));
+      const normalized = normalizeCurso({
+        ...data.data,
+        municipio: munObj ? munObj.nome : (data.data.municipio || 'Estadual / EAD'),
+      });
+      if (isEdit) {
+        const idx = cursosList.value.findIndex(c => c.id === courseModal.value.id);
+        if (idx >= 0) cursosList.value[idx] = normalized;
+      } else {
+        cursosList.value.unshift(normalized);
+      }
+      courseModal.value.open = false;
+      toast.success(isEdit ? 'Curso Atualizado' : 'Curso Cadastrado', `"${normalized.titulo}" salvo com sucesso.`);
+    } else {
+      toast.error('Erro ao Salvar Curso', data.error || data.message || 'Verifique os campos informados.');
+    }
+  } catch {
+    toast.error('Erro de Conexão', 'Não foi possível salvar o curso de capacitação.');
+  } finally {
+    isSavingCourse.value = false;
+  }
 };
 
 const handleCsvImport = async () => {
@@ -918,10 +1356,21 @@ const handleCsvImport = async () => {
 
 const handleManualSubmit = async () => {
   isSavingManual.value = true;
+  const isEdit = Boolean(editingVagaId.value);
+  const url = isEdit ? `/api/vagas/${editingVagaId.value}` : '/api/vagas';
+
   try {
     const payload = {
+      empresa: manualForm.value.empresa || undefined,
+      titulo: manualForm.value.nome_vaga,
       nome_vaga: manualForm.value.nome_vaga,
       descricao: manualForm.value.descricao,
+      categoria: manualForm.value.categoria || 'geral',
+      salario: manualForm.value.salario !== '' && manualForm.value.salario !== null ? Number(manualForm.value.salario) : null,
+      regime_contratacao: manualForm.value.regime_contratacao || 'CLT',
+      escolaridade_minima: manualForm.value.escolaridade_minima || null,
+      afirmativa_egresso: Boolean(manualForm.value.afirmativa_egresso),
+      vagas_totais: Number(manualForm.value.quantidade_vaga),
       quantidade_vaga: Number(manualForm.value.quantidade_vaga),
       inicio_imediato: manualForm.value.tipo_inicio === 'imediato',
       data_inicio: manualForm.value.tipo_inicio === 'data' ? manualForm.value.data_inicio : null,
@@ -932,8 +1381,8 @@ const handleManualSubmit = async () => {
     };
 
     const csrfToken = getCsrfToken();
-    const response = await fetch('/api/vagas', {
-      method: 'POST',
+    const response = await fetch(url, {
+      method: isEdit ? 'PUT' : 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -946,25 +1395,28 @@ const handleManualSubmit = async () => {
 
     if (response.ok) {
       if (data.data) {
-        vagasList.value.unshift(normalizeVaga(data.data));
+        const normalized = normalizeVaga(data.data);
+        if (isEdit) {
+          const idx = vagasList.value.findIndex(v => v.id === editingVagaId.value);
+          if (idx >= 0) vagasList.value[idx] = normalized;
+        } else {
+          vagasList.value.unshift(normalized);
+        }
       }
-      manualForm.value = {
-        nome_vaga: '',
-        descricao: '',
-        quantidade_vaga: 1,
-        tipo_inicio: 'imediato',
-        data_inicio: '',
-        tipo_fim: 'permanente',
-        data_fim: '',
-        municipio_id: '',
-        conhecimentos: [],
-      };
-      toast.success('Vaga Cadastrada', 'A vaga de emprego foi publicada com sucesso.');
+      editingVagaId.value = null;
+      manualForm.value = defaultManualForm();
+      toast.success(
+        isEdit ? 'Vaga Atualizada' : 'Vaga Cadastrada',
+        isEdit ? 'Os dados da vaga foram atualizados.' : 'A vaga de emprego foi publicada com sucesso.'
+      );
+      if (isEdit) {
+        activeTab.value = 'vagas';
+      }
     } else {
       toast.error('Erro na Validação', data.error || data.message || 'Verifique os campos informados.');
     }
   } catch {
-    toast.error('Erro de Conexão', 'Não foi possível publicar a vaga no momento.');
+    toast.error('Erro de Conexão', 'Não foi possível salvar a vaga no momento.');
   } finally {
     isSavingManual.value = false;
   }
@@ -972,6 +1424,9 @@ const handleManualSubmit = async () => {
 
 const filteredVagas = computed(() => {
   return vagasList.value.filter((v) => {
+    if (cepMatchedIds.value !== null && !cepMatchedIds.value.includes(Number(v.id))) {
+      return false;
+    }
     if (filters.value.search) {
       const q = filters.value.search.toLowerCase();
       const match =
@@ -1002,10 +1457,12 @@ const filteredCursos = computed(() => {
 });
 
 const openApplicationModal = (vaga) => {
+  selectedEgressoId.value = isStaff.value && props.egressosList?.length ? props.egressosList[0].id : '';
   selectedOpportunity.value = { ...vaga, kind: 'vaga' };
 };
 
 const openCourseModal = (curso) => {
+  selectedEgressoId.value = isStaff.value && props.egressosList?.length ? props.egressosList[0].id : '';
   selectedOpportunity.value = { ...curso, kind: 'curso' };
 };
 
@@ -1013,11 +1470,20 @@ const confirmApplication = async () => {
   const opp = selectedOpportunity.value;
   if (!opp) return;
 
+  if (isStaff.value && !selectedEgressoId.value) {
+    toast.error('Selecione o Egresso', 'Escolha o egresso que receberá este encaminhamento.');
+    return;
+  }
+
   try {
     const csrfToken = getCsrfToken();
     const url = opp.kind === 'curso'
       ? `/api/cursos/${opp.id}/inscrever`
       : `/api/vagas/${opp.id}/candidatar`;
+
+    const bodyPayload = isStaff.value && selectedEgressoId.value
+      ? { egresso_id: Number(selectedEgressoId.value) }
+      : {};
 
     const res = await fetch(url, {
       method: 'POST',
@@ -1027,7 +1493,7 @@ const confirmApplication = async () => {
         'Accept': 'application/json',
         ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify(bodyPayload),
     });
 
     const data = await res.json().catch(() => ({}));
@@ -1035,6 +1501,10 @@ const confirmApplication = async () => {
 
     if (res.ok) {
       if (opp.kind === 'curso') {
+        const cIdx = cursosList.value.findIndex(c => c.id === opp.id);
+        if (cIdx >= 0 && cursosList.value[cIdx].vagas_disponiveis > 0) {
+          cursosList.value[cIdx].vagas_disponiveis -= 1;
+        }
         meusCursosList.value.unshift({
           id: Date.now(),
           curso_id: opp.id,
@@ -1046,6 +1516,10 @@ const confirmApplication = async () => {
           status: 'Matrícula Confirmada',
         });
       } else {
+        const vIdx = vagasList.value.findIndex(v => v.id === opp.id);
+        if (vIdx >= 0) {
+          vagasList.value[vIdx].vagas_preenchidas = (vagasList.value[vIdx].vagas_preenchidas || 0) + 1;
+        }
         minhasCandidaturasList.value.unshift({
           id: Date.now(),
           vaga_id: opp.id,

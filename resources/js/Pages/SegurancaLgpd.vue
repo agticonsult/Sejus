@@ -19,7 +19,12 @@
 
         <div class="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 text-center">
           <span class="text-[10px] uppercase font-bold text-emerald-300 block">Status de Conformidade</span>
-          <strong class="text-xl font-extrabold text-white font-heading">100% Homologado</strong>
+          <strong class="text-xl font-extrabold text-white font-heading">
+            {{ chainIntegrity?.valid === false ? '⚠️ Alerta na Trilha' : '100% Íntegro' }}
+          </strong>
+          <span class="text-[10px] text-slate-300 block mt-0.5">
+            {{ totalAuditLogs }} registros verificados (SHA-256)
+          </span>
         </div>
       </div>
 
@@ -159,6 +164,17 @@ import AppLayout from '../Layouts/AppLayout.vue';
 import { useAccessibility } from '../Composables/useAccessibility';
 import { useToast } from '../Composables/useToast';
 
+const props = defineProps({
+  chainIntegrity: {
+    type: Object,
+    default: () => ({ valid: true, total_verified: 0 }),
+  },
+  totalAuditLogs: {
+    type: Number,
+    default: 0,
+  },
+});
+
 const { t } = useAccessibility();
 const toast = useToast();
 
@@ -176,13 +192,36 @@ const dpoForm = ref({
   tipo: 'confirmacao',
   detalhes: '',
 });
+const isSubmittingDpo = ref(false);
 
-const handleDpoRequest = () => {
-  const protocol = 'DPO-2026-' + Math.floor(10000 + Math.random() * 90000);
-  toast.success(
-    'Solicitação DPO Protocolada com Sucesso',
-    `Solicitação protocolada com sucesso junto ao Encarregado de Proteção de Dados (DPO) da SEJUS/ES.\nProtocolo de Acompanhamento: ${protocol}`
-  );
-  dpoForm.value.detalhes = '';
+const handleDpoRequest = async () => {
+  if (isSubmittingDpo.value) return;
+  isSubmittingDpo.value = true;
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const res = await fetch('/api/lgpd/solicitacao', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: JSON.stringify(dpoForm.value),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      toast.success(
+        'Solicitação DPO Protocolada com Sucesso',
+        data.message || `Solicitação protocolada junto ao DPO da SEJUS/ES.\nProtocolo: ${data.protocolo}`
+      );
+      dpoForm.value.detalhes = '';
+    } else {
+      toast.error('Falha ao Protocolar', data.error || data.message || 'Verifique os dados informados.');
+    }
+  } catch (err) {
+    toast.error('Erro de Rede', 'Falha de comunicação ao registrar o pedido ao DPO.');
+  } finally {
+    isSubmittingDpo.value = false;
+  }
 };
 </script>

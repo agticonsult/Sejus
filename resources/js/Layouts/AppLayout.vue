@@ -613,7 +613,7 @@ const navigationItems = [
     route: 'seguranca-lgpd',
     href: '/seguranca-lgpd',
     icon: ShieldCheck,
-    roles: ['gestor', 'tecnico', 'egresso', 'suporte', 'empregador'],
+    roles: ['gestor', 'tecnico', 'egresso', 'familiar', 'suporte', 'empregador'],
     dataView: 'lgpd',
   },
   // DESIGN SYSTEM & ACESSIBILIDADE

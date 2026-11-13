@@ -431,7 +431,27 @@ async def signaling_websocket_endpoint(
                     ).model_dump()
                     await room_manager.safe_send_json(current_session, alert)
 
-            # 8. Handle Leave / Room Termination
+            # 8. Handle In-Call Chat Relay
+            elif msg_type == "chat_message":
+                chat_text = str(data.get("text", "")).strip()[:1000]
+                if chat_text:
+                    outbound = {
+                        "type": "chat_message",
+                        "sender_client_id": client_id,
+                        "sender_name": client_name,
+                        "role": client_role.value,
+                        "text": chat_text,
+                        "timestamp": datetime.utcnow().strftime("%H:%M"),
+                    }
+                    await redis_bus.publish_room_event(
+                        room_id=room_id,
+                        message_type="chat_message",
+                        payload=outbound,
+                        sender_client_id=client_id,
+                    )
+                    await room_manager.broadcast_room(room_id, outbound, exclude_client_id=client_id)
+
+            # 9. Handle Leave / Room Termination
             elif msg_type == "leave":
                 reason = data.get("reason", "voluntary")
                 await room_manager.unregister_client(client_id, reason=reason)

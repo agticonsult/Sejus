@@ -18,7 +18,7 @@
           </p>
         </div>
 
-        <div class="flex flex-wrap gap-2.5">
+        <div v-if="egressoData" class="flex flex-wrap gap-2.5">
           <a
             :href="pdfDownloadUrl"
             target="_blank"
@@ -191,7 +191,7 @@
             <div class="bg-slate-50 p-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div class="flex items-center gap-4">
                 <QrCodeDisplay
-                  :value="carteiraToken"
+                  :value="validationUrl || carteiraToken"
                   :size="110"
                   id="carteiraQrCode"
                   alt="QR Code criptográfico para validação da Carteira Digital do Egresso"
@@ -301,6 +301,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  validationUrl: {
+    type: String,
+    default: '',
+  },
   pdfDownloadUrl: {
     type: String,
     default: '/carteira/pdf',
@@ -313,6 +317,7 @@ const toast = useToast();
 const searchQuery = ref('');
 const egressoData = computed(() => props.egresso);
 const carteiraToken = computed(() => props.token || '');
+const validationUrl = computed(() => props.validationUrl || (carteiraToken.value ? `/validar-carteira/${carteiraToken.value}` : ''));
 
 const handleSearch = () => {
   if (!searchQuery.value.trim()) {
@@ -341,10 +346,38 @@ const handlePrint = () => {
   }
 };
 
-const requestDuplicate = (docType) => {
-  toast.success(
-    '2ª Via Solicitada com Sucesso',
-    `Requisição de 2ª via para "${docType}" gerada com sucesso!\nO egresso receberá notificação com a data de emissão no polo de referência.`
-  );
+const isSubmittingDoc = ref(false);
+
+const requestDuplicate = async (docType) => {
+  if (!egressoData.value?.id || isSubmittingDoc.value) return;
+  isSubmittingDoc.value = true;
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const res = await fetch('/api/carteira/segunda-via', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+      },
+      body: JSON.stringify({
+        egresso_id: egressoData.value.id,
+        tipo_documento: docType,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      toast.success(
+        'Solicitação Registrada com Sucesso',
+        data.message || `Requisição para "${docType}" gravada no Prontuário Único.`
+      );
+    } else {
+      toast.error('Falha na Solicitação', data.error || data.message || 'Não foi possível registrar a solicitação.');
+    }
+  } catch (err) {
+    toast.error('Erro de Rede', 'Falha de comunicação ao registrar a solicitação.');
+  } finally {
+    isSubmittingDoc.value = false;
+  }
 };
 </script>
