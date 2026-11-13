@@ -233,5 +233,53 @@ class ProductionReadinessTest extends TestCase
         $this->assertContains(\Illuminate\Cookie\Middleware\EncryptCookies::class, $apiMiddleware);
         $this->assertContains(\Illuminate\Session\Middleware\StartSession::class, $apiMiddleware);
     }
+
+    /**
+     * 6. Regressão de Produção: /relatorios (SEGER) retorna 200, GPS fora do ES roteia para Vitória com unidades de apoio,
+     * e salas WebRTC diretas aparecem na fila do egresso.
+     */
+    public function test_relatorios_gps_out_of_state_and_webrtc_queue_regression(): void
+    {
+        $gestor = User::where('email', 'gestor@sejus.es.gov.br')->firstOrFail();
+
+        $this->actingAs($gestor)
+            ->get('/relatorios')
+            ->assertStatus(200);
+
+        $this->actingAs($gestor)
+            ->getJson('/api/kpis/telemetria')
+            ->assertStatus(200)
+            ->assertJsonStructure(['qualidade_media_mos', 'duracao_media_segundos']);
+
+        // GPS em Curitiba/PR deve detectar fora do ES e redirecionar ao Polo Central Vitória/ES com unidades > 0
+        $gpsResponse = $this->actingAs($gestor)
+            ->postJson('/api/territorios/checkin-gps', [
+                'latitude' => -25.4284,
+                'longitude' => -49.2733,
+                'consentimento_lgpd' => true,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('fora_do_estado', true)
+            ->assertJsonPath('municipio.nome', 'Vitória');
+
+        $this->assertGreaterThan(0, count($gpsResponse->json('unidades_proximas') ?? []));
+
+        // Staff inicia chamada direta WebRTC e egresso enxerga active_call na fila
+        $this->actingAs($gestor)
+            ->postJson('/api/webrtc/token', [
+                'room_id' => 'SEJUS-CALL-9988',
+                'room_code' => 'SEJUS-CALL-9988',
+                'role' => 'gestor',
+            ])
+            ->assertStatus(200);
+
+        $egressoUser = User::whereHas('egresso')->first();
+        if ($egressoUser) {
+            $filaResponse = $this->actingAs($egressoUser)
+                ->getJson('/api/atendimento/fila')
+                ->assertStatus(200);
+            $this->assertSame('SEJUS-CALL-9988', $filaResponse->json('active_call.room_code'));
+        }
+    }
 }
 

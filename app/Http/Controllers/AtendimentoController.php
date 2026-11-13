@@ -282,16 +282,18 @@ class AtendimentoController extends Controller
         $rooms = $query->get();
 
         $activeCall = null;
-        if (!$isStaff && $user && $user->egresso) {
-            $myRoom = $rooms->first(fn ($r) => $r->egresso_id === $user->egresso->id && $r->status === 'em_andamento')
-                ?? $rooms->first(fn ($r) => $r->egresso_id === $user->egresso->id && $r->status === 'aguardando');
+        if (!$isStaff) {
+            $egressoId = $user?->egresso?->id;
+            $myRoom = ($egressoId
+                ? ($rooms->first(fn ($r) => $r->egresso_id === $egressoId && $r->status === 'em_andamento')
+                    ?? $rooms->first(fn ($r) => $r->egresso_id === $egressoId && $r->status === 'aguardando'))
+                : null)
+                ?? $rooms->first(fn ($r) => $r->egresso_id === null && $r->status === 'em_andamento');
+
             if ($myRoom) {
                 $activeCall = $this->formatQueueItem($myRoom);
             }
-            // Egresso sees their own queue entry or general queue summary safely
-            $rooms = $rooms->filter(fn ($r) => $r->egresso_id === $user->egresso->id)->values();
-        } elseif (!$isStaff) {
-            $rooms = collect();
+            $rooms = $rooms->filter(fn ($r) => ($egressoId && $r->egresso_id === $egressoId) || ($r->egresso_id === null && $r->status === 'em_andamento'))->values();
         }
 
         return [

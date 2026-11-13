@@ -106,6 +106,7 @@ class WebRtcTokenController extends Controller
                 'municipio_id' => $unitId,
                 'status' => 'em_andamento',
                 'prioridade' => 'normal',
+                'motivo_atendimento' => 'Atendimento Remoto WebRTC',
                 'scheduled_at' => now(),
                 'started_at' => now(),
             ]);

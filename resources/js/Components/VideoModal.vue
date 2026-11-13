@@ -96,7 +96,7 @@
                 v-if="!hasRemoteStream"
                 class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-900/90 z-10"
               >
-                <div class="w-14 h-14 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl mb-3 animate-pulse">
+                <div class="w-14 h-14 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl mb-3">
                   👤
                 </div>
                 <h3 class="text-sm font-bold text-white mb-1">Aguardando o Egresso / Cidadão entrar...</h3>
@@ -265,7 +265,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
 
 const props = defineProps({
   isOpen: {
@@ -417,10 +417,29 @@ const appendChatMessage = (msg) => {
   });
 };
 
+const setLocalStream = async (stream) => {
+  await nextTick();
+  if (localVideoRef.value && stream) {
+    localVideoRef.value.srcObject = stream;
+    localVideoRef.value.play?.().catch(() => {});
+  }
+};
+
+const setRemoteStream = async (stream) => {
+  hasRemoteStream.value = Boolean(stream);
+  await nextTick();
+  if (remoteVideoRef.value && stream) {
+    remoteVideoRef.value.srcObject = stream;
+    remoteVideoRef.value.play?.().catch(() => {});
+  }
+};
+
 defineExpose({
   localVideoRef,
   remoteVideoRef,
   hasRemoteStream,
+  setLocalStream,
+  setRemoteStream,
   appendChatMessage,
 });
 </script>

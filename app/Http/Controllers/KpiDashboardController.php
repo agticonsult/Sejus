@@ -157,10 +157,10 @@ class KpiDashboardController extends Controller
             ];
 
             $qualidadeMediaMos = round((float) ($attendees->avg('mos_score') ?: 4.3), 2);
-            $duracaoMediaSegundos = (int) ($attendees->avg('duracao_segundos') ?: VideoRoom::avg('duracao_segundos') ?: 900);
-            $perdaPacotesPct = round((float) ($attendees->avg('packet_loss_pct') ?? 0.42), 2);
+            $duracaoMediaSegundos = (int) ($attendees->where('duration_seconds', '>', 0)->avg('duration_seconds') ?: 900);
+            $perdaPacotesPct = round((float) ($attendees->avg('packet_loss') ?? 0.42), 2);
             $latenciaMediaRtt = round((float) ($attendees->avg('rtt_ms') ?? 42.8), 1);
-            $jitterMedioMs = round((float) ($attendees->avg('jitter_ms') ?? 6.5), 1);
+            $jitterMedioMs = round((float) ($attendees->avg('jitter') ?? 6.5), 1);
         } else {
             $mosDistribution = [
                 'excelente' => 45.2,

@@ -257,9 +257,9 @@ Route::middleware(['auth'])->group(function () {
             ->when($axis === 'cursos', fn ($q) => $q->whereIn('pt.tipo_evento', ['inscricao_curso', 'curso']))
             ->when($axis === 'psicossocial', fn ($q) => $q->whereIn('pt.tipo_evento', ['acolhimento_video', 'atendimento_remoto', 'atendimento_presencial', 'evolucao_psicossocial']))
             ->when($axis === 'documentos', fn ($q) => $q->whereIn('pt.tipo_evento', ['emissao_carteira', 'segunda_via_carteira', 'documento']))
-            ->selectRaw('e.municipio_id, COUNT(*) as total')
-            ->groupBy('e.municipio_id')
-            ->pluck('total', 'municipio_id');
+            ->selectRaw('e.municipio_residencia_id, COUNT(*) as total')
+            ->groupBy('e.municipio_residencia_id')
+            ->pluck('total', 'municipio_residencia_id');
 
         $vagasByMun = \Illuminate\Support\Facades\DB::table('vagas_emprego')
             ->selectRaw('municipio_id, COALESCE(SUM(vagas_preenchidas), 0) as preenchidas, COUNT(*) as total_vagas')
@@ -298,9 +298,9 @@ Route::middleware(['auth'])->group(function () {
             ->count() + $videoCount;
         $taxaVideoPct = $totalAtendimentos > 0 ? round(($videoTimelineCount / $totalAtendimentos) * 100, 1) : 0.0;
 
-        $avgDurationSec = (int) (\App\Models\VideoRoom::when($since, fn ($q) => $q->where('created_at', '>=', $since))
-            ->where('duracao_segundos', '>', 0)
-            ->avg('duracao_segundos') ?: 0);
+        $avgDurationSec = (int) (\App\Models\VideoAttendee::when($since, fn ($q) => $q->where('created_at', '>=', $since))
+            ->where('duration_seconds', '>', 0)
+            ->avg('duration_seconds') ?: 0);
 
         $vagasPreenchidasTotal = (int) \App\Models\VagaEmprego::sum('vagas_preenchidas');
         $prontTotal = \App\Models\Prontuario::count();

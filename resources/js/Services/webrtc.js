@@ -24,12 +24,15 @@ export class WebRTCClient {
     this.screenStream = null;
 
     this.isPolite = ['attendee', 'egresso', 'familiar'].includes(this.role.toLowerCase());
+    this.clientId = null;
+    this.remotePeerId = null;
     this.makingOffer = false;
     this.ignoreOffer = false;
     this.isSettingRemoteAnswerPending = false;
 
     this.statsInterval = null;
     this.pingInterval = null;
+    this._fallbackInterval = null;
     this.previousStats = null;
     this.isConnected = false;
 
@@ -92,31 +95,32 @@ export class WebRTCClient {
     switch (data.type) {
       case 'joined':
       case 'room_joined':
+        if (data.client_id) {
+          this.clientId = data.client_id;
+        }
+        if (typeof data.polite === 'boolean') {
+          this.isPolite = data.polite;
+        }
         if (data.ice_servers && Array.isArray(data.ice_servers)) {
           this.iceServers = data.ice_servers;
         }
         this.onJoined(data);
         await this.initPeerConnection();
+        if (Array.isArray(data.peers) && data.peers.length > 0) {
+          const firstPeer = data.peers[0];
+          this.remotePeerId = firstPeer.client_id || null;
+          this.onPeerJoined({ peer: firstPeer });
+          await this._makeOffer();
+        }
         break;
 
       case 'peer_joined':
+        if (data.peer?.client_id) {
+          this.remotePeerId = data.peer.client_id;
+        }
         this.onPeerJoined(data);
         if (!this.isPolite && this.peerConnection) {
-          this.makingOffer = true;
-          try {
-            const offer = await this.peerConnection.createOffer();
-            await this.peerConnection.setLocalDescription(offer);
-            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-              this.ws.send(JSON.stringify({
-                type: 'offer',
-                sdp: this.peerConnection.localDescription.sdp,
-              }));
-            }
-          } catch (err) {
-            this.onError(err);
-          } finally {
-            this.makingOffer = false;
-          }
+          await this._makeOffer();
         }
         break;
 
@@ -216,11 +220,34 @@ export class WebRTCClient {
     this.startStatsPolling(2000);
   }
 
+  async _makeOffer() {
+    if (!this.peerConnection) await this.initPeerConnection();
+    if (!this.peerConnection || this.makingOffer) return;
+    this.makingOffer = true;
+    try {
+      const offer = await this.peerConnection.createOffer();
+      await this.peerConnection.setLocalDescription(offer);
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type: 'offer',
+          sdp: this.peerConnection.localDescription.sdp,
+        }));
+      }
+    } catch (err) {
+      this.onError(err);
+    } finally {
+      this.makingOffer = false;
+    }
+  }
+
   async _handleOffer(data) {
     if (!this.peerConnection) await this.initPeerConnection();
 
     const offerCollision = this.makingOffer || this.peerConnection.signalingState !== 'stable';
-    this.ignoreOffer = !this.isPolite && offerCollision;
+    const politeForGlare = (this.remotePeerId && this.clientId)
+      ? (String(this.clientId) < String(this.remotePeerId))
+      : this.isPolite;
+    this.ignoreOffer = !politeForGlare && offerCollision;
     if (this.ignoreOffer) return;
 
     await this.peerConnection.setRemoteDescription({ type: 'offer', sdp: data.sdp });
@@ -261,29 +288,62 @@ export class WebRTCClient {
         this.localStream = this._createFallbackMediaStream();
       }
     } catch (err) {
-      console.warn('getUserMedia failed, falling back to synthetic stream:', err.message);
-      this.localStream = this._createFallbackMediaStream();
+      console.warn('getUserMedia (audio+video) failed, trying audio-only + fallback video:', err.message);
+      let audioStream = null;
+      if (constraints.audio && typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+        try {
+          audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        } catch (_) {
+          audioStream = null;
+        }
+      }
+      const fallbackVideoStream = this._createFallbackMediaStream();
+      if (audioStream && fallbackVideoStream) {
+        audioStream.getAudioTracks().forEach((track) => fallbackVideoStream.addTrack(track));
+        this.localStream = fallbackVideoStream;
+      } else {
+        this.localStream = audioStream || fallbackVideoStream;
+      }
     }
     return this.localStream;
   }
 
   /**
-   * Safe fallback for headless test runners / CI without physical cameras.
+   * Safe fallback for headless test runners / desktops without physical cameras.
    */
   _createFallbackMediaStream() {
     if (typeof document === 'undefined') return null;
+    if (this._fallbackInterval) {
+      clearInterval(this._fallbackInterval);
+      this._fallbackInterval = null;
+    }
     const canvas = document.createElement('canvas');
     canvas.width = 640;
     canvas.height = 480;
     const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#003366';
+    const drawFrame = () => {
+      if (!ctx) return;
+      ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, 640, 480);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '20px sans-serif';
-      ctx.fillText('SEJUS/ES - Sinal de Vídeo Simulado', 50, 240);
-    }
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(0, 0, 640, 8);
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('SEJUS/ES — Conecta Egresso', 48, 210);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '16px sans-serif';
+      ctx.fillText(`Participante: ${this.userName} (${new Date().toLocaleTimeString('pt-BR')})`, 48, 250);
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(56, 290, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#34d399';
+      ctx.font = '14px sans-serif';
+      ctx.fillText('Sinal WebRTC Ativo (Áudio / Vídeo Virtual)', 72, 295);
+    };
+    drawFrame();
     const stream = canvas.captureStream ? canvas.captureStream(15) : new MediaStream();
+    this._fallbackInterval = setInterval(drawFrame, 250);
     return stream;
   }
 
@@ -463,6 +523,10 @@ export class WebRTCClient {
   endCall(reason = 'voluntary') {
     this._stopStatsPolling();
     this._stopHeartbeat();
+    if (this._fallbackInterval) {
+      clearInterval(this._fallbackInterval);
+      this._fallbackInterval = null;
+    }
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: 'leave', reason }));
       this.ws.close();

@@ -54,7 +54,7 @@
       <!-- Egresso/Familiar Call Ready Banner -->
       <div
         v-if="!isStaff && activeCall && activeCall.status === 'em_andamento'"
-        class="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-5 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse"
+        class="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-5 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4"
       >
         <div class="flex items-center gap-3">
           <div class="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xl">
@@ -649,7 +649,9 @@ const initWebRTC = async () => {
         });
       },
       onRemoteStream: (stream) => {
-        if (videoModalRef.value) {
+        if (videoModalRef.value?.setRemoteStream) {
+          videoModalRef.value.setRemoteStream(stream);
+        } else if (videoModalRef.value) {
           videoModalRef.value.hasRemoteStream = true;
           if (videoModalRef.value.remoteVideoRef) {
             videoModalRef.value.remoteVideoRef.srcObject = stream;
@@ -673,8 +675,12 @@ const initWebRTC = async () => {
     });
 
     const localStream = await rtcClient.startLocalMedia({ audio: true, video: true });
-    if (localStream && videoModalRef.value?.localVideoRef) {
-      videoModalRef.value.localVideoRef.srcObject = localStream;
+    if (localStream) {
+      if (videoModalRef.value?.setLocalStream) {
+        await videoModalRef.value.setLocalStream(localStream);
+      } else if (videoModalRef.value?.localVideoRef) {
+        videoModalRef.value.localVideoRef.srcObject = localStream;
+      }
     }
 
     if (token) {

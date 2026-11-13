@@ -109,7 +109,7 @@ def is_polite_peer(role: str | ClientRole) -> bool:
     else:
         norm_role = role
 
-    return norm_role != ClientRole.TECHNICIAN
+    return norm_role not in (ClientRole.TECHNICIAN, ClientRole.GESTOR)
 
 
 def create_access_token(

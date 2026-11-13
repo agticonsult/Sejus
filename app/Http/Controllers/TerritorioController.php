@@ -230,13 +230,22 @@ class TerritorioController extends Controller
             return response()->json(['error' => 'Não há municípios com coordenadas cadastradas.'], 422);
         }
 
+        // Detect out-of-state GPS coordinates (> 80 km from the nearest ES border pole)
+        $foraDoEstado = $minDistKm > 80.0;
+        $targetMunicipio = $foraDoEstado
+            ? (MunicipioEs::where('nome', 'Vitória')->first() ?? $nearest)
+            : $nearest;
+
         $prontuarioId = null;
         if ($user->egresso) {
-            $user->egresso->update([
+            $updateData = [
                 'consentimento_geolocalizacao' => true,
                 'termo_aceito_em' => $user->egresso->termo_aceito_em ?? now(),
-                'municipio_residencia_id' => $nearest->id,
-            ]);
+            ];
+            if (!$foraDoEstado || !$user->egresso->municipio_residencia_id) {
+                $updateData['municipio_residencia_id'] = $targetMunicipio->id;
+            }
+            $user->egresso->update($updateData);
             $prontuario = Prontuario::firstOrCreate(
                 ['egresso_id' => $user->egresso->id],
                 [
@@ -252,13 +261,16 @@ class TerritorioController extends Controller
                 'prontuario_id' => $prontuarioId,
                 'tipo_evento' => 'parecer_tecnico',
                 'titulo' => 'Check-in Territorial GPS (Consentimento LGPD)',
-                'descricao' => "Localização territorial registrada via GPS em {$nearest->nome}/ES (~" . round($minDistKm, 1) . ' km do centro do polo).',
+                'descricao' => $foraDoEstado
+                    ? "Check-in GPS detectado fora do ES (~" . round($minDistKm, 0) . " km). Atendimento direcionado ao Polo Central de {$targetMunicipio->nome}/ES."
+                    : "Localização territorial registrada via GPS em {$targetMunicipio->nome}/ES (~" . round($minDistKm, 1) . ' km do centro do polo).',
                 'metadata' => [
-                    'municipio' => $nearest->nome,
-                    'codigo_ibge' => $nearest->codigo_ibge,
+                    'municipio' => $targetMunicipio->nome,
+                    'codigo_ibge' => $targetMunicipio->codigo_ibge,
                     'latitude' => round($lat, 5),
                     'longitude' => round($lon, 5),
                     'distancia_km' => round($minDistKm, 2),
+                    'fora_do_estado' => $foraDoEstado,
                 ],
                 'responsavel_id' => $user->id,
                 'data_evento' => now(),
@@ -266,41 +278,63 @@ class TerritorioController extends Controller
         }
 
         $audit->log($prontuarioId, 'TERRITORIO_GPS_CHECKIN', [
-            'municipio_id' => $nearest->id,
-            'municipio_nome' => $nearest->nome,
+            'municipio_id' => $targetMunicipio->id,
+            'municipio_nome' => $targetMunicipio->nome,
             'distancia_km' => round($minDistKm, 2),
+            'fora_do_estado' => $foraDoEstado,
             'consentimento_lgpd' => true,
         ], $user->id, $request->ip(), $request->userAgent());
 
-        $unidades = RedeApoio::where('municipio_id', $nearest->id)
+        $refLat = $foraDoEstado ? (float) $targetMunicipio->latitude : $lat;
+        $refLon = $foraDoEstado ? (float) $targetMunicipio->longitude : $lon;
+
+        $unidadesLocais = RedeApoio::where('municipio_id', $targetMunicipio->id)
             ->where('ativo', true)
-            ->get()
-            ->map(function ($u) use ($lat, $lon, $nearest, $geoService) {
-                $uLat = (float) ($u->latitude ?? $nearest->latitude);
-                $uLon = (float) ($u->longitude ?? $nearest->longitude);
+            ->get();
+        $usouFallbackRegional = $unidadesLocais->isEmpty();
+
+        $unidadesFonte = $usouFallbackRegional
+            ? RedeApoio::with('municipio')->where('ativo', true)->get()
+            : $unidadesLocais;
+
+        $unidades = $unidadesFonte
+            ->map(function ($u) use ($refLat, $refLon, $targetMunicipio, $geoService) {
+                $uLat = (float) ($u->latitude ?? $u->municipio?->latitude ?? $targetMunicipio->latitude);
+                $uLon = (float) ($u->longitude ?? $u->municipio?->longitude ?? $targetMunicipio->longitude);
                 return [
                     'id' => $u->id,
+                    'municipio_id' => $u->municipio_id,
                     'nome' => $u->nome,
                     'tipo' => $u->tipo,
                     'endereco' => $u->endereco,
                     'telefone' => $u->telefone,
                     'horario' => $u->horario_funcionamento,
-                    'distancia_km' => round($geoService->calculateDistanceKm($lat, $lon, $uLat, $uLon), 1),
+                    'distancia_km' => round($geoService->calculateDistanceKm($refLat, $refLon, $uLat, $uLon), 1),
                 ];
             })
             ->sortBy('distancia_km')
+            ->take($usouFallbackRegional ? 6 : 20)
             ->values();
+
+        if ($foraDoEstado) {
+            $msg = "Coordenadas GPS detectadas fora do Espírito Santo (~" . round($minDistKm, 0) . " km). Direcionado ao Polo Central de {$targetMunicipio->nome}/ES ({$unidades->count()} unidades de apoio disponíveis).";
+        } elseif ($usouFallbackRegional) {
+            $msg = "Localização confirmada em {$targetMunicipio->nome}/ES ({$unidades->count()} unidades de apoio regionais mais próximas).";
+        } else {
+            $msg = "Localização confirmada em {$targetMunicipio->nome}/ES ({$unidades->count()} unidades de apoio próximas).";
+        }
 
         return response()->json([
             'status' => 'success',
+            'fora_do_estado' => $foraDoEstado,
             'municipio' => [
-                'id' => $nearest->id,
-                'codigo_ibge' => (string) $nearest->codigo_ibge,
-                'nome' => $nearest->nome,
+                'id' => $targetMunicipio->id,
+                'codigo_ibge' => (string) $targetMunicipio->codigo_ibge,
+                'nome' => $targetMunicipio->nome,
                 'distancia_km' => round($minDistKm, 1),
             ],
             'unidades_proximas' => $unidades,
-            'message' => "Localização confirmada em {$nearest->nome}/ES ({$unidades->count()} unidades de apoio próximas).",
+            'message' => $msg,
         ]);
     }
 }

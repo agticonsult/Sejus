@@ -46,7 +46,9 @@
       <div v-if="gpsResult" class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="space-y-1">
           <strong class="text-sm font-extrabold text-emerald-950 block">
-            ✅ Check-in Territorial Confirmado: {{ gpsResult.municipio.nome }}/ES (~{{ gpsResult.municipio.distancia_km }} km)
+            {{ gpsResult.fora_do_estado
+              ? `🌐 Atendimento Estadual Centralizado: ${gpsResult.municipio.nome}/ES`
+              : `✅ Check-in Territorial Confirmado: ${gpsResult.municipio.nome}/ES (~${gpsResult.municipio.distancia_km} km)` }}
           </strong>
           <p class="text-xs text-emerald-800">
             {{ gpsResult.message }}
@@ -392,7 +394,16 @@ const selectedMuni = ref(
 
 const selectedMuniServices = computed(() => {
   if (!selectedMuni.value) return [];
-  return units.value.filter(u => Number(u.municipio_id) === Number(selectedMuni.value.id));
+  const local = units.value.filter(u => Number(u.municipio_id) === Number(selectedMuni.value.id));
+  if (local.length > 0) return local;
+  if (
+    gpsResult.value
+    && Number(gpsResult.value.municipio?.id) === Number(selectedMuni.value.id)
+    && Array.isArray(gpsResult.value.unidades_proximas)
+  ) {
+    return gpsResult.value.unidades_proximas;
+  }
+  return [];
 });
 
 const filteredMunicipalities = computed(() => {

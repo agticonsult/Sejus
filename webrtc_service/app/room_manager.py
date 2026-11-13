@@ -86,7 +86,7 @@ class Room:
 
     @property
     def technician_count(self) -> int:
-        return sum(1 for c in self.clients.values() if c.role == ClientRole.TECHNICIAN and c.is_connected)
+        return sum(1 for c in self.clients.values() if c.role in (ClientRole.TECHNICIAN, ClientRole.GESTOR) and c.is_connected)
 
     @property
     def attendee_count(self) -> int:
@@ -112,7 +112,7 @@ class Room:
         has_tech = self.technician_count > 0
         has_att = self.attendee_count > 0
 
-        if has_tech and has_att:
+        if (has_tech and has_att) or active_count >= 2:
             if self.state != RoomState.IN_PROGRESS:
                 self.state = RoomState.IN_PROGRESS
                 if not self.started_at:
