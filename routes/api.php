@@ -105,23 +105,19 @@ Route::middleware(['web', 'auth.mobile:optional'])->group(function () {
     Route::apiResource('users', UserController::class);
     Route::apiResource('usuarios', UserController::class)->names('api.usuarios');
 
-    // Management KPIs & Analytics
-    Route::prefix('kpis')->group(function () {
+    // Management KPIs & Analytics (Protected for Staff)
+    Route::prefix('kpis')->middleware(['role:gestor,tecnico,suporte'])->group(function () {
         Route::get('dashboard', [KpiDashboardController::class, 'dashboard'])->name('api.kpis.dashboard');
         Route::get('regional', [KpiDashboardController::class, 'regional'])->name('api.kpis.regional');
         Route::get('timeline', [KpiDashboardController::class, 'timeline'])->name('api.kpis.timeline');
         Route::get('telemetria', [KpiDashboardController::class, 'telemetria'])->name('api.kpis.telemetria');
     });
-});
 
-/*
-|--------------------------------------------------------------------------
-| Google Meet API Routes (Milestone 3)
-|--------------------------------------------------------------------------
-*/
-Route::prefix('meet')->name('api.meet.')->group(function () {
-    Route::post('/rooms', [\App\Http\Controllers\Api\GoogleMeetController::class, 'createRoom'])->name('rooms.create');
-    Route::get('/rooms/{id}', [\App\Http\Controllers\Api\GoogleMeetController::class, 'getRoom'])->where('id', '.*')->name('rooms.show');
-    Route::post('/conferences/sync', [\App\Http\Controllers\Api\GoogleMeetController::class, 'syncConference'])->name('conferences.sync');
-    Route::get('/conferences/{id}', [\App\Http\Controllers\Api\GoogleMeetController::class, 'getConference'])->where('id', '.*')->name('conferences.show');
+    // Google Meet API Routes (Milestone 3 - Strict Staff RBAC Protection)
+    Route::prefix('meet')->name('api.meet.')->middleware(['role:gestor,tecnico,suporte'])->group(function () {
+        Route::post('/rooms', [\App\Http\Controllers\Api\GoogleMeetController::class, 'createRoom'])->name('rooms.create');
+        Route::get('/rooms/{id}', [\App\Http\Controllers\Api\GoogleMeetController::class, 'getRoom'])->where('id', '.*')->name('rooms.show');
+        Route::post('/conferences/sync', [\App\Http\Controllers\Api\GoogleMeetController::class, 'syncConference'])->name('conferences.sync');
+        Route::get('/conferences/{id}', [\App\Http\Controllers\Api\GoogleMeetController::class, 'getConference'])->where('id', '.*')->name('conferences.show');
+    });
 });

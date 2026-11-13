@@ -20,7 +20,10 @@ class WebRtcJwtService
         } elseif (function_exists('env') && env('WEBRTC_JWT_SECRET')) {
             $this->secretKey = (string) env('WEBRTC_JWT_SECRET');
         } else {
-            $this->secretKey = (string) (getenv('WEBRTC_JWT_SECRET') ?: 'sejus_jwt_shared_secret_2026');
+            $this->secretKey = (string) (getenv('WEBRTC_JWT_SECRET') ?: '');
+            if (empty($this->secretKey) && function_exists('app') && app()->environment('production')) {
+                throw new \RuntimeException("WEBRTC_JWT_SECRET não configurada no ambiente de produção.");
+            }
         }
 
         $this->issuer = 'conecta-egresso-laravel';

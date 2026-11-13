@@ -19,18 +19,17 @@ Route::get('/', function () {
 Route::get('/validar-carteira/{token}', [CarteiraValidationController::class, 'validar'])->name('carteira.validar');
 Route::get('/validar-carteira', [CarteiraValidationController::class, 'validarPublico'])->name('carteira.validar.publico');
 
-// Carteira PDF Export (Controller enforces authentication in production)
-Route::get('/carteira/pdf', [CarteiraPdfController::class, 'download'])->name('carteira.pdf');
-
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/auth/govbr/login', [AuthController::class, 'govbrLogin'])->name('auth.govbr.login');
 Route::post('/auth/switch-role', [AuthController::class, 'switchRole'])->name('auth.switch_role');
 
-// Authenticated Application Routes
 Route::middleware(['auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Carteira PDF Export (Protected for authenticated users)
+    Route::get('/carteira/pdf', [CarteiraPdfController::class, 'download'])->name('carteira.pdf');
 
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');

@@ -17,7 +17,10 @@ class QrCodeSecurityService
     public function __construct(LgpdSecurityService $lgpdService, ?string $signingKey = null)
     {
         $this->lgpdService = $lgpdService;
-        $this->signingKey = $signingKey ?? config('services.carteira.signing_key', env('CARTEIRA_SIGNING_KEY', 'sejus_carteira_digital_master_key_2026'));
+        $this->signingKey = $signingKey ?? config('services.carteira.signing_key') ?? env('CARTEIRA_SIGNING_KEY') ?? '';
+        if (empty($this->signingKey) && app()->environment('production')) {
+            throw new \RuntimeException("CARTEIRA_SIGNING_KEY não configurada no ambiente de produção.");
+        }
     }
 
     /**

@@ -21,6 +21,6 @@ return [
     'maintenance' => [
         'driver' => 'file',
     ],
-    'lgpd_pepper' => env('LGPD_PEPPER_KEY', 'conecta_egresso_lgpd_pepper_2026_sejus_es'),
-    'carteira_signing_key' => env('CARTEIRA_SIGNING_KEY', 'sejus_carteira_digital_master_key_2026'),
+    'lgpd_pepper' => env('LGPD_PEPPER_KEY'),
+    'carteira_signing_key' => env('CARTEIRA_SIGNING_KEY'),
 ];

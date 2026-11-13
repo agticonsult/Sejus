@@ -23,11 +23,11 @@ return [
     ],
 
     'lgpd' => [
-        'pepper' => env('LGPD_PEPPER_KEY', 'conecta_egresso_lgpd_pepper_2026_sejus_es'),
+        'pepper' => env('LGPD_PEPPER_KEY'),
     ],
 
     'carteira' => [
-        'signing_key' => env('CARTEIRA_SIGNING_KEY', 'sejus_carteira_digital_master_key_2026'),
+        'signing_key' => env('CARTEIRA_SIGNING_KEY'),
     ],
 
     'document_generator' => [
@@ -38,12 +38,12 @@ return [
 
     'webrtc' => [
         'service_url' => env('WEBRTC_SERVICE_URL', 'http://python:8001'),
-        'webhook_secret' => env('WEBRTC_WEBHOOK_SECRET', 'sejus_webrtc_webhook_secret_2026'),
-        'jwt_secret' => env('WEBRTC_JWT_SECRET', 'sejus_jwt_shared_secret_2026'),
+        'webhook_secret' => env('WEBRTC_WEBHOOK_SECRET'),
+        'jwt_secret' => env('WEBRTC_JWT_SECRET'),
         'coturn' => [
             'host' => env('COTURN_HOST', 'coturn'),
             'port' => env('COTURN_PORT', 3478),
-            'secret' => env('COTURN_SECRET', 'sejus_turn_secret_key_2026'),
+            'secret' => env('COTURN_SECRET'),
             'realm' => env('COTURN_REALM', 'sejus.es.gov.br'),
         ],
     ],

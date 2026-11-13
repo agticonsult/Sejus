@@ -12,7 +12,10 @@ class LgpdSecurityService
 
     public function __construct(?string $pepperKey = null)
     {
-        $this->pepperKey = $pepperKey ?? config('services.lgpd.pepper', env('LGPD_PEPPER_KEY', 'conecta_egresso_lgpd_pepper_2026_sejus_es'));
+        $this->pepperKey = $pepperKey ?? config('services.lgpd.pepper') ?? env('LGPD_PEPPER_KEY') ?? '';
+        if (empty($this->pepperKey) && app()->environment('production')) {
+            throw new \RuntimeException("LGPD_PEPPER_KEY não configurada no ambiente de produção.");
+        }
     }
 
     /**
