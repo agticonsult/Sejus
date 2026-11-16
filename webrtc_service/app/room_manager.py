@@ -3,6 +3,7 @@ Room Lifecycle & WebSocket Connection Manager with Thread-Safe Locks & State Mac
 """
 
 import asyncio
+import json
 import logging
 from typing import Dict, Optional, List, Any, Callable, Awaitable
 from datetime import datetime, timedelta
@@ -276,11 +277,12 @@ class RoomManager:
         if not client.is_connected:
             return False
         try:
+            safe_payload = json.loads(json.dumps(data, default=str))
             async with client.send_lock:
-                await client.websocket.send_json(data)
+                await client.websocket.send_json(safe_payload)
             return True
         except Exception as exc:
-            logger.debug(f"Error sending JSON to client {client.client_id}: {exc}")
+            logger.warning(f"Error sending JSON to client {client.client_id}: {exc}")
             client.is_connected = False
             return False
 
@@ -324,7 +326,7 @@ class RoomManager:
             termination_msg = RoomTerminatedMessage(
                 reason=reason,
                 duration_seconds=room.duration_seconds
-            ).model_dump()
+            ).model_dump(mode="json")
 
             # Broadcast termination
             for client in list(room.clients.values()):

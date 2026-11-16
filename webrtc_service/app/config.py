@@ -105,11 +105,12 @@ class Settings(BaseSettings):
     @property
     def ice_servers(self) -> List[Dict[str, Any]]:
         servers: List[Dict[str, Any]] = []
-        stun_url = self.STUN_SERVER_URL
-        if self.COTURN_HOST:
-            stun_url = f"stun:{self.COTURN_HOST}:{self.COTURN_PORT}"
-        if stun_url:
-            servers.append({"urls": stun_url})
+        if self.STUN_SERVER_URL:
+            servers.append({"urls": self.STUN_SERVER_URL})
+        if self.COTURN_HOST and self.COTURN_HOST not in ("coturn", "localhost", "127.0.0.1"):
+            coturn_stun = f"stun:{self.COTURN_HOST}:{self.COTURN_PORT}"
+            if coturn_stun != self.STUN_SERVER_URL:
+                servers.append({"urls": coturn_stun})
 
         turn_base = self.TURN_SERVER_URL
         if self.COTURN_HOST:

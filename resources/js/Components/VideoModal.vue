@@ -13,7 +13,7 @@
       <!-- Header -->
       <div class="modal-header px-6 py-4 bg-slate-800/90 border-b border-slate-700 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+          <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
           <div>
             <h2 id="videoModalTitle" class="text-base font-extrabold text-white leading-tight">
               Atendimento Remoto Seguro — Sala #{{ roomId || 'SEJUS-ES-2026' }}
@@ -40,14 +40,14 @@
           <div
             class="telemetry-badge flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition"
             :class="telemetryBadgeClass"
-            :title="`MOS: ${telemetry.mos.toFixed(1)} | RTT: ${telemetry.rtt_ms}ms | Jitter: ${telemetry.jitter_ms}ms | Perda: ${telemetry.packet_loss_pct.toFixed(1)}%`"
+            :title="`MOS: ${safeTelemetry.mos.toFixed(1)} | RTT: ${safeTelemetry.rtt_ms}ms | Jitter: ${safeTelemetry.jitter_ms}ms | Perda: ${safeTelemetry.packet_loss_pct.toFixed(1)}%`"
           >
             <span class="signal-bars flex items-end gap-0.5 h-3">
-              <span class="w-1 bg-current rounded-xs" :class="telemetry.mos >= 2.5 ? 'h-1.5' : 'h-1'"></span>
-              <span class="w-1 bg-current rounded-xs" :class="telemetry.mos >= 3.2 ? 'h-2.5' : 'h-1 opacity-30'"></span>
-              <span class="w-1 bg-current rounded-xs" :class="telemetry.mos >= 4.0 ? 'h-3.5' : 'h-1 opacity-30'"></span>
+              <span class="w-1 bg-current rounded-xs" :class="safeTelemetry.mos >= 2.5 ? 'h-1.5' : 'h-1'"></span>
+              <span class="w-1 bg-current rounded-xs" :class="safeTelemetry.mos >= 3.2 ? 'h-2.5' : 'h-1 opacity-30'"></span>
+              <span class="w-1 bg-current rounded-xs" :class="safeTelemetry.mos >= 4.0 ? 'h-3.5' : 'h-1 opacity-30'"></span>
             </span>
-            <span>MOS {{ telemetry.mos.toFixed(1) }} ({{ telemetry.quality_tier }})</span>
+            <span>MOS {{ safeTelemetry.mos.toFixed(1) }} ({{ safeTelemetry.quality_tier }})</span>
           </div>
 
           <button
@@ -63,10 +63,10 @@
 
       <!-- Network Degradation Alert Banner -->
       <div
-        v-if="telemetry.mos < 3.2 && telemetry.mos > 0"
+        v-if="safeTelemetry.mos < 3.2 && safeTelemetry.mos > 0"
         class="bg-amber-500/20 border-b border-amber-500/40 text-amber-200 px-6 py-2 text-xs flex items-center justify-between"
       >
-        <span>⚠️ Conexão instável (MOS {{ telemetry.mos.toFixed(1) }}). Sugerimos desativar o vídeo para priorizar o áudio com nitidez.</span>
+        <span>⚠️ Conexão instável (MOS {{ safeTelemetry.mos.toFixed(1) }}). Sugerimos desativar o vídeo para priorizar o áudio com nitidez.</span>
         <button
           type="button"
           class="underline font-bold hover:text-white ml-3"
@@ -194,7 +194,7 @@
       <div class="modal-footer px-6 py-4 bg-slate-800 border-t border-slate-700 flex items-center justify-between flex-wrap gap-3">
         <!-- Call Duration Timer -->
         <div class="call-timer font-mono text-sm font-bold text-slate-300 flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+          <span class="w-2 h-2 rounded-full bg-red-500"></span>
           <span>Duração: {{ formattedDuration }}</span>
         </div>
 
@@ -314,6 +314,14 @@ const props = defineProps({
       packet_loss_pct: 0.2,
     }),
   },
+  localStream: {
+    type: Object,
+    default: null,
+  },
+  remoteStream: {
+    type: Object,
+    default: null,
+  },
 });
 
 const emit = defineEmits([
@@ -362,24 +370,69 @@ const formattedDuration = computed(() => {
   return `${m}:${s}`;
 });
 
+const safeTelemetry = computed(() => {
+  const t = props.telemetry || {};
+  const mosNum = Number(t.mos);
+  const rttNum = Number(t.rtt_ms);
+  const jitterNum = Number(t.jitter_ms);
+  const lossNum = Number(t.packet_loss_pct);
+  return {
+    mos: Number.isFinite(mosNum) && mosNum > 0 ? mosNum : 4.3,
+    quality_tier: t.quality_tier || 'Excelente (4G/Wi-Fi)',
+    rtt_ms: Number.isFinite(rttNum) ? rttNum : 38,
+    jitter_ms: Number.isFinite(jitterNum) ? jitterNum : 6,
+    packet_loss_pct: Number.isFinite(lossNum) ? lossNum : 0.1,
+  };
+});
+
 const telemetryBadgeClass = computed(() => {
-  const mos = props.telemetry.mos || 4.0;
+  const mos = safeTelemetry.value.mos;
   if (mos >= 4.0) return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
   if (mos >= 3.2) return 'bg-sky-500/20 text-sky-300 border-sky-500/40';
   if (mos >= 2.5) return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
   return 'bg-red-500/20 text-red-300 border-red-500/40';
 });
 
-watch(() => props.isOpen, (newVal) => {
+const syncStreamToVideo = async (videoEl, stream) => {
+  if (!videoEl) return;
+  if (stream && videoEl.srcObject !== stream) {
+    videoEl.srcObject = stream;
+    try {
+      await videoEl.play?.();
+    } catch (_) {}
+  } else if (!stream && videoEl.srcObject) {
+    videoEl.srcObject = null;
+  }
+};
+
+watch(() => props.isOpen, async (newVal) => {
   if (newVal) {
     callDurationSeconds.value = 0;
     if (durationTimer) clearInterval(durationTimer);
     durationTimer = setInterval(() => {
       callDurationSeconds.value += 1;
     }, 1000);
+    await nextTick();
+    if (props.localStream) await syncStreamToVideo(localVideoRef.value, props.localStream);
+    if (props.remoteStream) {
+      hasRemoteStream.value = true;
+      await syncStreamToVideo(remoteVideoRef.value, props.remoteStream);
+    }
   } else {
+    hasRemoteStream.value = false;
     if (durationTimer) clearInterval(durationTimer);
   }
+});
+
+watch(() => props.localStream, async (newStream) => {
+  await nextTick();
+  await syncStreamToVideo(localVideoRef.value, newStream);
+});
+
+watch(() => props.remoteStream, async (newStream) => {
+  hasRemoteStream.value = Boolean(newStream);
+  await nextTick();
+  await syncStreamToVideo(remoteVideoRef.value, newStream);
 });
 
 onBeforeUnmount(() => {

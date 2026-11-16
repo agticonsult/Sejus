@@ -115,7 +115,7 @@ async def on_room_session_ended(room: Room):
     for cid, client in list(room.clients.items()):
         summary = aggregator.generate_summary(cid)
         if summary:
-            summaries.append(summary.model_dump())
+            summaries.append(summary.model_dump(mode="json"))
 
     # Build primary summary or fallback
     primary_summary = summaries[0] if summaries else {
@@ -173,7 +173,7 @@ async def signaling_websocket_endpoint(
             client_name = claims.name
             uid = claims.user_id
         except AuthError as ae:
-            await websocket.send_json(ErrorMessage(code=ae.code, message=ae.message).model_dump())
+            await websocket.send_json(ErrorMessage(code=ae.code, message=ae.message).model_dump(mode="json"))
             await websocket.close(code=ae.close_code, reason=ae.message)
             return
 
@@ -207,10 +207,10 @@ async def signaling_websocket_endpoint(
                 polite=polite,
                 peers=peers,
                 ice_servers=settings.ice_servers
-            ).model_dump())
+            ).model_dump(mode="json"))
 
             # Notify peers via PubSub / local
-            peer_joined_payload = PeerJoinedMessage(peer=current_session.to_participant_info()).model_dump()
+            peer_joined_payload = PeerJoinedMessage(peer=current_session.to_participant_info()).model_dump(mode="json")
             await redis_bus.publish_room_event(
                 room_id=room_id,
                 message_type="peer_joined",
@@ -229,7 +229,7 @@ async def signaling_websocket_endpoint(
                     await room_manager.safe_send_json(current_session, ErrorMessage(
                         code="INVALID_JSON",
                         message="Malformed JSON message payload"
-                    ).model_dump())
+                    ).model_dump(mode="json"))
                 continue
 
             msg_type = data.get("type")
@@ -247,7 +247,7 @@ async def signaling_websocket_endpoint(
                     client_name = claims.name
                     uid = claims.user_id
                 except AuthError as ae:
-                    await websocket.send_json(ErrorMessage(code=ae.code, message=ae.message).model_dump())
+                    await websocket.send_json(ErrorMessage(code=ae.code, message=ae.message).model_dump(mode="json"))
                     await websocket.close(code=ae.close_code, reason=ae.message)
                     return
 
@@ -279,9 +279,9 @@ async def signaling_websocket_endpoint(
                     polite=polite,
                     peers=peers,
                     ice_servers=settings.ice_servers
-                ).model_dump())
+                ).model_dump(mode="json"))
 
-                peer_joined_payload = PeerJoinedMessage(peer=current_session.to_participant_info()).model_dump()
+                peer_joined_payload = PeerJoinedMessage(peer=current_session.to_participant_info()).model_dump(mode="json")
                 await redis_bus.publish_room_event(
                     room_id=room_id,
                     message_type="peer_joined",
@@ -294,7 +294,7 @@ async def signaling_websocket_endpoint(
                 await websocket.send_json(ErrorMessage(
                     code="UNAUTHENTICATED",
                     message="Must join before sending signaling messages"
-                ).model_dump())
+                ).model_dump(mode="json"))
                 continue
 
             # 3. Handle SDP Offer Relay
@@ -389,7 +389,7 @@ async def signaling_websocket_endpoint(
                     client_id=client_id,
                     user_id=uid,
                     media_state=current_session.media_state
-                ).model_dump()
+                ).model_dump(mode="json")
 
                 await redis_bus.publish_room_event(
                     room_id=room_id,
@@ -409,14 +409,23 @@ async def signaling_websocket_endpoint(
                     raw_sample=data
                 )
 
-                # Return ACK with calculated MOS
+                # Return ACK with calculated MOS and echo RTT/Jitter/Loss for UI telemetry continuity
+                rtt_sample = round(float(data.get("connection", {}).get("rtt_ms", eval_res.one_way_delay_ms) or 0.0), 1)
+                jitter_sample = round(float(data.get("audio", {}).get("jitter_ms", 0.0) or 0.0), 1)
+                loss_sample = round(float(data.get("audio", {}).get("packet_loss_pct", 0.0) or 0.0), 1)
                 ack = TelemetryReportAck(
                     room_id=room_id,
                     peer_id=client_id,
                     mos=eval_res.mos,
                     quality_tier=eval_res.quality_tier
-                ).model_dump()
-                await room_manager.safe_send_json(current_session, {"type": "telemetry_ack", **ack})
+                ).model_dump(mode="json")
+                await room_manager.safe_send_json(current_session, {
+                    "type": "telemetry_ack",
+                    "rtt_ms": rtt_sample,
+                    "jitter_ms": jitter_sample,
+                    "packet_loss_pct": loss_sample,
+                    **ack,
+                })
 
                 # Check if degradation alert is required
                 if eval_res.mos < 3.2:
@@ -428,7 +437,7 @@ async def signaling_websocket_endpoint(
                         packet_loss_pct=data.get("audio", {}).get("packet_loss_pct", 0.0),
                         suggestion="disable_video",
                         message="Qualidade de rede degradada. Recomenda-se desativar vídeo para priorizar áudio."
-                    ).model_dump()
+                    ).model_dump(mode="json")
                     await room_manager.safe_send_json(current_session, alert)
 
             # 8. Handle In-Call Chat Relay
@@ -455,7 +464,7 @@ async def signaling_websocket_endpoint(
             elif msg_type == "leave":
                 reason = data.get("reason", "voluntary")
                 await room_manager.unregister_client(client_id, reason=reason)
-                peer_left_payload = PeerLeftMessage(client_id=client_id, user_id=uid, reason=reason).model_dump()
+                peer_left_payload = PeerLeftMessage(client_id=client_id, user_id=uid, reason=reason).model_dump(mode="json")
                 await redis_bus.publish_room_event(room_id, "peer_left", peer_left_payload, sender_client_id=client_id)
                 await room_manager.broadcast_room(room_id, peer_left_payload, exclude_client_id=client_id)
                 break
@@ -465,7 +474,7 @@ async def signaling_websocket_endpoint(
                     await room_manager.safe_send_json(current_session, ErrorMessage(
                         code="FORBIDDEN",
                         message="Only technicians or gestores can terminate the consultation"
-                    ).model_dump())
+                    ).model_dump(mode="json"))
                     continue
 
                 reason = data.get("reason", "technician_ended")
@@ -475,13 +484,13 @@ async def signaling_websocket_endpoint(
             # 9. Handle Liveness Ping/Pong
             elif msg_type == "ping":
                 current_session.last_heartbeat = datetime.utcnow()
-                await room_manager.safe_send_json(current_session, PongMessage(timestamp=data.get("timestamp")).model_dump())
+                await room_manager.safe_send_json(current_session, PongMessage(timestamp=data.get("timestamp")).model_dump(mode="json"))
 
     except WebSocketDisconnect:
         logger.info(f"Signaling client {client_id} disconnected from room {room_id}")
     finally:
         if current_session:
             await room_manager.unregister_client(client_id, reason="socket_closed")
-            peer_left_payload = PeerLeftMessage(client_id=client_id, user_id=uid, reason="socket_closed").model_dump()
+            peer_left_payload = PeerLeftMessage(client_id=client_id, user_id=uid, reason="socket_closed").model_dump(mode="json")
             await redis_bus.publish_room_event(room_id, "peer_left", peer_left_payload, sender_client_id=client_id)
             await room_manager.broadcast_room(room_id, peer_left_payload, exclude_client_id=client_id)

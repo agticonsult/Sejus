@@ -12,10 +12,9 @@ export class WebRTCClient {
     this.userId = config.userId || 1;
     this.userName = config.userName || 'Participante';
     this.role = config.role || 'attendee';
-    this.iceServers = config.iceServers || [
+    this.iceServers = this._normalizeIceServers(config.iceServers || [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'turn:coturn.sejus.es.gov.br:3478', username: 'sejus_user', credential: 'turn_password_2026' },
-    ];
+    ]);
 
     this.peerConnection = null;
     this.ws = null;
@@ -29,6 +28,16 @@ export class WebRTCClient {
     this.makingOffer = false;
     this.ignoreOffer = false;
     this.isSettingRemoteAnswerPending = false;
+    this._initialNegotiationDone = false;
+    this._peerFallbackTimer = null;
+
+    this.lastTelemetry = {
+      mos: 4.3,
+      quality_tier: 'Excelente (4G/Wi-Fi)',
+      rtt_ms: 38,
+      jitter_ms: 6,
+      packet_loss_pct: 0.1,
+    };
 
     this.statsInterval = null;
     this.pingInterval = null;
@@ -46,6 +55,45 @@ export class WebRTCClient {
     this.onChatMessage = config.onChatMessage || (() => {});
     this.onError = config.onError || (() => {});
     this.onCallEnded = config.onCallEnded || (() => {});
+  }
+
+  _normalizeIceServers(servers) {
+    const host = (typeof window !== 'undefined' && window.location?.hostname) ? window.location.hostname : 'localhost';
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(host);
+    const list = Array.isArray(servers) ? servers : [];
+    const normalized = [];
+
+    for (const entry of list) {
+      if (!entry || !entry.urls) continue;
+      const urls = Array.isArray(entry.urls) ? entry.urls : [entry.urls];
+      const mappedUrls = urls
+        .map((u) => {
+          if (typeof u !== 'string') return u;
+          if (!isLocalHost) {
+            return u.replace(/^(stun:|turns?:)([^:@/?]+)/i, (m, scheme, h) => {
+              if (['coturn', 'localhost', '127.0.0.1'].includes(h.toLowerCase())) {
+                return `${scheme}${host}`;
+              }
+              return m;
+            });
+          }
+          return u.replace(/^(stun:|turns?:)coturn\b/i, '$1localhost');
+        })
+        .filter(Boolean);
+
+      if (mappedUrls.length > 0) {
+        normalized.push({
+          ...entry,
+          urls: Array.isArray(entry.urls) ? mappedUrls : mappedUrls[0],
+        });
+      }
+    }
+
+    const hasPublicStun = normalized.some((s) => String(s.urls).includes('stun.l.google.com'));
+    if (!hasPublicStun) {
+      normalized.unshift({ urls: 'stun:stun.l.google.com:19302' });
+    }
+    return normalized;
   }
 
   /**
@@ -102,7 +150,7 @@ export class WebRTCClient {
           this.isPolite = data.polite;
         }
         if (data.ice_servers && Array.isArray(data.ice_servers)) {
-          this.iceServers = data.ice_servers;
+          this.iceServers = this._normalizeIceServers(data.ice_servers);
         }
         this.onJoined(data);
         await this.initPeerConnection();
@@ -110,6 +158,7 @@ export class WebRTCClient {
           const firstPeer = data.peers[0];
           this.remotePeerId = firstPeer.client_id || null;
           this.onPeerJoined({ peer: firstPeer });
+          this._initialNegotiationDone = true;
           await this._makeOffer();
         }
         break;
@@ -118,13 +167,30 @@ export class WebRTCClient {
         if (data.peer?.client_id) {
           this.remotePeerId = data.peer.client_id;
         }
+        this._initialNegotiationDone = true;
         this.onPeerJoined(data);
-        if (!this.isPolite && this.peerConnection) {
-          await this._makeOffer();
+        if (this._peerFallbackTimer) {
+          clearTimeout(this._peerFallbackTimer);
+          this._peerFallbackTimer = null;
         }
+        // The newly joined peer initiates via 'joined' when peers.length > 0.
+        // Fallback after 1500ms only if impolite and no offer arrived yet.
+        this._peerFallbackTimer = setTimeout(() => {
+          this._peerFallbackTimer = null;
+          if (!this.isPolite && this.remotePeerId && this.peerConnection && this.peerConnection.signalingState === 'stable' && !this.remoteStream) {
+            this._makeOffer();
+          }
+        }, 1500);
         break;
 
       case 'peer_left':
+        if (this._peerFallbackTimer) {
+          clearTimeout(this._peerFallbackTimer);
+          this._peerFallbackTimer = null;
+        }
+        this.remotePeerId = null;
+        this.remoteStream = null;
+        this._initialNegotiationDone = false;
         this.onPeerLeft(data);
         break;
 
@@ -144,9 +210,26 @@ export class WebRTCClient {
         await this._handleRemoteIceCandidate(data.candidate);
         break;
 
-      case 'telemetry_ack':
-        this.onTelemetryUpdate(data);
+      case 'telemetry_ack': {
+        const tierMap = {
+          EXCELLENT: 'Excelente',
+          GOOD: 'Bom',
+          FAIR: 'Regular',
+          POOR: 'Instável',
+          BAD: 'Crítica',
+        };
+        const rawTier = String(data.quality_tier || '');
+        this.lastTelemetry = {
+          ...this.lastTelemetry,
+          mos: Number.isFinite(Number(data.mos)) ? Number(data.mos) : this.lastTelemetry.mos,
+          quality_tier: tierMap[rawTier] || rawTier || this.lastTelemetry.quality_tier,
+          rtt_ms: Number.isFinite(Number(data.rtt_ms)) ? Number(data.rtt_ms) : this.lastTelemetry.rtt_ms,
+          jitter_ms: Number.isFinite(Number(data.jitter_ms)) ? Number(data.jitter_ms) : this.lastTelemetry.jitter_ms,
+          packet_loss_pct: Number.isFinite(Number(data.packet_loss_pct)) ? Number(data.packet_loss_pct) : this.lastTelemetry.packet_loss_pct,
+        };
+        this.onTelemetryUpdate({ ...this.lastTelemetry });
         break;
+      }
 
       case 'quality_alert':
         this.onQualityAlert(data);
@@ -166,6 +249,16 @@ export class WebRTCClient {
    */
   async initPeerConnection() {
     if (typeof RTCPeerConnection === 'undefined') return;
+
+    if (this.peerConnection) {
+      try {
+        this.peerConnection.onnegotiationneeded = null;
+        this.peerConnection.onicecandidate = null;
+        this.peerConnection.ontrack = null;
+        this.peerConnection.close();
+      } catch (_) {}
+      this.peerConnection = null;
+    }
 
     this.peerConnection = new RTCPeerConnection({ iceServers: this.iceServers });
 
@@ -192,8 +285,17 @@ export class WebRTCClient {
       this.onRemoteStream(this.remoteStream);
     };
 
-    // Negotiation needed handler
+    // Add local tracks BEFORE attaching onnegotiationneeded so adding initial tracks to an empty room does not fire premature offers
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => {
+        this.peerConnection.addTrack(track, this.localStream);
+      });
+    }
+
+    // Negotiation needed handler (for renegotiations like screen sharing once a peer is present)
     this.peerConnection.onnegotiationneeded = async () => {
+      if (!this.remotePeerId || this.makingOffer || !this._initialNegotiationDone) return;
+      if (!this.peerConnection || this.peerConnection.signalingState !== 'stable') return;
       try {
         this.makingOffer = true;
         await this.peerConnection.setLocalDescription();
@@ -209,13 +311,6 @@ export class WebRTCClient {
         this.makingOffer = false;
       }
     };
-
-    // Add local tracks if available
-    if (this.localStream) {
-      this.localStream.getTracks().forEach((track) => {
-        this.peerConnection.addTrack(track, this.localStream);
-      });
-    }
 
     this.startStatsPolling(2000);
   }
@@ -241,6 +336,14 @@ export class WebRTCClient {
   }
 
   async _handleOffer(data) {
+    if (this._peerFallbackTimer) {
+      clearTimeout(this._peerFallbackTimer);
+      this._peerFallbackTimer = null;
+    }
+    if (data.sender_client_id && !this.remotePeerId) {
+      this.remotePeerId = data.sender_client_id;
+    }
+    this._initialNegotiationDone = true;
     if (!this.peerConnection) await this.initPeerConnection();
 
     const offerCollision = this.makingOffer || this.peerConnection.signalingState !== 'stable';
@@ -262,6 +365,10 @@ export class WebRTCClient {
   }
 
   async _handleAnswer(data) {
+    if (this._peerFallbackTimer) {
+      clearTimeout(this._peerFallbackTimer);
+      this._peerFallbackTimer = null;
+    }
     if (!this.peerConnection) return;
     await this.peerConnection.setRemoteDescription({ type: 'answer', sdp: data.sdp });
   }
@@ -430,7 +537,7 @@ export class WebRTCClient {
         const mos = this.calculateMOS(rttMs, jitterMs, packetLossPct);
         const qualityTier = mos >= 4.0 ? 'Excelente' : (mos >= 3.2 ? 'Bom' : (mos >= 2.5 ? 'Regular' : 'Instável'));
 
-        const telemetryData = {
+        this.lastTelemetry = {
           mos,
           quality_tier: qualityTier,
           rtt_ms: Math.round(rttMs),
@@ -438,7 +545,7 @@ export class WebRTCClient {
           packet_loss_pct: Math.round(packetLossPct * 10) / 10,
         };
 
-        this.onTelemetryUpdate(telemetryData);
+        this.onTelemetryUpdate({ ...this.lastTelemetry });
 
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify({
@@ -523,6 +630,10 @@ export class WebRTCClient {
   endCall(reason = 'voluntary') {
     this._stopStatsPolling();
     this._stopHeartbeat();
+    if (this._peerFallbackTimer) {
+      clearTimeout(this._peerFallbackTimer);
+      this._peerFallbackTimer = null;
+    }
     if (this._fallbackInterval) {
       clearInterval(this._fallbackInterval);
       this._fallbackInterval = null;

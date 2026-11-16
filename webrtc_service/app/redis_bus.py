@@ -4,6 +4,7 @@ Includes Loopback Prevention and Graceful In-Memory Fallback.
 """
 
 import json
+import os
 import uuid
 import socket
 import asyncio
@@ -61,6 +62,7 @@ class RedisBus:
         Falls back to in-memory mode if Redis connection fails.
         """
         self._running = True
+        self.worker_id = f"worker-{socket.gethostname()}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
         if not aioredis:
             logger.warning("redis-py not installed, activating in-memory bus fallback.")
             self._fallback_mode = True
@@ -156,7 +158,7 @@ class RedisBus:
             target_client_id=target_client_id,
             message_type=message_type,
             payload=payload
-        ).model_dump()
+        ).model_dump(mode="json")
 
         if self._fallback_mode or not self.redis_client:
             # Deliver locally in-memory
@@ -165,7 +167,7 @@ class RedisBus:
             return True
 
         try:
-            await self.redis_client.publish(channel, json.dumps(envelope))
+            await self.redis_client.publish(channel, json.dumps(envelope, default=str))
             return True
         except Exception as exc:
             logger.error(f"Failed to publish to Redis room channel {channel}: {exc}")
@@ -191,7 +193,7 @@ class RedisBus:
             target_client_id=target_client_id,
             message_type=message_type,
             payload=payload
-        ).model_dump()
+        ).model_dump(mode="json")
 
         if self._fallback_mode or not self.redis_client:
             # Deliver locally in-memory
@@ -200,7 +202,7 @@ class RedisBus:
             return True
 
         try:
-            await self.redis_client.publish(channel, json.dumps(envelope))
+            await self.redis_client.publish(channel, json.dumps(envelope, default=str))
             return True
         except Exception as exc:
             logger.error(f"Failed to publish to Redis queue channel {channel}: {exc}")

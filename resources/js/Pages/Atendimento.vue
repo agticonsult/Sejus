@@ -7,7 +7,7 @@
       <div class="bg-gradient-to-r from-[#003366] to-[#0f172a] rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-semibold mb-2 border border-emerald-500/30">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span>Mesa Virtual de Teleatendimento Ativa • SEJUS/ES</span>
           </div>
           <h1 class="text-2xl font-extrabold font-heading">
@@ -231,19 +231,19 @@
             <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/60 space-y-3">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-slate-500">Pontuação MOS ITU-T:</span>
-                <strong class="text-slate-800 font-mono">{{ Number(currentTelemetry.mos || 4.3).toFixed(1) }} / 4.5</strong>
+                <strong class="text-slate-800 font-mono">{{ Number(currentTelemetry.mos ?? 4.3).toFixed(1) }} / 4.5</strong>
               </div>
               <div class="flex justify-between items-center text-xs">
                 <span class="text-slate-500">Latência RTT:</span>
-                <strong class="text-slate-800 font-mono">{{ currentTelemetry.rtt_ms }} ms</strong>
+                <strong class="text-slate-800 font-mono">{{ currentTelemetry.rtt_ms ?? 38 }} ms</strong>
               </div>
               <div class="flex justify-between items-center text-xs">
                 <span class="text-slate-500">Variação de Jitter:</span>
-                <strong class="text-slate-800 font-mono">{{ currentTelemetry.jitter_ms }} ms</strong>
+                <strong class="text-slate-800 font-mono">{{ currentTelemetry.jitter_ms ?? 6 }} ms</strong>
               </div>
               <div class="flex justify-between items-center text-xs">
                 <span class="text-slate-500">Perda de Pacotes:</span>
-                <strong class="text-slate-800 font-mono">{{ Number(currentTelemetry.packet_loss_pct || 0).toFixed(1) }}%</strong>
+                <strong class="text-slate-800 font-mono">{{ Number(currentTelemetry.packet_loss_pct ?? 0).toFixed(1) }}%</strong>
               </div>
               <div class="pt-2 border-t border-slate-200 text-[11px] text-slate-500">
                 Protocolo Coturn STUN/TURN ativo para travessia de CGNAT em redes móveis (3G/4G/5G).
@@ -365,6 +365,8 @@
         :is-local-video-muted="isLocalVideoMuted"
         :is-screen-sharing="isScreenSharing"
         :is-staff="isStaff"
+        :local-stream="localMediaStream"
+        :remote-stream="remoteMediaStream"
         @close="handleCloseVideoModal"
         @end-call="handleEndVideoCall"
         @toggle-audio="handleToggleAudio"
@@ -378,7 +380,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '../Layouts/AppLayout.vue';
 import VideoModal from '../Components/VideoModal.vue';
@@ -535,6 +537,8 @@ const interventionForm = ref({
 
 let rtcClient = null;
 const videoModalRef = ref(null);
+const localMediaStream = shallowRef(null);
+const remoteMediaStream = shallowRef(null);
 
 const startDirectCall = async () => {
   activeVideoRoomDbId.value = null;
@@ -586,6 +590,8 @@ const initWebRTC = async () => {
       rtcClient.destroy();
       rtcClient = null;
     }
+    localMediaStream.value = null;
+    remoteMediaStream.value = null;
 
     let token = '';
     let iceServers = null;
@@ -639,6 +645,7 @@ const initWebRTC = async () => {
         });
       },
       onPeerLeft: () => {
+        remoteMediaStream.value = null;
         if (videoModalRef.value) {
           videoModalRef.value.hasRemoteStream = false;
         }
@@ -649,6 +656,7 @@ const initWebRTC = async () => {
         });
       },
       onRemoteStream: (stream) => {
+        remoteMediaStream.value = stream;
         if (videoModalRef.value?.setRemoteStream) {
           videoModalRef.value.setRemoteStream(stream);
         } else if (videoModalRef.value) {
@@ -659,7 +667,14 @@ const initWebRTC = async () => {
         }
       },
       onTelemetryUpdate: (data) => {
-        currentTelemetry.value = data;
+        currentTelemetry.value = {
+          ...currentTelemetry.value,
+          mos: Number.isFinite(Number(data?.mos)) ? Number(data.mos) : currentTelemetry.value.mos,
+          quality_tier: data?.quality_tier || currentTelemetry.value.quality_tier,
+          rtt_ms: Number.isFinite(Number(data?.rtt_ms)) ? Number(data.rtt_ms) : currentTelemetry.value.rtt_ms,
+          jitter_ms: Number.isFinite(Number(data?.jitter_ms)) ? Number(data.jitter_ms) : currentTelemetry.value.jitter_ms,
+          packet_loss_pct: Number.isFinite(Number(data?.packet_loss_pct)) ? Number(data.packet_loss_pct) : currentTelemetry.value.packet_loss_pct,
+        };
       },
       onChatMessage: (data) => {
         videoModalRef.value?.appendChatMessage({
@@ -675,6 +690,7 @@ const initWebRTC = async () => {
     });
 
     const localStream = await rtcClient.startLocalMedia({ audio: true, video: true });
+    localMediaStream.value = localStream;
     if (localStream) {
       if (videoModalRef.value?.setLocalStream) {
         await videoModalRef.value.setLocalStream(localStream);
@@ -702,6 +718,8 @@ const handleCloseVideoModal = () => {
     rtcClient.endCall('closed');
     rtcClient = null;
   }
+  localMediaStream.value = null;
+  remoteMediaStream.value = null;
   isVideoModalOpen.value = false;
 };
 
@@ -710,6 +728,8 @@ const handleEndVideoCall = async (payload) => {
     rtcClient.endCall('finished');
     rtcClient = null;
   }
+  localMediaStream.value = null;
+  remoteMediaStream.value = null;
   const s = payload.durationSeconds || 0;
   const m = Math.floor(s / 60).toString().padStart(2, '0');
   const sec = (s % 60).toString().padStart(2, '0');
