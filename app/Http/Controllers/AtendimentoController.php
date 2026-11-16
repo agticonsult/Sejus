@@ -196,7 +196,7 @@ class AtendimentoController extends Controller
         ]);
     }
 
-    public function encerrar(Request $request, int $id): JsonResponse
+    public function encerrar(Request $request, string|int $id): JsonResponse
     {
         $user = Auth::user();
         if (!$user) {
@@ -209,19 +209,22 @@ class AtendimentoController extends Controller
             'duracao' => 'nullable|string|max:32',
         ]);
 
-        $room = VideoRoom::with(['egresso', 'prontuario'])->find($id);
+        $room = VideoRoom::with(['egresso', 'prontuario'])
+            ->where('room_code', (string) $id)
+            ->orWhere('id', is_numeric($id) ? (int) $id : 0)
+            ->first();
         if (!$room) {
             return response()->json(['error' => 'Sala de atendimento não encontrada.'], 404);
         }
 
         $isStaff = in_array($user->perfil?->slug, ['gestor', 'tecnico', 'suporte'], true);
-        if (!$isStaff && $user->egresso && $room->egresso_id !== $user->egresso->id) {
+        if (!$isStaff && $user->egresso && $room->egresso_id !== null && $room->egresso_id !== $user->egresso->id) {
             return response()->json(['error' => 'Acesso não autorizado a esta sala.'], 403);
         }
 
         $room->update([
             'status' => 'encerrada',
-            'ended_at' => now(),
+            'ended_at' => $room->ended_at ?? now(),
         ]);
 
         $prontuarioId = $room->prontuario_id;

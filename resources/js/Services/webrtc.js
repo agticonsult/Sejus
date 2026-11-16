@@ -30,6 +30,7 @@ export class WebRTCClient {
     this.isSettingRemoteAnswerPending = false;
     this._initialNegotiationDone = false;
     this._peerFallbackTimer = null;
+    this._isEnding = false;
 
     this.lastTelemetry = {
       mos: 4.3,
@@ -628,6 +629,9 @@ export class WebRTCClient {
   }
 
   endCall(reason = 'voluntary') {
+    if (this._isEnding) return;
+    this._isEnding = true;
+
     this._stopStatsPolling();
     this._stopHeartbeat();
     if (this._peerFallbackTimer) {
@@ -639,17 +643,40 @@ export class WebRTCClient {
       this._fallbackInterval = null;
     }
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type: 'leave', reason }));
-      this.ws.close();
+      try {
+        const staffRoles = ['tecnico', 'technician', 'gestor', 'suporte'];
+        if (reason === 'finished' && staffRoles.includes(String(this.role).toLowerCase())) {
+          this.ws.send(JSON.stringify({ type: 'terminate_room', reason: 'technician_ended' }));
+        } else {
+          this.ws.send(JSON.stringify({ type: 'leave', reason }));
+        }
+      } catch (_) {}
+      try {
+        this.ws.close(1000, reason);
+      } catch (_) {}
     }
+    this.ws = null;
+    this.isConnected = false;
+
     if (this.localStream) {
-      this.localStream.getTracks().forEach((t) => t.stop());
+      this.localStream.getTracks().forEach((t) => { try { t.stop(); } catch (_) {} });
+      this.localStream = null;
+    }
+    if (this.remoteStream) {
+      this.remoteStream.getTracks().forEach((t) => { try { t.stop(); } catch (_) {} });
+      this.remoteStream = null;
     }
     if (this.screenStream) {
-      this.screenStream.getTracks().forEach((t) => t.stop());
+      this.screenStream.getTracks().forEach((t) => { try { t.stop(); } catch (_) {} });
+      this.screenStream = null;
     }
     if (this.peerConnection) {
-      this.peerConnection.close();
+      try {
+        this.peerConnection.onnegotiationneeded = null;
+        this.peerConnection.onicecandidate = null;
+        this.peerConnection.ontrack = null;
+        this.peerConnection.close();
+      } catch (_) {}
       this.peerConnection = null;
     }
     this.onCallEnded(reason);

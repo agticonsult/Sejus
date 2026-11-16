@@ -280,6 +280,19 @@ class ProductionReadinessTest extends TestCase
                 ->assertStatus(200);
             $this->assertSame('SEJUS-CALL-9988', $filaResponse->json('active_call.room_code'));
         }
+
+        // Encerrar por room_code limpa a fila e encerra a sala definitivamente
+        $this->actingAs($gestor)
+            ->postJson('/api/atendimento/fila/SEJUS-CALL-9988/encerrar', ['duracao' => '00:15'])
+            ->assertStatus(200)
+            ->assertJsonPath('status', 'success');
+
+        if ($egressoUser) {
+            $filaAfter = $this->actingAs($egressoUser)
+                ->getJson('/api/atendimento/fila')
+                ->assertStatus(200);
+            $this->assertNull($filaAfter->json('active_call'));
+        }
     }
 }
 

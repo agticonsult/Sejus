@@ -186,14 +186,23 @@
               </div>
 
               <div class="flex items-center gap-2 self-end sm:self-center">
-                <button
-                  v-if="isStaff"
-                  type="button"
-                  class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-                  @click="admitAttendee(ticket)"
-                >
-                  <span>📞 {{ ticket.status === 'em_andamento' ? 'Reconectar na Sala' : 'Chamar Atendido' }}</span>
-                </button>
+                <template v-if="isStaff">
+                  <button
+                    type="button"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                    @click="admitAttendee(ticket)"
+                  >
+                    <span>📞 {{ ticket.status === 'em_andamento' ? 'Reconectar na Sala' : 'Chamar Atendido' }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer"
+                    title="Encerrar e remover este atendimento da fila"
+                    @click="terminateQueueTicket(ticket)"
+                  >
+                    ✕ Encerrar
+                  </button>
+                </template>
                 <button
                   v-else-if="ticket.status === 'em_andamento'"
                   type="button"
@@ -687,6 +696,15 @@ const initWebRTC = async () => {
       onQualityAlert: (alert) => {
         console.warn('WebRTC Quality Alert:', alert);
       },
+      onCallEnded: () => {
+        if (isVideoModalOpen.value) {
+          isVideoModalOpen.value = false;
+          localMediaStream.value = null;
+          remoteMediaStream.value = null;
+          isScreenSharing.value = false;
+          refreshQueue();
+        }
+      },
     });
 
     const localStream = await rtcClient.startLocalMedia({ audio: true, video: true });
@@ -713,45 +731,84 @@ const handleSendChat = (text) => {
   }
 };
 
-const handleCloseVideoModal = () => {
-  if (rtcClient) {
-    rtcClient.endCall('closed');
-    rtcClient = null;
+const closeRoomOnBackend = async (roomIdentifier, extraPayload = {}) => {
+  if (!roomIdentifier) return false;
+  try {
+    const res = await fetch(`/api/atendimento/fila/${encodeURIComponent(roomIdentifier)}/encerrar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-TOKEN': getCsrfToken(),
+      },
+      body: JSON.stringify(extraPayload),
+    });
+    return res.ok;
+  } catch (_) {
+    return false;
   }
+};
+
+const terminateQueueTicket = async (ticket) => {
+  const target = ticket.id || ticket.ticket_id || ticket.room_code;
+  const ok = await closeRoomOnBackend(target, { duracao: '00:00' });
+  await refreshQueue();
+  if (ok) {
+    toast.success('Sala Encerrada', `Atendimento ${ticket.room_code} encerrado e removido da fila.`);
+  } else {
+    toast.error('Erro', 'Não foi possível encerrar este atendimento.');
+  }
+};
+
+const handleCloseVideoModal = async () => {
+  const clientToStop = rtcClient;
+  rtcClient = null;
+  isVideoModalOpen.value = false;
   localMediaStream.value = null;
   remoteMediaStream.value = null;
-  isVideoModalOpen.value = false;
+  isScreenSharing.value = false;
+  isLocalAudioMuted.value = false;
+  isLocalVideoMuted.value = false;
+
+  if (clientToStop) {
+    clientToStop.endCall('closed');
+  }
+  const targetRoom = activeVideoRoomDbId.value || activeRoomId.value;
+  if (isStaff.value && targetRoom) {
+    await closeRoomOnBackend(targetRoom, { duracao: '00:00' });
+    await refreshQueue();
+  }
 };
 
 const handleEndVideoCall = async (payload) => {
-  if (rtcClient) {
-    rtcClient.endCall('finished');
-    rtcClient = null;
-  }
-  localMediaStream.value = null;
-  remoteMediaStream.value = null;
-  const s = payload.durationSeconds || 0;
+  const s = payload?.durationSeconds || 0;
   const m = Math.floor(s / 60).toString().padStart(2, '0');
   const sec = (s % 60).toString().padStart(2, '0');
   lastCallDuration.value = `${m}:${sec}`;
 
+  const clientToStop = rtcClient;
+  rtcClient = null;
   isVideoModalOpen.value = false;
+  localMediaStream.value = null;
+  remoteMediaStream.value = null;
+  isScreenSharing.value = false;
+  isLocalAudioMuted.value = false;
+  isLocalVideoMuted.value = false;
+
+  if (clientToStop) {
+    clientToStop.endCall('finished');
+  }
+
+  const targetRoom = activeVideoRoomDbId.value || activeRoomId.value;
+  if (targetRoom) {
+    await closeRoomOnBackend(targetRoom, { duracao: lastCallDuration.value });
+    await refreshQueue();
+  }
+
   if (isStaff.value) {
     interventionForm.value.resumo = '';
     isNotesModalOpen.value = true;
-  } else if (activeVideoRoomDbId.value) {
-    try {
-      await fetch(`/api/atendimento/fila/${activeVideoRoomDbId.value}/encerrar`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'X-CSRF-TOKEN': getCsrfToken(),
-        },
-        body: JSON.stringify({ duracao: lastCallDuration.value }),
-      });
-      await refreshQueue();
-    } catch (err) {}
+  } else {
     toast.success('Chamada Finalizada', 'Seu teleatendimento foi encerrado com segurança.');
   }
 };

@@ -98,6 +98,15 @@ class WebRtcTokenController extends Controller
                 $prontuarioId = $room->prontuario_id;
             }
         } elseif ($user->isTecnico() || $user->isGestor() || $user->isSuporte()) {
+            // Encerrar eventuais chamadas diretas órfãs anteriores deste técnico para não acumular na fila
+            VideoRoom::where('tecnico_id', $user->id)
+                ->whereNull('egresso_id')
+                ->where('status', 'em_andamento')
+                ->update([
+                    'status' => 'encerrada',
+                    'ended_at' => now(),
+                ]);
+
             // Automatically initialize room if host technician starts a new session
             $room = VideoRoom::create([
                 'room_code' => $roomCode,
