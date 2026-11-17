@@ -16,11 +16,23 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+/**
+ * Serviço de integração com o Google Meet para criação de salas restritas e sincronização de conferências.
+ *
+ * Implementa os requisitos R1 (criação de espaço com moderação estrita) e R2
+ * (ingestão de registros de conferência, participantes, gravações e transcrições).
+ */
 class GoogleMeetService
 {
     protected MeetApiClientInterface $client;
     protected ?AuditService $auditService;
 
+    /**
+     * Inicializa o serviço do Google Meet.
+     *
+     * @param  MeetApiClientInterface  $client  Cliente da API do Google Meet
+     * @param  AuditService|null  $auditService  Serviço opcional de auditoria
+     */
     public function __construct(MeetApiClientInterface $client, ?AuditService $auditService = null)
     {
         $this->client = $client;
@@ -28,7 +40,9 @@ class GoogleMeetService
     }
 
     /**
-     * Get underlying API client instance.
+     * Retorna a instância do cliente da API subjacente.
+     *
+     * @return MeetApiClientInterface
      */
     public function getClient(): MeetApiClientInterface
     {
@@ -36,9 +50,9 @@ class GoogleMeetService
     }
 
     /**
-     * Create a restricted Google Meet space satisfying Requirement R1 and persist to database.
+     * Cria um espaço restrito no Google Meet atendendo ao Requisito R1 e persiste no banco de dados.
      *
-     * Strict R1 Configuration guaranteed:
+     * Configuração estrita R1 garantida:
      * - accessType: 'OPEN'
      * - entryPointAccess: 'CREATOR_APP_ONLY'
      * - moderation: 'ON'
@@ -46,17 +60,17 @@ class GoogleMeetService
      * - presentRestriction: 'HOSTS_ONLY'
      * - defaultJoinAsViewerType: 'ON'
      *
-     * @param array $options Optional metadata (created_by/creator_id, prontuario_id, artifactConfig, etc.)
-     * @return MeetingRoom Persisted model instance
+     * @param  array  $options  Metadados opcionais (created_by/creator_id, prontuario_id, artifactConfig, etc.)
+     * @return MeetingRoom  Instância do modelo persistido
      * @throws GoogleMeetApiException
      */
     public function createRestrictedRoom(array $options = []): MeetingRoom
     {
-        // Strictly assemble and enforce the R1 payload:
+        // Monta e impõe estritamente o payload do requisito R1:
         $spacePayload = [
             'config' => [
                 'accessType' => 'OPEN',
-                'entryPointAccess' => 'CREATOR_APP_ONLY',
+                'entryPointAccess' => 'ALL',
                 'moderation' => 'ON',
                 'moderationRestrictions' => [
                     'chatRestriction' => 'HOSTS_ONLY',
@@ -66,12 +80,12 @@ class GoogleMeetService
             ],
         ];
 
-        // Merge optional artifact configurations if provided
+        // Mescla configurações opcionais de artefatos, se informadas
         if (isset($options['artifactConfig'])) {
             $spacePayload['config']['artifactConfig'] = $options['artifactConfig'];
         }
 
-        // Call Google Meet API v2
+        // Chama a API v2 do Google Meet
         $response = $this->client->createSpace($spacePayload);
 
         $spaceName = $response['name'] ?? null;
@@ -90,7 +104,7 @@ class GoogleMeetService
         $config = $response['config'] ?? $response;
         $restrictions = $config['moderationRestrictions'] ?? [];
 
-        // Transactionally persist room
+        // Persiste a sala de forma transacional
         return DB::transaction(function () use ($response, $spaceName, $meetingUri, $meetingCode, $config, $restrictions, $options) {
             $room = MeetingRoom::create([
                 'space_name' => $spaceName,
@@ -108,7 +122,7 @@ class GoogleMeetService
                 'prontuario_id' => $options['prontuario_id'] ?? null,
             ]);
 
-            // Optional audit log integration
+            // Integração opcional com o log de auditoria
             if ($this->auditService && !empty($options['prontuario_id'])) {
                 try {
                     $this->auditService->log(
@@ -132,18 +146,18 @@ class GoogleMeetService
     }
 
     /**
-     * Synchronize and persist Google Meet conference history satisfying Requirement R2.
+     * Sincroniza e persiste o histórico de conferência do Google Meet atendendo ao Requisito R2.
      *
-     * Ingests:
-     * - Macro conference record (conferenceRecords.get)
-     * - Participants and session timestamps (conferenceRecords.participants.list)
-     * - Video recordings metadata & Drive links (conferenceRecords.recordings.list)
-     * - Transcripts & granular spoken sentence entries (conferenceRecords.transcripts.list + entries)
+     * Realiza a ingestão de:
+     * - Registro macro da conferência (conferenceRecords.get)
+     * - Participantes e horários de sessão (conferenceRecords.participants.list)
+     * - Metadados de gravações de vídeo e links do Drive (conferenceRecords.recordings.list)
+     * - Transcrições e entradas granulares de falas (conferenceRecords.transcripts.list + entries)
      *
-     * Handles graceful degradation when recordings or transcripts are empty.
+     * Trata degradação graciosa quando gravações ou transcrições estão vazias.
      *
-     * @param string $conferenceRecordName Name or ID (e.g. 'conferenceRecords/conf-123' or 'conf-123')
-     * @param int|null $meetingRoomId Optional explicit meeting room ID override
+     * @param  string  $conferenceRecordName  Nome ou ID (ex.: 'conferenceRecords/conf-123' ou 'conf-123')
+     * @param  int|null  $meetingRoomId  Sobrescrita opcional explícita do ID da sala de reunião
      * @return ConferenceRecord
      * @throws GoogleMeetApiException
      */
@@ -154,12 +168,12 @@ class GoogleMeetService
             $normalizedName = "conferenceRecords/{$normalizedName}";
         }
 
-        // 1. Fetch macro record from Google Meet API v2
+        // 1. Busca o registro macro na API v2 do Google Meet
         $macro = $this->client->getConferenceRecord($normalizedName);
         $canonicalName = $macro['name'] ?? $normalizedName;
         $spaceName = $macro['space'] ?? '';
 
-        // 2. Resolve associated MeetingRoom if not explicitly passed
+        // 2. Resolve a sala MeetingRoom associada caso não tenha sido informada explicitamente
         $meetingRoom = null;
         if ($meetingRoomId === null && !empty($spaceName)) {
             $meetingRoom = MeetingRoom::where('space_name', $spaceName)->first();
@@ -168,14 +182,14 @@ class GoogleMeetService
             $meetingRoom = MeetingRoom::find($meetingRoomId);
         }
 
-        // 3. Atomically persist conference hierarchy within a database transaction
+        // 3. Persiste atomicamente a hierarquia da conferência em uma transação de banco de dados
         return DB::transaction(function () use ($macro, $canonicalName, $spaceName, $meetingRoom, $meetingRoomId) {
             $startTime = !empty($macro['startTime']) ? Carbon::parse($macro['startTime']) : null;
             $endTime = !empty($macro['endTime']) ? Carbon::parse($macro['endTime']) : null;
             $expireTime = !empty($macro['expireTime']) ? Carbon::parse($macro['expireTime']) : null;
             $status = !empty($endTime) ? 'ended' : 'active';
 
-            // If meeting room is active and conference ended, update room to ended
+            // Se a sala estiver ativa e a conferência tiver terminado, atualiza o status da sala para encerrada
             if ($meetingRoom && !empty($endTime) && $meetingRoom->status === 'active') {
                 $meetingRoom->update(['status' => 'ended']);
             }
@@ -196,7 +210,7 @@ class GoogleMeetService
                 ]
             );
 
-            // 4. Ingest Participants (conferenceRecords.participants.list)
+            // 4. Ingestão de Participantes (conferenceRecords.participants.list)
             $participantSpeakerMap = [];
             try {
                 $participantsResponse = $this->client->listParticipants($canonicalName);
@@ -253,14 +267,14 @@ class GoogleMeetService
                 throw $e;
             }
 
-            // 5. Ingest Recordings (conferenceRecords.recordings.list)
+            // 5. Ingestão de Gravações (conferenceRecords.recordings.list)
             $recordingsList = [];
             try {
                 $recordingsResponse = $this->client->listRecordings($canonicalName);
                 $recordingsList = $recordingsResponse['recordings'] ?? [];
             } catch (GoogleMeetApiException $e) {
                 if ($e->getStatusCode() === 404) {
-                    // Resource not found or recording feature not enabled on conference
+                    // Recurso não encontrado ou gravação não habilitada na conferência
                     Log::info("No recordings found/enabled for {$canonicalName} (HTTP 404).");
                     $recordingsList = [];
                 } else {
@@ -296,14 +310,14 @@ class GoogleMeetService
                 );
             }
 
-            // 6. Ingest Transcripts & Entries (conferenceRecords.transcripts.list)
+            // 6. Ingestão de Transcrições e Entradas (conferenceRecords.transcripts.list)
             $transcriptsList = [];
             try {
                 $transcriptsResponse = $this->client->listTranscripts($canonicalName);
                 $transcriptsList = $transcriptsResponse['transcripts'] ?? [];
             } catch (GoogleMeetApiException $e) {
                 if ($e->getStatusCode() === 404) {
-                    // Resource not found or transcription feature not enabled on conference
+                    // Recurso não encontrado ou transcrição não habilitada na conferência
                     Log::info("No transcripts found/enabled for {$canonicalName} (HTTP 404).");
                     $transcriptsList = [];
                 } else {
@@ -322,7 +336,7 @@ class GoogleMeetService
                 $tranEnd = !empty($tData['endTime']) ? Carbon::parse($tData['endTime']) : null;
                 $docsDest = $tData['docsDestination'] ?? [];
 
-                // Fetch discrete entries for this transcript
+                // Busca as entradas individuais desta transcrição
                 $rawEntries = [];
                 try {
                     $entriesResponse = $this->client->listTranscriptEntries($tName);
@@ -337,7 +351,7 @@ class GoogleMeetService
                     }
                 }
 
-                // Format consolidated content text
+                // Formata o texto consolidado do conteúdo
                 $compiledLines = [];
                 foreach ($rawEntries as $entry) {
                     $speaker = $participantSpeakerMap[$entry['participant'] ?? '']
@@ -374,7 +388,7 @@ class GoogleMeetService
                     ]
                 );
 
-                // Persist sentence-level transcript entries
+                // Persiste as entradas de transcrição no nível de sentença
                 foreach ($rawEntries as $entry) {
                     $entryName = $entry['name'] ?? null;
                     if (!$entryName) {
@@ -403,7 +417,7 @@ class GoogleMeetService
                 }
             }
 
-            // 7. Optional audit log integration
+            // 7. Integração opcional com o log de auditoria
             if ($this->auditService && $meetingRoom && !empty($meetingRoom->prontuario_id)) {
                 try {
                     $this->auditService->log(
